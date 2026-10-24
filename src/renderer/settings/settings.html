@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' nova-icon: data:; font-src 'self'" />
+    <title>NOVA</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="titlebar"><span class="titlebar-title" id="winTitle">NOVA</span></div>
+    <div class="app">
+      <nav class="sidebar">
+        <div class="brand">
+          <img src="../icons/nova-64.png" alt="" />
+          <div>
+            <div class="brand-name">NOVA</div>
+            <div class="brand-sub" id="brandSub"></div>
+          </div>
+        </div>
+        <label class="search">
+          <span id="searchIcon"></span>
+          <input id="search" type="search" autocomplete="off" spellcheck="false" />
+        </label>
+        <ul class="nav" id="nav"></ul>
+      </nav>
+      <main class="content" id="content"></main>
+    </div>
+    <script src="settings.js"></script>
+  </body>
+</html>

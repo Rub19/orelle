@@ -1,0 +1,231 @@
+/* NOVA design tokens. Every surface imports this file; themes only swap variables. */
+
+:root {
+  --font: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Cascadia Mono', 'Cascadia Code', Consolas, monospace;
+
+  --accent: #0a84ff;
+  --accent-rgb: 10, 132, 255;
+  --accent-text: #ffffff;
+  --glass-opacity: 0.72;
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 340ms;
+
+  --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ---------- Dark (default) ---------- */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --glass-rgb: 28, 28, 32;
+  --glass-top: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.13);
+  --glass-inner: rgba(255, 255, 255, 0.07);
+  --surface: rgba(30, 30, 34, 0.55);
+  --surface-solid: #1c1c20;
+  --surface-raised: rgba(255, 255, 255, 0.055);
+  --surface-sunken: rgba(0, 0, 0, 0.18);
+  --text: #f5f5f7;
+  --text-2: rgba(235, 235, 245, 0.62);
+  --text-3: rgba(235, 235, 245, 0.38);
+  --separator: rgba(255, 255, 255, 0.09);
+  --hover: rgba(255, 255, 255, 0.07);
+  --pressed: rgba(255, 255, 255, 0.11);
+  --control: rgba(255, 255, 255, 0.09);
+  --control-border: rgba(255, 255, 255, 0.08);
+  --knob: #ffffff;
+  --shadow-lg: 0 24px 60px -12px rgba(0, 0, 0, 0.6), 0 8px 20px -8px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 10px 30px -10px rgba(0, 0, 0, 0.55);
+  --tooltip-bg: rgba(40, 40, 46, 0.94);
+  --indicator: rgba(255, 255, 255, 0.82);
+  --aurora: none;
+}
+
+/* ---------- Light ---------- */
+[data-theme='light'] {
+  color-scheme: light;
+  --glass-rgb: 246, 246, 249;
+  --glass-top: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.09);
+  --glass-inner: rgba(255, 255, 255, 0.85);
+  --surface: rgba(255, 255, 255, 0.6);
+  --surface-solid: #f6f6f8;
+  --surface-raised: rgba(255, 255, 255, 0.78);
+  --surface-sunken: rgba(0, 0, 0, 0.035);
+  --text: #1d1d1f;
+  --text-2: rgba(60, 60, 67, 0.7);
+  --text-3: rgba(60, 60, 67, 0.42);
+  --separator: rgba(0, 0, 0, 0.08);
+  --hover: rgba(0, 0, 0, 0.045);
+  --pressed: rgba(0, 0, 0, 0.08);
+  --control: rgba(0, 0, 0, 0.07);
+  --control-border: rgba(0, 0, 0, 0.06);
+  --knob: #ffffff;
+  --shadow-lg: 0 24px 60px -16px rgba(30, 30, 60, 0.28), 0 8px 18px -10px rgba(30, 30, 60, 0.2);
+  --shadow-md: 0 10px 28px -12px rgba(30, 30, 60, 0.25);
+  --tooltip-bg: rgba(250, 250, 252, 0.96);
+  --indicator: rgba(0, 0, 0, 0.62);
+}
+
+/* ---------- Midnight: deep blue-black ---------- */
+[data-theme='midnight'] {
+  color-scheme: dark;
+  --glass-rgb: 12, 16, 34;
+  --glass-top: rgba(140, 170, 255, 0.07);
+  --glass-border: rgba(150, 175, 255, 0.16);
+  --glass-inner: rgba(150, 175, 255, 0.08);
+  --surface: rgba(12, 16, 34, 0.6);
+  --surface-solid: #0b1022;
+  --surface-raised: rgba(150, 175, 255, 0.06);
+  --surface-sunken: rgba(0, 0, 10, 0.25);
+  --text: #eef1ff;
+  --text-2: rgba(214, 222, 255, 0.62);
+  --text-3: rgba(214, 222, 255, 0.36);
+  --separator: rgba(150, 175, 255, 0.11);
+  --hover: rgba(150, 175, 255, 0.08);
+  --pressed: rgba(150, 175, 255, 0.13);
+  --control: rgba(150, 175, 255, 0.1);
+  --control-border: rgba(150, 175, 255, 0.1);
+  --knob: #f4f6ff;
+  --shadow-lg: 0 24px 60px -12px rgba(0, 0, 20, 0.7), 0 8px 20px -8px rgba(0, 0, 20, 0.5);
+  --shadow-md: 0 10px 30px -10px rgba(0, 0, 20, 0.6);
+  --tooltip-bg: rgba(20, 26, 52, 0.95);
+  --indicator: rgba(214, 222, 255, 0.85);
+}
+
+/* ---------- Graphite: neutral, low-saturation grey ---------- */
+[data-theme='graphite'] {
+  color-scheme: dark;
+  --glass-rgb: 52, 52, 54;
+  --glass-top: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-inner: rgba(255, 255, 255, 0.09);
+  --surface: rgba(48, 48, 50, 0.62);
+  --surface-solid: #2c2c2e;
+  --surface-raised: rgba(255, 255, 255, 0.07);
+  --surface-sunken: rgba(0, 0, 0, 0.16);
+  --text: #ececee;
+  --text-2: rgba(236, 236, 238, 0.6);
+  --text-3: rgba(236, 236, 238, 0.36);
+  --separator: rgba(255, 255, 255, 0.1);
+  --hover: rgba(255, 255, 255, 0.08);
+  --pressed: rgba(255, 255, 255, 0.12);
+  --control: rgba(255, 255, 255, 0.1);
+  --control-border: rgba(255, 255, 255, 0.09);
+  --knob: #f2f2f2;
+  --shadow-lg: 0 24px 60px -12px rgba(0, 0, 0, 0.55), 0 8px 20px -8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  --tooltip-bg: rgba(58, 58, 60, 0.96);
+  --indicator: rgba(255, 255, 255, 0.8);
+}
+
+/* ---------- Aurora: dark with a restrained violet → teal sheen ---------- */
+[data-theme='aurora'] {
+  color-scheme: dark;
+  --glass-rgb: 24, 20, 40;
+  --glass-top: rgba(190, 150, 255, 0.08);
+  --glass-border: rgba(200, 170, 255, 0.18);
+  --glass-inner: rgba(160, 230, 255, 0.07);
+  --surface: rgba(22, 18, 38, 0.6);
+  --surface-solid: #161226;
+  --surface-raised: rgba(200, 170, 255, 0.065);
+  --surface-sunken: rgba(0, 0, 0, 0.2);
+  --text: #f3f0ff;
+  --text-2: rgba(232, 226, 255, 0.62);
+  --text-3: rgba(232, 226, 255, 0.36);
+  --separator: rgba(200, 170, 255, 0.12);
+  --hover: rgba(200, 170, 255, 0.08);
+  --pressed: rgba(200, 170, 255, 0.13);
+  --control: rgba(200, 170, 255, 0.1);
+  --control-border: rgba(200, 170, 255, 0.1);
+  --knob: #ffffff;
+  --shadow-lg: 0 24px 60px -12px rgba(10, 0, 30, 0.7), 0 8px 20px -8px rgba(10, 0, 30, 0.5);
+  --shadow-md: 0 10px 30px -10px rgba(10, 0, 30, 0.6);
+  --tooltip-bg: rgba(36, 28, 60, 0.95);
+  --indicator: rgba(240, 232, 255, 0.85);
+  --aurora: radial-gradient(120% 140% at 10% 0%, rgba(140, 90, 255, 0.22), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(40, 200, 220, 0.16), transparent 55%);
+}
+
+/* ---------- Effects levels ---------- */
+[data-effects='reduced'] {
+  --dur-fast: 80ms;
+  --dur: 120ms;
+  --dur-slow: 180ms;
+  --noise: none;
+}
+[data-effects='off'] {
+  --dur-fast: 0ms;
+  --dur: 0ms;
+  --dur-slow: 0ms;
+  --noise: none;
+  --glass-opacity: 1 !important;
+}
+[data-effects='off'] *,
+[data-effects='off'] *::before,
+[data-effects='off'] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 60ms;
+    --dur: 90ms;
+    --dur-slow: 120ms;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: rgba(var(--accent-rgb), 0.35);
+}
+
+.glyph {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

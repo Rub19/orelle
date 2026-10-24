@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' nova-icon: data:; font-src 'self'" />
+    <title>NOVA Launcher</title>
+    <link rel="stylesheet" href="launcher.css" />
+  </head>
+  <body>
+    <main class="launcher" id="launcher">
+      <header class="query">
+        <span class="query-icon" id="queryIcon"></span>
+        <input id="input" type="text" autocomplete="off" spellcheck="false" aria-label="Recherche" />
+        <span class="chip" id="kindChip" hidden></span>
+      </header>
+      <div class="body">
+        <ul class="results" id="results" role="listbox"></ul>
+        <aside class="preview" id="preview" hidden></aside>
+      </div>
+      <footer class="footer" id="footer"></footer>
+    </main>
+    <script src="launcher.js"></script>
+  </body>
+</html>

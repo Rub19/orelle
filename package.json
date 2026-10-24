@@ -1,0 +1,35 @@
+{
+  "name": "nova",
+  "productName": "NOVA",
+  "version": "0.1.0",
+  "description": "NOVA — premium desktop experience layer for Windows 11 (Dock, launcher, settings).",
+  "main": "dist/main.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs && electron . --nova-dev",
+    "start": "node scripts/build.mjs && electron .",
+    "icons": "node scripts/gen-icons.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "smoke": "node scripts/build.mjs && electron . --nova-smoke",
+    "check": "npm run typecheck && npm test && npm run smoke"
+  },
+  "dependencies": {
+    "koffi": "3.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.0",
+    "electron": "44.9.3",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "vitest": "4.0.6"
+  },
+  "allowScripts": {
+    "koffi@3.3.3": true,
+    "esbuild@0.28.2": true,
+    "electron@44.9.3": true
+  }
+}

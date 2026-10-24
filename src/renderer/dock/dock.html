@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' nova-icon: data:; font-src 'self'" />
+    <title>NOVA Dock</title>
+    <link rel="stylesheet" href="dock.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <div id="dock" class="dock" role="toolbar" aria-label="Dock">
+        <div class="bar"></div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div id="tooltip" class="tooltip" role="tooltip"></div>
+    </div>
+    <script src="dock.js"></script>
+  </body>
+</html>
