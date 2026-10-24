@@ -1,5 +1,8 @@
 /* Orelle design tokens. Every surface imports this file; themes only swap variables. */
 
+/* `hidden` must win over any component display rule (flex/grid panels, modals). */
+[hidden] { display: none !important; }
+
 :root {
   --font: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;

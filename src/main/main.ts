@@ -279,11 +279,24 @@ async function main() {
   powerMonitor.on('resume', onWake);
   powerMonitor.on('unlock-screen', onWake);
 
-  // `Orelle --orelle-quit` stops the running instance cleanly (scripts, uninstaller).
+  // `Orelle --orelle-quit` stops the running instance cleanly (scripts, uninstaller);
+  // `--orelle-open=files[:path]` / `--orelle-open=monitor[:tab]` / `--orelle-open=control` open a surface.
+  const openFromArgs = (argv: string[]) => {
+    const open = argv.find((a) => a.startsWith('--orelle-open='))?.slice('--orelle-open='.length);
+    if (!open) return false;
+    const [what, ...rest] = open.split(':');
+    const arg = rest.join(':') || undefined;
+    if (what === 'files' || what === 'monitor') ctx.actions.openApp(what, arg);
+    else if (what === 'control') control.show();
+    else if (what === 'launcher') launcher.show();
+    else return false;
+    return true;
+  };
   app.on('second-instance', (_e, argv) => {
     if (argv.includes('--orelle-quit')) app.quit();
-    else settingsUi.open(argv.find((a) => a.startsWith('--orelle-section='))?.split('=')[1]);
+    else if (!openFromArgs(argv)) settingsUi.open(argv.find((a) => a.startsWith('--orelle-section='))?.split('=')[1]);
   });
+  openFromArgs(process.argv);
   // Orelle lives in the background: closing the preferences window must not quit it.
   app.on('window-all-closed', () => { /* stay resident */ });
   // Every way out (quit, app.exit in tests, process exit) must give back what Orelle borrowed from

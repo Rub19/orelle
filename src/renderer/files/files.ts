@@ -155,7 +155,10 @@ async function loadIcons() {
 function updateIconsInPlace() {
   for (const img of content.querySelectorAll<HTMLImageElement>('img.ico[data-path]')) {
     const url = icons.get(img.dataset.path!);
-    if (url && img.getAttribute('src') !== url && !img.dataset.thumb) img.src = url;
+    if (url && img.getAttribute('src') !== url && !img.dataset.thumb) {
+      img.src = url;
+      img.classList.remove('pending');
+    }
   }
 }
 
@@ -173,9 +176,11 @@ const thumbObserver = new IntersectionObserver((list) => {
 function iconFor(e: FileEntry, size: 'big' | 'small'): HTMLElement {
   const url = icons.get(e.path);
   const img = el('img', { class: 'ico', alt: '', draggable: 'false', 'data-path': e.path, src: url ?? '' });
+  // Invisible until a real image (icon or thumbnail) has loaded: no broken-image flashes.
   if (!url) img.classList.add('pending');
+  img.addEventListener('load', () => img.classList.remove('pending'));
   img.addEventListener('error', () => img.classList.add('pending'));
-  if (size === 'big' && ['image', 'video'].includes(fileKind(e)) || (size === 'big' && e.ext === 'pdf')) thumbObserver.observe(img);
+  if (size === 'big' && (['image', 'video'].includes(fileKind(e)) || e.ext === 'pdf')) thumbObserver.observe(img);
   return img;
 }
 
@@ -433,7 +438,7 @@ function renderFilters() {
       return b;
     }),
     el('span', { class: 'grow' }),
-    tb.search ? el('span', { class: 'search-info', text: t(tb.search.content ? 'files.searchingContent' : 'files.searchingNames', { q: tb.search.query, root: breadcrumbs(tb.search.root).pop()?.name ?? tb.search.root }) }) : null,
+    el('span', { class: 'search-info', text: tb.search ? t(tb.search.content ? 'files.searchingContent' : 'files.searchingNames', { q: tb.search.query, root: breadcrumbs(tb.search.root).pop()?.name ?? tb.search.root }) : '' }),
   );
 }
 
@@ -447,8 +452,8 @@ function formatDate(ms: number) {
 
 function kindLabel(e: FileEntry) {
   const k = fileKind(e);
-  if (k === 'folder') return t('files.kind.folder');
-  return e.ext ? `${e.ext.toUpperCase()} · ${t(`files.kind.${k}` as StringKey)}` : t('files.kind.other');
+  if (k === 'folder') return t('files.one.folder');
+  return e.ext ? `${e.ext.toUpperCase()} · ${t(`files.one.${k}` as StringKey)}` : t('files.one.other');
 }
 
 function renderContent() {

@@ -105,11 +105,11 @@ function renderSidebar() {
       return b;
     }),
     el('div', { class: 'side-spacer' }),
-    latest ? el('div', { class: 'side-stats' },
+    !latest ? el('div', {}) : el('div', { class: 'side-stats' },
       el('div', {}, el('span', { text: t('monitor.processes') }), el('strong', { text: String(latest.counts.processes) })),
       el('div', {}, el('span', { text: t('monitor.threads') }), el('strong', { text: latest.counts.threads.toLocaleString() })),
       latest.counts.hung ? el('div', { class: 'warn' }, el('span', { text: t('monitor.hung') }), el('strong', { text: String(latest.counts.hung) })) : null,
-    ) : null,
+    ),
   );
 }
 
@@ -211,18 +211,18 @@ function renderProcesses() {
   const q = query.trim().toLowerCase();
   const rows = latest.processes.filter((p) => !q || p.display.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || String(p.pid) === q);
   const scroll = page.querySelector('.table-wrap')?.scrollTop ?? 0;
-  const col = (key: typeof sort.key, label: string, cls: string) => {
-    const b = el('button', { class: `th ${cls}${sort.key === key ? ' sorted' : ''}` }, label, sort.key === key ? el('span', { class: 'arrow', text: sort.desc ? '↓' : '↑' }) : null);
+  const col = (key: typeof sort.key, label: string, cls: string, total = '') => {
+    const b = el('button', { class: `th ${cls}${sort.key === key ? ' sorted' : ''}` }, el('span', {}, label, sort.key === key ? el('span', { class: 'arrow', text: sort.desc ? ' ↓' : ' ↑' }) : ''), el('small', { text: total }));
     b.addEventListener('click', () => { sort = { key, desc: sort.key === key ? !sort.desc : key !== 'display' }; renderProcesses(); });
     return b;
   };
   const totals = { cpu: latest.cpu, mem: latest.memUsed, disk: latest.processes.reduce((a, p) => a + p.disk, 0), gpu: latest.gpu ?? 0 };
   const header = el('div', { class: 'thead' },
     col('display', t('monitor.col.name'), 'c-name'),
-    col('cpu', `${t('monitor.cpu')} ${pct(totals.cpu)}`, 'c-num'),
-    col('memory', `${t('monitor.memory')} ${formatBytes(totals.mem, lang)}`, 'c-num'),
-    col('disk', t('monitor.disk'), 'c-num'),
-    col('gpu', `GPU ${pct(totals.gpu)}`, 'c-num'),
+    col('cpu', 'CPU', 'c-num', pct(totals.cpu)),
+    col('memory', t('monitor.memory'), 'c-num', formatBytes(totals.mem, lang)),
+    col('disk', t('monitor.disk'), 'c-num', rate(totals.disk)),
+    col('gpu', 'GPU', 'c-num', pct(totals.gpu)),
     col('pid', 'PID', 'c-pid'));
   const sections: HTMLElement[] = [];
   for (const kind of ['app', 'background', 'system'] as const) {
