@@ -1,7 +1,7 @@
 // Control center UI. Every control either really drives Windows (volume, mute, brightness, media
 // keys, taskbar auto-hide) or opens the exact Settings page; nothing is simulated.
 import type { ControlState, Settings } from '../../shared/types';
-import { el, nova, setLanguage, t } from '../common/env';
+import { el, orelle, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
 
@@ -32,12 +32,12 @@ function render() {
   volInput.addEventListener('pointerup', () => (dragging = false));
   volInput.addEventListener('input', () => {
     setFill(volInput);
-    void nova.control.setVolume(Number(volInput.value));
+    void orelle.control.setVolume(Number(volInput.value));
   });
   const muteBtn = el('button', { html: glyph(vol?.muted || vol?.level === 0 ? 'volumeMute' : 'volume'), title: t('control.mute') });
   muteBtn.addEventListener('click', async () => {
     if (!vol) return;
-    await nova.control.setMuted(!vol.muted);
+    await orelle.control.setMuted(!vol.muted);
     vol.muted = !vol.muted;
     render();
   });
@@ -48,27 +48,27 @@ function render() {
   brInput.addEventListener('pointerup', () => (dragging = false));
   brInput.addEventListener('input', () => {
     setFill(brInput);
-    nova.control.setBrightness(Number(brInput.value));
+    orelle.control.setBrightness(Number(brInput.value));
   });
 
   const wifi = s?.wifi;
   const bat = s?.battery;
   const light = settings.appearance.theme === 'light';
-  const openSettings = (uri: string) => () => nova.control.openSettings(uri);
+  const openSettings = (uri: string) => () => orelle.control.openSettings(uri);
 
   const head = el('div', { class: 'head' }, el('strong', { text: t('control.title') }), el('div', { class: 'icons' },
-    iconBtn('search', t('dock.launcher'), () => nova.control.action('launcher')),
-    iconBtn('lock', t('control.lock'), () => nova.control.action('lock')),
-    iconBtn('settings', t('control.prefs'), () => nova.control.action('preferences')),
+    iconBtn('search', t('dock.launcher'), () => orelle.control.action('launcher')),
+    iconBtn('lock', t('control.lock'), () => orelle.control.action('lock')),
+    iconBtn('settings', t('control.prefs'), () => orelle.control.action('preferences')),
   ));
 
   const tiles = el('div', { class: 'tiles' },
     tile('wifi', t('control.wifi'), wifi?.connected ? `${wifi.ssid ?? ''}${wifi.signal !== null ? ` · ${wifi.signal} %` : ''}` : t('control.wifi.off'), !!wifi?.connected, openSettings('ms-settings:network-wifi')),
     tile('bluetooth', t('control.bluetooth'), t('control.bluetooth.open'), false, openSettings('ms-settings:bluetooth')),
     tile('bell', t('control.focus'), t('control.bluetooth.open'), false, openSettings('ms-settings:notifications')),
-    tile(light ? 'sun' : 'moon', light ? t('control.lightMode') : t('control.darkMode'), 'NOVA', !light, () => nova.control.action('toggleTheme')),
-    tile('taskbar', t('control.taskbar'), settings.general.hideTaskbar ? t('common.off') : t('common.on'), !settings.general.hideTaskbar, () => nova.control.action('toggleTaskbar')),
-    tile('grid', t('control.widgets'), t('widgets.edit'), false, () => nova.control.action('editWidgets')),
+    tile(light ? 'sun' : 'moon', light ? t('control.lightMode') : t('control.darkMode'), 'Orelle', !light, () => orelle.control.action('toggleTheme')),
+    tile('taskbar', t('control.taskbar'), settings.general.hideTaskbar ? t('common.off') : t('common.on'), !settings.general.hideTaskbar, () => orelle.control.action('toggleTaskbar')),
+    tile('grid', t('control.widgets'), t('widgets.edit'), false, () => orelle.control.action('editWidgets')),
   );
 
   const volCard = el('div', { class: 'card' },
@@ -86,9 +86,9 @@ function render() {
 
   const mediaCard = el('div', { class: 'card media' },
     el('div', { class: 'meta' }, el('strong', { text: t('control.media') }), el('small', { text: t('control.media.hint') })),
-    roundBtn('previous', () => nova.control.media('previous')),
-    roundBtn('playPause', () => nova.control.media('playPause'), true),
-    roundBtn('next', () => nova.control.media('next')),
+    roundBtn('previous', () => orelle.control.media('previous')),
+    roundBtn('playPause', () => orelle.control.media('playPause'), true),
+    roundBtn('next', () => orelle.control.media('next')),
   );
 
   const parts: HTMLElement[] = [head, tiles, volCard, brCard, mediaCard];
@@ -125,22 +125,22 @@ function linkBtn(label: string, onClick: () => void, g?: string) {
 }
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') nova.control.hide();
+  if (e.key === 'Escape') orelle.control.hide();
 });
 
 async function init() {
-  const boot = await nova.bootstrap();
+  const boot = await orelle.bootstrap();
   settings = boot.settings;
   setLanguage(boot.language);
   applyTheme(settings, boot.darkSystem);
   render();
-  nova.onSettings((p) => {
+  orelle.onSettings((p) => {
     settings = p.settings;
     setLanguage(p.language);
     applyTheme(settings, p.darkSystem);
     render();
   });
-  nova.control.onState((s) => {
+  orelle.control.onState((s) => {
     state = s;
     render();
   });

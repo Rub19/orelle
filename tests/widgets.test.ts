@@ -46,10 +46,10 @@ describe('widget and v3 settings', () => {
   });
 
   it('migration v2 → v3 adds the control center button after the launcher', () => {
-    const m = migrate({ version: 2, dock: { items: [{ id: 'l', type: 'nova', action: 'launcher' }, { id: 'x', type: 'separator' }] } });
-    expect((m.dock as { items: { id: string }[] }).items.map((i) => i.id)).toEqual(['l', 'nova-control', 'x']);
-    const s = normalizeSettings({ version: 2, dock: { items: [{ id: 'l', type: 'nova', action: 'launcher' }] } });
-    expect(s.dock.items.map((i) => i.type === 'nova' && i.action)).toEqual(['launcher', 'control']);
+    const m = migrate({ version: 2, dock: { items: [{ id: 'l', type: 'orelle', action: 'launcher' }, { id: 'x', type: 'separator' }] } });
+    expect((m.dock as { items: { id: string }[] }).items.map((i) => i.id)).toEqual(['l', 'orelle-control', 'x']);
+    const s = normalizeSettings({ version: 2, dock: { items: [{ id: 'l', type: 'orelle', action: 'launcher' }] } });
+    expect(s.dock.items.map((i) => i.type === 'orelle' && i.action)).toEqual(['launcher', 'control']);
   });
 
   it('only accepts .ps1/.bat/.cmd scripts with absolute paths and a valid hash', () => {

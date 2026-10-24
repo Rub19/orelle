@@ -1,7 +1,7 @@
 // The launcher: a pre-created, hidden acrylic window shown instantly on the global shortcut.
 import { BrowserWindow, ipcMain, screen, type IpcMainInvokeEvent } from 'electron';
 import { randomUUID } from 'node:crypto';
-import type { NovaContext } from '../context';
+import type { OrelleContext } from '../context';
 import * as w32 from '../native/win32';
 import { SearchService } from '../services/searchService';
 import { log } from '../logger';
@@ -13,7 +13,7 @@ export class LauncherController {
   private win: BrowserWindow | null = null;
   private shownAt = 0;
 
-  constructor(private readonly ctx: NovaContext, private readonly search: SearchService) {}
+  constructor(private readonly ctx: OrelleContext, private readonly search: SearchService) {}
 
   get window() {
     return this.win;
@@ -34,7 +34,7 @@ export class LauncherController {
       fullscreenable: false,
       skipTaskbar: true,
       alwaysOnTop: true,
-      title: 'NOVA Launcher',
+      title: 'Orelle Launcher',
       backgroundColor: '#00000000',
       backgroundMaterial: effects === 'off' ? 'none' : 'acrylic',
       webPreferences: {
@@ -43,7 +43,7 @@ export class LauncherController {
         contextIsolation: true,
         nodeIntegration: false,
         spellcheck: false,
-        additionalArguments: ['--nova-surface=launcher'],
+        additionalArguments: ['--orelle-surface=launcher'],
       },
     });
     this.win = win;
@@ -52,7 +52,7 @@ export class LauncherController {
     win.webContents.on('will-navigate', (e) => e.preventDefault());
     win.on('blur', () => {
       // Ignore the blur that can follow the show call itself.
-      if (Date.now() - this.shownAt > 150 && !process.argv.includes('--nova-keep-launcher')) this.hide();
+      if (Date.now() - this.shownAt > 150 && !process.argv.includes('--orelle-keep-launcher')) this.hide();
     });
     win.webContents.on('render-process-gone', (_e, d) => {
       log.error('launcher', `Renderer gone (${d.reason}); recreating`);

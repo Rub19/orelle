@@ -1,4 +1,4 @@
-# NOVA — Architecture
+# Orelle — Architecture
 
 ## 1. Choix de la stack
 
@@ -28,9 +28,9 @@ main process (Node)                                  renderers (sandboxés, cont
 ├─ SettingsService   settings.json (atomique, .bak)  ├─ dock      fenêtre transparente, non activable,
 ├─ UsageService      usage.json (fréquence/récence)  │            click-through hors du Dock
 ├─ AppIndex          shell:AppsFolder (PowerShell)   ├─ launcher  fenêtre Acrylic pré-créée, cachée
-├─ IconService       icônes 128 px → nova-icon://    └─ settings  fenêtre Mica, barre de titre native
+├─ IconService       icônes 128 px → orelle-icon://    └─ settings  fenêtre Mica, barre de titre native
 ├─ WindowTracker     WinEvent hooks (sans polling)
-├─ FileIndex         fs.watch récursif (sans polling)        preload.ts = unique pont (API typée `window.nova`)
+├─ FileIndex         fs.watch récursif (sans polling)        preload.ts = unique pont (API typée `window.orelle`)
 ├─ ClipboardHistory  WM_CLIPBOARDUPDATE (opt-in, RAM)
 ├─ SearchService     fournisseurs du launcher
 └─ Dock/Launcher/SettingsController + Hotkeys + Tray
@@ -38,7 +38,7 @@ main process (Node)                                  renderers (sandboxés, cont
 
 - Chaque handler IPC vérifie **quelle fenêtre** l’appelle (`e.sender`) : le Dock ne peut pas exporter un profil, le launcher ne peut pas modifier les réglages, etc.
 - Les renderers n’ont ni Node ni `require` ; CSP stricte (`script-src 'self'`).
-- Le protocole `nova-icon://` ne sert que des fichiers `^[a-f0-9]{40}\.png$` du cache d’icônes.
+- Le protocole `orelle-icon://` ne sert que des fichiers `^[a-f0-9]{40}\.png$` du cache d’icônes.
 
 ## 3. Intégration Windows : ce qui est fait et comment
 
@@ -59,14 +59,14 @@ main process (Node)                                  renderers (sandboxés, cont
 
 - **Flou réel derrière le Dock** : DWM ne floute que des fenêtres rectangulaires. Le Dock (forme libre + zone de grossissement)
   utilise donc un verre teinté + grain, opacité réglable. Le launcher et les Préférences, rectangulaires, utilisent le vrai Acrylic / Mica.
-- **Barre des tâches** : NOVA ne la masque pas et ne touche pas au registre. Un raccourci ouvre `ms-settings:taskbar`.
+- **Barre des tâches** : Orelle ne la masque pas et ne touche pas au registre. Un raccourci ouvre `ms-settings:taskbar`.
 - **Bureaux virtuels** (phase 5) : l’API publique `IVirtualDesktopManager` permet seulement de savoir/déplacer une fenêtre ;
-  la création/le basculement de bureaux n’ont pas d’API publique stable. NOVA n’en simulera pas.
+  la création/le basculement de bureaux n’ont pas d’API publique stable. Orelle n’en simulera pas.
 - **Aperçus de fenêtres** (phase 5) : prévus via `DwmRegisterThumbnail`, non implémentés en v0.1.
 
 ## 4. Données et persistance
 
-`%APPDATA%\NOVA\` (ou `--nova-user-data=<dir>` pour un profil isolé)
+`%APPDATA%\Orelle\` (ou `--orelle-user-data=<dir>` pour un profil isolé)
 
 | Fichier | Contenu |
 |---|---|
@@ -74,7 +74,7 @@ main process (Node)                                  renderers (sandboxés, cont
 | `usage.json` | Compteurs fréquence/récence (classement du launcher, apps récentes du Dock). Effaçable dans Confidentialité. |
 | `apps.json` | Cache de l’index des applications (démarrage instantané). |
 | `icon-cache/*.png` | Icônes extraites. |
-| `logs/nova-YYYY-MM-DD.log` | Journaux, 7 jours de rétention. |
+| `logs/orelle-YYYY-MM-DD.log` | Journaux, 7 jours de rétention. |
 
 **Migrations** : `src/shared/settings.ts` → `MIGRATIONS[n]` transforme la version *n* en *n+1* ; puis `normalizeSettings`
 borne et valide chaque champ (aucune valeur importée ne peut casser l’app). Couvert par `tests/settings.test.ts`.
@@ -91,6 +91,6 @@ borne et valide chaque champ (aucune valeur importée ne peut casser l’app). C
 
 - Renderer du Dock planté → rechargé ; launcher planté → recréé.
 - `uncaughtException` / `unhandledRejection` journalisés sans tuer l’app.
-- Instance unique ; `NOVA --nova-quit` arrête proprement l’instance en cours (scripts, désinstalleur).
+- Instance unique ; `Orelle --orelle-quit` arrête proprement l’instance en cours (scripts, désinstalleur).
 - Reprise après veille / déverrouillage : raccourci ré-enregistré, fenêtres ré-énumérées, Dock repositionné.
 - Changements d’écran (ajout, retrait, DPI) : Dock repositionné (coordonnées DIP ↔ physiques via l’API `screen`).

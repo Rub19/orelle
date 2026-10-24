@@ -1,9 +1,9 @@
-// Preferences UI. Every control writes through nova.updateSettings; the main process normalizes
+// Preferences UI. Every control writes through orelle.updateSettings; the main process normalizes
 // and persists, then broadcasts the new settings to every surface (Dock, launcher, this window).
 import { ACCENTS, THEMES } from '../../shared/settings';
 import type { StringKey } from '../../shared/i18n';
 import type { AppInfo, Bootstrap, DeepPartial, DisplayInfo, DockItem, LauncherProviders, Settings, WidgetType } from '../../shared/types';
-import { el, nova, setLanguage, t } from '../common/env';
+import { el, orelle, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
 
@@ -36,7 +36,7 @@ document.getElementById('searchIcon')!.innerHTML = glyph('search');
 async function update(patch: DeepPartial<Settings>) {
   // Local edits do not re-render the page (keeps slider drags and focus intact).
   suppressRerender++;
-  const next = await nova.updateSettings(patch);
+  const next = await orelle.updateSettings(patch);
   if (next) settings = next;
   applyTheme(settings, darkSystem);
   setTimeout(() => suppressRerender--, 50);
@@ -204,8 +204,8 @@ function dockItemRow(item: DockItem, index: number): HTMLElement {
   let icon: HTMLElement;
   const app = item.type === 'app' && apps ? apps.find((a) => (item.appId && a.appId.toLowerCase() === item.appId.toLowerCase()) || (item.path && a.target?.toLowerCase() === item.path.toLowerCase())) : undefined;
   if (app?.icon) icon = el('img', { src: app.icon, alt: '' });
-  else icon = el('div', { class: 'ph', html: glyph(item.type === 'folder' ? 'folder' : item.type === 'url' ? 'globe' : item.type === 'nova' ? 'sparkle' : item.type === 'file' ? 'file' : 'window') });
-  const detail = item.type === 'url' ? item.url : item.type === 'folder' || item.type === 'file' ? item.path : item.type === 'app' ? (item.path ?? item.appId ?? '') : 'NOVA';
+  else icon = el('div', { class: 'ph', html: glyph(item.type === 'folder' ? 'folder' : item.type === 'url' ? 'globe' : item.type === 'orelle' ? 'sparkle' : item.type === 'file' ? 'file' : 'window') });
+  const detail = item.type === 'url' ? item.url : item.type === 'folder' || item.type === 'file' ? item.path : item.type === 'app' ? (item.path ?? item.appId ?? '') : 'Orelle';
   return el('li', {}, el('div', { class: 'it-ico' }, icon), el('div', { class: 'it-name' }, el('strong', { text: item.name }), el('small', { text: detail })), actions);
 }
 
@@ -217,7 +217,7 @@ function dockItemsGroup(): HTMLElement[] {
     button(t('settings.dock.addApp'), () => { pickerOpen = pickerOpen === 'app' ? null : 'app'; rerender(); }, 'btn', 'plus'),
     button(t('settings.dock.addUrl'), () => { pickerOpen = pickerOpen === 'url' ? null : 'url'; rerender(); }, 'btn', 'globe'),
     button(t('settings.dock.addFolder'), async () => {
-      const p = await nova.settings.pickFolder();
+      const p = await orelle.settings.pickFolder();
       if (!p) return;
       const name = p.split(/[\\/]/).filter(Boolean).pop() ?? p;
       await update({ dock: { items: [...settings.dock.items, { id: crypto.randomUUID(), type: 'folder', name, path: p }] } });
@@ -256,7 +256,7 @@ function appPicker(): HTMLElement {
   };
   input.addEventListener('input', fill);
   if (!apps) {
-    void nova.settings.apps().then((list) => { apps = list; fill(); });
+    void orelle.settings.apps().then((list) => { apps = list; fill(); });
   } else fill();
   setTimeout(() => input.focus(), 30);
   return el('div', { class: 'picker' }, input, listEl);
@@ -303,7 +303,7 @@ function pageDock(): HTMLElement[] {
       row('settings.dock.autoHide', toggle(d.autoHide, (v) => void update({ dock: { autoHide: v } })), 'settings.dock.autoHide.desc'),
       row('settings.dock.reserve', toggle(d.reserveSpace, (v) => void update({ dock: { reserveSpace: v } })), 'settings.dock.reserve.desc'),
       row('settings.dock.fullscreen', toggle(d.hideOnFullscreen, (v) => void update({ dock: { hideOnFullscreen: v } }))),
-      row('settings.dock.taskbar', button(t('settings.dock.taskbar.open'), () => nova.settings.openWinSettings('ms-settings:taskbar'), 'btn', 'external'), 'settings.dock.taskbar.desc'),
+      row('settings.dock.taskbar', button(t('settings.dock.taskbar.open'), () => orelle.settings.openWinSettings('ms-settings:taskbar'), 'btn', 'external'), 'settings.dock.taskbar.desc'),
     ),
     ...group(
       'settings.dock.running',
@@ -328,7 +328,7 @@ function hotkeyControl(name: HotkeyName = 'launcher'): HTMLElement {
   const stop = () => {
     recording = false;
     btn.classList.remove('recording');
-    nova.settings.recordingHotkey(false);
+    orelle.settings.recordingHotkey(false);
     window.removeEventListener('keydown', onKey, true);
   };
   const onKey = async (e: KeyboardEvent) => {
@@ -340,7 +340,7 @@ function hotkeyControl(name: HotkeyName = 'launcher'): HTMLElement {
     const key = e.code === 'Space' ? 'Space' : e.key.length === 1 ? e.key.toUpperCase() : e.key;
     const accel = [...mods, key].join('+');
     stop();
-    const res = await nova.settings.setHotkey(name, accel);
+    const res = await orelle.settings.setHotkey(name, accel);
     if (res.ok) {
       if (name === 'launcher') settings.launcher.hotkey = accel;
       else settings.controlCenter.hotkey = accel;
@@ -356,7 +356,7 @@ function hotkeyControl(name: HotkeyName = 'launcher'): HTMLElement {
     btn.classList.add('recording');
     btn.textContent = t('settings.launcher.hotkey.record');
     msg.replaceChildren();
-    nova.settings.recordingHotkey(true);
+    orelle.settings.recordingHotkey(true);
     window.addEventListener('keydown', onKey, true);
   });
   btn.addEventListener('blur', () => { if (recording) { stop(); show(currentHotkey(name)); } });
@@ -423,7 +423,7 @@ function scriptsGroup(): HTMLElement[] {
     );
   }));
   const add = button(t('settings.launcher.scripts.add'), async () => {
-    if (await nova.settings.addScript()) setTimeout(rerender, 80);
+    if (await orelle.settings.addScript()) setTimeout(rerender, 80);
   }, 'btn', 'plus');
   return [
     el('div', { class: 'group-title', text: t('settings.launcher.scripts') }),
@@ -444,7 +444,7 @@ function weatherGroup(): HTMLElement[] {
   const status = el('div', { class: 'error-text' });
   const doSearch = async () => {
     status.textContent = '';
-    const found = await nova.settings.geocode(input.value);
+    const found = await orelle.settings.geocode(input.value);
     if (!found || !found.length) {
       status.textContent = t('settings.widgets.weather.none');
       results.replaceChildren();
@@ -487,7 +487,7 @@ function pageWidgets(): HTMLElement[] {
     ...group(
       null,
       row('settings.widgets.enabled', toggle(wg.enabled, (v) => void update({ widgets: { enabled: v } }))),
-      row('settings.widgets.editMode', button(t('widgets.edit'), () => nova.settings.editWidgets(), 'btn primary', 'pencil'), 'settings.widgets.editMode.desc'),
+      row('settings.widgets.editMode', button(t('widgets.edit'), () => orelle.settings.editWidgets(), 'btn primary', 'pencil'), 'settings.widgets.editMode.desc'),
       displays.length > 1 ? row('settings.widgets.display', selectBox(displayOptions, wg.display, (v) => void update({ widgets: { display: v } }))) : null,
     ),
     el('div', { class: 'group-title', text: t('settings.widgets.list') }),
@@ -529,7 +529,7 @@ function pagePrivacy(): HTMLElement[] {
       null,
       row('settings.privacy.history', toggle(p.searchHistory, (v) => void update({ privacy: { searchHistory: v } })), 'settings.privacy.history.desc'),
       row('settings.privacy.clearHistory', el('div', { class: 'slider' }, cleared, button(t('settings.privacy.clearHistory'), async () => {
-        await nova.settings.clearHistory();
+        await orelle.settings.clearHistory();
         cleared.textContent = '✓';
       }, 'btn', 'trash'))),
       row('settings.privacy.clipboard', toggle(p.clipboardHistory, (v) => void update({ privacy: { clipboardHistory: v }, launcher: { providers: { clipboard: v } } })), 'settings.privacy.clipboard.desc'),
@@ -549,12 +549,12 @@ function pageBackup(): HTMLElement[] {
   return [
     ...group(
       null,
-      row('settings.backup.export', el('div', { class: 'slider' }, s1, button(t('settings.backup.export'), async () => status(s1, await nova.settings.exportProfile()), 'btn', 'archive')), 'settings.backup.export.desc'),
+      row('settings.backup.export', el('div', { class: 'slider' }, s1, button(t('settings.backup.export'), async () => status(s1, await orelle.settings.exportProfile()), 'btn', 'archive')), 'settings.backup.export.desc'),
       row('settings.backup.import', el('div', { class: 'slider' }, s2, button(t('settings.backup.import'), async () => {
-        const res = await nova.settings.importProfile();
+        const res = await orelle.settings.importProfile();
         status(s2, res);
       }, 'btn', 'external')), 'settings.backup.import.desc'),
-      row('settings.backup.reset', el('div', { class: 'slider' }, s3, button(t('settings.backup.reset'), async () => status(s3, await nova.settings.reset()), 'btn danger', 'refresh')), 'settings.backup.reset.desc'),
+      row('settings.backup.reset', el('div', { class: 'slider' }, s3, button(t('settings.backup.reset'), async () => status(s3, await orelle.settings.reset()), 'btn danger', 'refresh')), 'settings.backup.reset.desc'),
     ),
   ];
 }
@@ -565,8 +565,8 @@ function pageAbout(): HTMLElement[] {
   const reindexStatus = el('span', { class: 'ok-text' });
   return [
     el('div', { class: 'group' }, el('div', { class: 'about-hero' },
-      el('img', { src: '../icons/nova-128.png', alt: '' }),
-      el('div', {}, el('h2', { text: 'NOVA' }), el('p', { text: `${t('app.tagline')} · ${t('settings.about.version', { v: boot.version })}` })),
+      el('img', { src: '../icons/orelle-128.png', alt: '' }),
+      el('div', {}, el('h2', { text: 'Orelle' }), el('p', { text: `${t('app.tagline')} · ${t('settings.about.version', { v: boot.version })}` })),
     )),
     ...group(
       'settings.about.capabilities',
@@ -579,12 +579,12 @@ function pageAbout(): HTMLElement[] {
       null,
       row('settings.about.reindex', el('div', { class: 'slider' }, reindexStatus, button(t('settings.about.reindex'), async () => {
         reindexStatus.textContent = '…';
-        const n = await nova.settings.reindex();
+        const n = await orelle.settings.reindex();
         apps = null;
         reindexStatus.textContent = `✓ ${n}`;
       }, 'btn', 'refresh'))),
-      row('settings.about.logs', button(t('settings.about.logs'), () => nova.settings.openFolder('logs'), 'btn', 'external')),
-      row('settings.about.data', button(t('settings.about.data'), () => nova.settings.openFolder('data'), 'btn', 'folder')),
+      row('settings.about.logs', button(t('settings.about.logs'), () => orelle.settings.openFolder('logs'), 'btn', 'external')),
+      row('settings.about.data', button(t('settings.about.data'), () => orelle.settings.openFolder('data'), 'btn', 'folder')),
     ),
   ];
 }
@@ -661,27 +661,27 @@ function applyStrings() {
   search.placeholder = t('settings.search');
   document.getElementById('brandSub')!.textContent = t('settings.title');
   document.getElementById('winTitle')!.textContent = '';
-  document.title = `NOVA — ${t('settings.title')}`;
+  document.title = `Orelle — ${t('settings.title')}`;
 }
 
 async function init() {
-  boot = await nova.bootstrap();
+  boot = await orelle.bootstrap();
   settings = boot.settings;
   darkSystem = boot.darkSystem;
   setLanguage(boot.language);
   applyTheme(settings, darkSystem);
   applyStrings();
-  const initial = nova.settings.initialSection();
+  const initial = orelle.settings.initialSection();
   if (initial && SECTIONS.some((s) => s.id === initial)) current = initial as Section;
-  displays = await nova.settings.displays();
-  void nova.settings.apps().then((list) => {
+  displays = await orelle.settings.displays();
+  void orelle.settings.apps().then((list) => {
     apps = list;
     if (current === 'dock' && !suppressRerender) rerender();
   });
   renderNav();
   rerender();
 
-  nova.onSettings((p) => {
+  orelle.onSettings((p) => {
     const langChanged = p.language !== document.documentElement.lang;
     settings = p.settings;
     darkSystem = p.darkSystem;
@@ -693,7 +693,7 @@ async function init() {
       rerender();
     } else if (!suppressRerender) rerender();
   });
-  nova.settings.onSection((s) => {
+  orelle.settings.onSection((s) => {
     if (SECTIONS.some((x) => x.id === s)) {
       current = s as Section;
       query = '';
@@ -702,8 +702,8 @@ async function init() {
       rerender();
     }
   });
-  nova.onIconsChanged(() => {
-    if (current === 'dock') void nova.settings.apps().then((list) => { apps = list; if (!suppressRerender) rerender(); });
+  orelle.onIconsChanged(() => {
+    if (current === 'dock') void orelle.settings.apps().then((list) => { apps = list; if (!suppressRerender) rerender(); });
   });
 }
 

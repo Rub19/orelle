@@ -2,7 +2,7 @@
 // and click-through management (the window only captures the mouse over the dock itself).
 import { magnifiedSize } from '../../shared/dockModel';
 import type { DockEntry, DockLayout, DockState } from '../../shared/types';
-import { el, nova, setLanguage, t } from '../common/env';
+import { el, orelle, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
 
@@ -37,9 +37,10 @@ function artFor(e: DockEntry): HTMLElement {
 }
 
 function fallbackArt(e: DockEntry): HTMLElement {
-  if (e.kind === 'nova' && e.action === 'control') return el('div', { class: 'art control', html: glyph('sliders') });
-  if (e.kind === 'nova' && e.action === 'settings') return el('div', { class: 'art control', html: glyph('settings') });
-  if (e.kind === 'nova') return el('div', { class: 'art nova', html: glyph('sparkle') });
+  if (e.kind === 'orelle' && e.action === 'control') return el('div', { class: 'art control', html: glyph('sliders') });
+  if (e.kind === 'orelle' && e.action === 'settings') return el('div', { class: 'art control', html: glyph('settings') });
+  // Orelle's own launcher button uses the app icon itself.
+  if (e.kind === 'orelle') return el('img', { src: '../icons/orelle-128.png', alt: '', draggable: 'false' });
   if (e.kind === 'url') return el('div', { class: 'art url', html: glyph('globe') });
   if (e.kind === 'folder') return el('div', { class: 'art folder', html: glyph('folder') });
   if (e.kind === 'file') return el('div', { class: 'art file', html: glyph('file') });
@@ -194,7 +195,7 @@ function atRevealEdge(x: number, y: number) {
 function setInteractive(on: boolean) {
   if (on === interactive) return;
   interactive = on;
-  nova.dock.setInteractive(on);
+  orelle.dock.setInteractive(on);
   if (on) {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     dock.classList.remove('hidden');
@@ -281,10 +282,10 @@ function bindTile(node: HTMLElement) {
     e.preventDefault();
     e.stopPropagation();
     hideTooltip();
-    nova.dock.contextMenu(node.dataset.key!);
+    orelle.dock.contextMenu(node.dataset.key!);
   });
   node.addEventListener('auxclick', (e) => {
-    if (e.button === 1) nova.dock.activate(node.dataset.key!, { newInstance: true });
+    if (e.button === 1) orelle.dock.activate(node.dataset.key!, { newInstance: true });
   });
   node.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
@@ -331,7 +332,7 @@ function bindTile(node: HTMLElement) {
     dragState = null;
     try { node.releasePointerCapture(e.pointerId); } catch { /* already released */ }
     if (!d.active) {
-      if (!canceled) nova.dock.activate(d.key, { newInstance: e.shiftKey });
+      if (!canceled) orelle.dock.activate(d.key, { newInstance: e.shiftKey });
       return;
     }
     node.classList.remove('dragging', 'removing');
@@ -340,13 +341,13 @@ function bindTile(node: HTMLElement) {
     delete node.dataset.ty;
     tooltip.classList.remove('show', 'removing');
     if (d.removing && !canceled) {
-      nova.dock.remove(d.key);
+      orelle.dock.remove(d.key);
       return;
     }
     const ids = [...tiles.children]
       .filter((n) => (n as HTMLElement).dataset.key && ((n as HTMLElement).dataset.section === 'pinned' || (n as HTMLElement).dataset.user))
       .map((n) => (n as HTMLElement).dataset.key!);
-    nova.dock.reorder(ids);
+    orelle.dock.reorder(ids);
   };
   node.addEventListener('pointerup', (e) => end(e, false));
   node.addEventListener('pointercancel', (e) => end(e, true));
@@ -372,7 +373,7 @@ function reorderDuringDrag(node: HTMLElement, x: number, y: number) {
 dock.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   const target = (e.target as HTMLElement).closest<HTMLElement>('.sep[data-user]');
-  nova.dock.contextMenu(target?.dataset.key ?? null);
+  orelle.dock.contextMenu(target?.dataset.key ?? null);
 });
 
 // ---------- Files dropped from Explorer ----------
@@ -401,25 +402,25 @@ document.addEventListener('drop', (e) => {
   e.preventDefault();
   dock.classList.remove('drop-target');
   const files = [...(e.dataTransfer?.files ?? [])];
-  const paths = files.map((f) => nova.pathForFile(f)).filter(Boolean);
-  if (paths.length) nova.dock.addPaths(paths, dropIndex(e.clientX, e.clientY));
+  const paths = files.map((f) => orelle.pathForFile(f)).filter(Boolean);
+  if (paths.length) orelle.dock.addPaths(paths, dropIndex(e.clientX, e.clientY));
 });
 
 // ---------- Wiring ----------
 
 async function init() {
-  const boot = await nova.bootstrap();
+  const boot = await orelle.bootstrap();
   setLanguage(boot.language);
   applyTheme(boot.settings, boot.darkSystem);
-  nova.onSettings(({ settings, language, darkSystem }) => {
+  orelle.onSettings(({ settings, language, darkSystem }) => {
     setLanguage(language);
     applyTheme(settings, darkSystem);
   });
-  nova.dock.onLayout((l) => {
+  orelle.dock.onLayout((l) => {
     layout = l;
     applyLayout();
   });
-  nova.dock.onState((s) => {
+  orelle.dock.onState((s) => {
     state = s;
     render();
   });

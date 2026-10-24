@@ -12,13 +12,13 @@ let protos: ReturnType<typeof makeProtos> | null = null;
 function makeProtos() {
   const k = koffiApi()!.koffi;
   return {
-    getDefault: k.proto('long __stdcall NovaGetDefaultEndpoint(void *self, int flow, int role, _Out_ void **dev)'),
-    activate: k.proto('long __stdcall NovaActivate(void *self, const uint8_t *iid, uint32_t ctx, void *params, _Out_ void **out)'),
-    openStore: k.proto('long __stdcall NovaOpenPropertyStore(void *self, uint32_t access, _Out_ void **store)'),
-    setScalar: k.proto('long __stdcall NovaSetMasterScalar(void *self, float level, void *ctx)'),
-    getScalar: k.proto('long __stdcall NovaGetMasterScalar(void *self, _Out_ float *level)'),
-    setMute: k.proto('long __stdcall NovaSetMute(void *self, int mute, void *ctx)'),
-    getMute: k.proto('long __stdcall NovaGetMute(void *self, _Out_ int *mute)'),
+    getDefault: k.proto('long __stdcall OrelleGetDefaultEndpoint(void *self, int flow, int role, _Out_ void **dev)'),
+    activate: k.proto('long __stdcall OrelleActivate(void *self, const uint8_t *iid, uint32_t ctx, void *params, _Out_ void **out)'),
+    openStore: k.proto('long __stdcall OrelleOpenPropertyStore(void *self, uint32_t access, _Out_ void **store)'),
+    setScalar: k.proto('long __stdcall OrelleSetMasterScalar(void *self, float level, void *ctx)'),
+    getScalar: k.proto('long __stdcall OrelleGetMasterScalar(void *self, _Out_ float *level)'),
+    setMute: k.proto('long __stdcall OrelleSetMute(void *self, int mute, void *ctx)'),
+    getMute: k.proto('long __stdcall OrelleGetMute(void *self, _Out_ int *mute)'),
   };
 }
 

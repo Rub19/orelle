@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="226 202 572 678">
+  <!-- Orelle symbol alone (no tile), full colour: Dock button, splash, in-app branding. -->
+  <path d="M262 836V452a250 250 0 0 1 500 0v384z" fill="#F2B33D"/>
+  <path d="M318 512V452a194 194 0 0 1 388 0v60z" fill="#FFF1D6"/>
+  <rect x="318" y="556" width="176" height="224" rx="10" fill="#FFE2A6"/><rect x="530" y="556" width="176" height="224" rx="10" fill="#FFE2A6"/>
+  <rect x="226" y="836" width="572" height="44" rx="22" fill="#F2B33D"/>
+</svg>

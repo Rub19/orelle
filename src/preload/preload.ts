@@ -13,10 +13,10 @@ const on = <T extends unknown[]>(channel: string, cb: (...args: T) => void): Off
 };
 
 const api = {
-  bootstrap: (): Promise<Bootstrap> => ipcRenderer.invoke('nova:bootstrap'),
-  onSettings: (cb: (p: { settings: Settings; language: 'fr' | 'en'; darkSystem: boolean }) => void) => on('nova:settings', cb),
-  onIconsChanged: (cb: () => void) => on('nova:iconsChanged', cb),
-  updateSettings: (patch: unknown): Promise<Settings | null> => ipcRenderer.invoke('nova:updateSettings', patch),
+  bootstrap: (): Promise<Bootstrap> => ipcRenderer.invoke('orelle:bootstrap'),
+  onSettings: (cb: (p: { settings: Settings; language: 'fr' | 'en'; darkSystem: boolean }) => void) => on('orelle:settings', cb),
+  onIconsChanged: (cb: () => void) => on('orelle:iconsChanged', cb),
+  updateSettings: (patch: unknown): Promise<Settings | null> => ipcRenderer.invoke('orelle:updateSettings', patch),
   pathForFile: (file: File): string => webUtils.getPathForFile(file),
 
   dock: {
@@ -44,7 +44,7 @@ const api = {
 
   settings: {
     onSection: (cb: (section: string) => void) => on('settings:section', cb),
-    initialSection: (): string | null => process.argv.find((a) => a.startsWith('--nova-section='))?.split('=')[1] ?? null,
+    initialSection: (): string | null => process.argv.find((a) => a.startsWith('--orelle-section='))?.split('=')[1] ?? null,
     apps: (): Promise<AppInfo[]> => ipcRenderer.invoke('settings:apps'),
     displays: (): Promise<DisplayInfo[]> => ipcRenderer.invoke('settings:displays'),
     setHotkey: (name: 'launcher' | 'control', accel: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('settings:setHotkey', name, accel),
@@ -91,5 +91,5 @@ const api = {
   },
 };
 
-export type NovaApi = typeof api;
-contextBridge.exposeInMainWorld('nova', api);
+export type OrelleApi = typeof api;
+contextBridge.exposeInMainWorld('orelle', api);

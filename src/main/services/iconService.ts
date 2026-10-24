@@ -1,5 +1,5 @@
 // High-resolution icons (128 px, alpha) extracted by the Shell helper and served to renderers
-// through the private `nova-icon://` scheme, which can only read PNGs from the icon cache.
+// through the private `orelle-icon://` scheme, which can only read PNGs from the icon cache.
 import { net, protocol } from 'electron';
 import { createHash } from 'node:crypto';
 import { EventEmitter } from 'node:events';
@@ -12,7 +12,7 @@ import { log } from '../logger';
 export const ICON_SIZE = 128;
 
 export function registerIconScheme() {
-  protocol.registerSchemesAsPrivileged([{ scheme: 'nova-icon', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+  protocol.registerSchemesAsPrivileged([{ scheme: 'orelle-icon', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 }
 
 export class IconService extends EventEmitter {
@@ -30,7 +30,7 @@ export class IconService extends EventEmitter {
 
   /** Must be called after app ready. */
   serve() {
-    protocol.handle('nova-icon', (req) => {
+    protocol.handle('orelle-icon', (req) => {
       const name = decodeURIComponent(new URL(req.url).pathname.replace(/^\//, ''));
       if (!/^[a-f0-9]{40}\.png$/.test(name)) return new Response('bad request', { status: 400 });
       return net.fetch(pathToFileURL(path.join(this.cacheDir, name)).toString());
@@ -44,7 +44,7 @@ export class IconService extends EventEmitter {
 
   urlForFile(file: string | null | undefined): string | null {
     if (!file) return null;
-    return `nova-icon://i/${path.basename(file)}`;
+    return `orelle-icon://i/${path.basename(file)}`;
   }
 
   /** Returns the icon URL when cached; otherwise schedules extraction and returns null (a `change` event follows). */

@@ -37,7 +37,7 @@ export function formatClock(ms: number): string {
   return h ? `${h}:${mmss}` : mmss;
 }
 
-/** WMO weather code (Open-Meteo) → NOVA glyph name. */
+/** WMO weather code (Open-Meteo) → Orelle glyph name. */
 export function weatherGlyph(code: number): string {
   if (code === 0) return 'sun';
   if (code <= 2) return 'partly';

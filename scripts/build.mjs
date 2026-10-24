@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const dist = path.join(root, 'dist');
 const watch = process.argv.includes('--watch');
-const surfaces = ['dock', 'launcher', 'settings', 'widgets', 'control'];
+const surfaces = ['dock', 'launcher', 'settings', 'widgets', 'control', 'splash'];
 
 await rm(dist, { recursive: true, force: true });
 await mkdir(path.join(dist, 'renderer'), { recursive: true });
@@ -54,4 +54,4 @@ for (const s of surfaces) {
 if (existsSync(path.join(root, 'resources/icons'))) {
   await cp(path.join(root, 'resources/icons'), path.join(dist, 'icons'), { recursive: true });
 }
-console.log('NOVA build ok →', path.relative(root, dist));
+console.log('Orelle build ok →', path.relative(root, dist));

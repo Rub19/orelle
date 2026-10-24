@@ -9,10 +9,10 @@ export type DockItem =
   | { id: string; type: 'app'; name: string; appId?: string; path?: string; args?: string[] }
   | { id: string; type: 'folder' | 'file'; name: string; path: string }
   | { id: string; type: 'url'; name: string; url: string }
-  | { id: string; type: 'nova'; name: string; action: NovaAction }
+  | { id: string; type: 'orelle'; name: string; action: OrelleAction }
   | { id: string; type: 'separator' };
 
-export type NovaAction = 'launcher' | 'settings' | 'control';
+export type OrelleAction = 'launcher' | 'settings' | 'control';
 
 export interface AllowedScript {
   id: string;
@@ -81,7 +81,7 @@ export interface Settings {
     language: Language;
     launchAtLogin: boolean;
     showTrayIcon: boolean;
-    /** Turns on Windows' own taskbar auto-hide while NOVA runs; the previous state is restored on exit. */
+    /** Turns on Windows' own taskbar auto-hide while Orelle runs; the previous state is restored on exit. */
     hideTaskbar: boolean;
     /** GPU compositing; off saves ~100 MB of memory at the cost of smoother animations (applies after restart). */
     hardwareAcceleration: boolean;
@@ -184,8 +184,8 @@ export interface DockEntry {
   running: boolean;
   active: boolean;
   windowCount: number;
-  /** For NOVA's own buttons: which built-in action (drives the artwork). */
-  action?: NovaAction;
+  /** For Orelle's own buttons: which built-in action (drives the artwork). */
+  action?: OrelleAction;
 }
 
 export interface DockState {
@@ -220,7 +220,7 @@ export type ResultKind =
   | 'url'
   | 'command'
   | 'clipboard'
-  | 'nova';
+  | 'orelle';
 
 export interface SearchResult {
   id: string;
@@ -267,7 +267,7 @@ export interface AppInfo {
   icon: string | null;
 }
 
-export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control';
+export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash';
 
 export interface Bootstrap {
   surface: SurfaceKind;

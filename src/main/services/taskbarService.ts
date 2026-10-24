@@ -1,5 +1,5 @@
-// Optional: turn on Windows' own "automatically hide the taskbar" while NOVA runs.
-// Uses the documented AppBar API (ABM_SETSTATE), never the registry. The state found before NOVA
+// Optional: turn on Windows' own "automatically hide the taskbar" while Orelle runs.
+// Uses the documented AppBar API (ABM_SETSTATE), never the registry. The state found before Orelle
 // changed it is saved to disk, so it is restored on exit — and on the next start after a crash.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,7 +34,7 @@ export class TaskbarService {
     }
   }
 
-  /** Puts the taskbar back the way it was before NOVA touched it (no-op if NOVA never did). */
+  /** Puts the taskbar back the way it was before Orelle touched it (no-op if Orelle never did). */
   restore() {
     const original = this.saved();
     if (original === null) return;

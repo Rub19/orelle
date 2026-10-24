@@ -1,7 +1,7 @@
 // Launcher renderer: instant search-as-you-type, full keyboard control, lazy previews.
 import { normalize } from '../../shared/fuzzy';
 import type { ResultPreview, SearchResult } from '../../shared/types';
-import { el, nova, setLanguage, t } from '../common/env';
+import { el, orelle, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
 
@@ -22,7 +22,7 @@ let busy = false;
 
 async function runSearch(q: string) {
   const mine = ++seq;
-  const res = await nova.launcher.search(q);
+  const res = await orelle.launcher.search(q);
   if (!res || mine !== seq) return; // a newer query superseded this one
   results = res.results;
   selected = 0;
@@ -128,7 +128,7 @@ function schedulePreview() {
   }
   previewTimer = window.setTimeout(async () => {
     const id = r.id;
-    const p = await nova.launcher.preview(id);
+    const p = await orelle.launcher.preview(id);
     if (results[selected]?.id !== id) return;
     if (p) showPreview(p, r);
     else previewEl.hidden = true;
@@ -153,13 +153,13 @@ function hint(label: string, keys: string[], primary = false) {
 
 function updateFooter() {
   const r = results[selected];
-  const brand = el('span', { class: 'brand', html: glyph('sparkle') });
-  brand.append('NOVA');
+  const brand = el('span', { class: 'brand', html: glyph('orelle') });
+  brand.append('Orelle');
   const parts: HTMLElement[] = [brand];
   if (r) {
     parts.push(hint(r.action, ['↵'], true));
     if (r.altAction) parts.push(hint(r.altAction, ['Ctrl', '↵']));
-    if (/^(app|file|set|sys|nova|url|cmd):/.test(r.id)) parts.push(hint(t('launcher.hint.favorite'), ['Ctrl', 'D']));
+    if (/^(app|file|set|sys|orelle|url|cmd):/.test(r.id)) parts.push(hint(t('launcher.hint.favorite'), ['Ctrl', 'D']));
   }
   parts.push(hint(t('launcher.hint.close'), [document.documentElement.lang === 'fr' ? 'Échap' : 'Esc']));
   footer.replaceChildren(...parts);
@@ -182,7 +182,7 @@ async function run(i: number, mode: 'primary' | 'alt') {
   busy = true;
   try {
     if (r.kind === 'calc' || r.kind === 'unit' || r.kind === 'clipboard') toast(t('launcher.copied'));
-    await nova.launcher.execute(r.id, mode);
+    await orelle.launcher.execute(r.id, mode);
   } finally {
     busy = false;
   }
@@ -209,7 +209,7 @@ input.addEventListener('keydown', async (e) => {
     if (input.value) {
       input.value = '';
       void runSearch('');
-    } else nova.launcher.hide();
+    } else orelle.launcher.hide();
   } else if (e.ctrlKey && /^[1-9]$/.test(e.key)) {
     e.preventDefault();
     await run(Number(e.key) - 1, 'primary');
@@ -217,7 +217,7 @@ input.addEventListener('keydown', async (e) => {
     e.preventDefault();
     const r = results[selected];
     if (r) {
-      r.favorite = await nova.launcher.toggleFavorite(r.id);
+      r.favorite = await orelle.launcher.toggleFavorite(r.id);
       toast(r.favorite ? t('launcher.addFavorite') : t('launcher.removeFavorite'));
       render(input.value);
       select(selected);
@@ -225,13 +225,13 @@ input.addEventListener('keydown', async (e) => {
   } else if (e.ctrlKey && e.key.toLowerCase() === 'p') {
     e.preventDefault();
     const r = results[selected];
-    if (r?.kind === 'app' && (await nova.launcher.pin(r.id))) toast(t('launcher.pinToDock'));
+    if (r?.kind === 'app' && (await orelle.launcher.pin(r.id))) toast(t('launcher.pinToDock'));
   }
 });
 
 // ---------- Lifecycle ----------
 
-nova.launcher.onShow(() => {
+orelle.launcher.onShow(() => {
   // Re-animate and start fresh on every summon.
   const root = document.getElementById('launcher')!;
   root.style.animation = 'none';
@@ -241,14 +241,14 @@ nova.launcher.onShow(() => {
   input.focus();
   void runSearch('');
 });
-nova.launcher.onHide(() => {
+orelle.launcher.onHide(() => {
   if (previewTimer) clearTimeout(previewTimer);
 });
 window.addEventListener('focus', () => input.focus());
 
 // Refresh icons that were still being extracted when results were first shown.
 let iconTimer: number | null = null;
-nova.onIconsChanged(() => {
+orelle.onIconsChanged(() => {
   if (iconTimer) return;
   iconTimer = window.setTimeout(() => {
     iconTimer = null;
@@ -258,17 +258,17 @@ nova.onIconsChanged(() => {
 });
 
 // Test hook used by the smoke test to capture a screenshot with a query typed.
-window.__novaTestQuery = (q: string) => {
+window.__orelleTestQuery = (q: string) => {
   input.value = q;
   void runSearch(q);
 };
 
 async function init() {
-  const boot = await nova.bootstrap();
+  const boot = await orelle.bootstrap();
   setLanguage(boot.language);
   applyTheme(boot.settings, boot.darkSystem);
   input.placeholder = t('launcher.placeholder');
-  nova.onSettings(({ settings, language, darkSystem }) => {
+  orelle.onSettings(({ settings, language, darkSystem }) => {
     setLanguage(language);
     applyTheme(settings, darkSystem);
     input.placeholder = t('launcher.placeholder');

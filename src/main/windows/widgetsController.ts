@@ -1,4 +1,4 @@
-// Desktop widgets: one transparent layer per NOVA (not one window per widget, to keep memory low),
+// Desktop widgets: one transparent layer per Orelle (not one window per widget, to keep memory low),
 // kept at the bottom of the z-order and click-through everywhere except on the widgets themselves.
 import { BrowserWindow, ipcMain, screen, shell, type Display, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { randomUUID } from 'node:crypto';
@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { WIDGET_SIZES } from '../../shared/settings';
 import type { Settings, WidgetInstance, WidgetType } from '../../shared/types';
-import type { NovaContext } from '../context';
+import type { OrelleContext } from '../context';
 import * as w32 from '../native/win32';
 import { launchApp, safeLaunch } from '../services/launchService';
 import type { ScreenTimeService } from '../services/screenTimeService';
@@ -24,7 +24,7 @@ export class WidgetsController {
   private statsListener = (s: unknown) => this.win?.webContents.send('widgets:stats', s);
 
   constructor(
-    private readonly ctx: NovaContext,
+    private readonly ctx: OrelleContext,
     private readonly system: SystemService,
     private readonly weather: WeatherService,
     private readonly screenTime: ScreenTimeService,
@@ -72,7 +72,7 @@ export class WidgetsController {
       fullscreenable: false,
       skipTaskbar: true,
       hasShadow: false,
-      title: 'NOVA Widgets',
+      title: 'Orelle Widgets',
       webPreferences: {
         preload: this.ctx.preload,
         sandbox: true,
@@ -80,7 +80,7 @@ export class WidgetsController {
         nodeIntegration: false,
         spellcheck: false,
         backgroundThrottling: true,
-        additionalArguments: ['--nova-surface=widgets'],
+        additionalArguments: ['--orelle-surface=widgets'],
       },
     });
     this.win = win;

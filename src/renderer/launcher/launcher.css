@@ -211,7 +211,7 @@ body {
   color: var(--text-2);
 }
 .footer .brand { display: flex; align-items: center; gap: 7px; margin-right: auto; color: var(--text-3); font-weight: 600; letter-spacing: 0.06em; font-size: 11px; }
-.footer .brand .glyph { width: 15px; height: 15px; fill: var(--accent); stroke: none; }
+.footer .brand .brand-mark { width: 13px; height: 15px; color: var(--brand-amber); }
 .footer .hint { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .footer .hint.primary { color: var(--text); font-weight: 500; }
 .kbd {

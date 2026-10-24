@@ -1,7 +1,7 @@
 // Control center: an Acrylic panel with the quick controls Windows actually lets an app drive
-// (volume, brightness, media keys, NOVA theme…) and shortcuts to Settings for everything else.
+// (volume, brightness, media keys, Orelle theme…) and shortcuts to Settings for everything else.
 import { BrowserWindow, ipcMain, screen, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import type { NovaContext } from '../context';
+import type { OrelleContext } from '../context';
 import * as audio from '../native/audio';
 import * as w32 from '../native/win32';
 import type { SystemService } from '../services/systemService';
@@ -16,7 +16,7 @@ export class ControlCenterController {
   private refreshTimer: NodeJS.Timeout | null = null;
   private releaseTimer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly ctx: NovaContext, private readonly system: SystemService, private readonly toggleWidgetsEdit: () => void) {}
+  constructor(private readonly ctx: OrelleContext, private readonly system: SystemService, private readonly toggleWidgetsEdit: () => void) {}
 
   get window() {
     return this.win;
@@ -37,7 +37,7 @@ export class ControlCenterController {
       fullscreenable: false,
       skipTaskbar: true,
       alwaysOnTop: true,
-      title: 'NOVA Control Center',
+      title: 'Orelle Control Center',
       backgroundColor: '#00000000',
       backgroundMaterial: effects === 'off' ? 'none' : 'acrylic',
       webPreferences: {
@@ -46,7 +46,7 @@ export class ControlCenterController {
         contextIsolation: true,
         nodeIntegration: false,
         spellcheck: false,
-        additionalArguments: ['--nova-surface=control'],
+        additionalArguments: ['--orelle-surface=control'],
       },
     });
     this.win = win;
@@ -92,7 +92,7 @@ export class ControlCenterController {
     win.show();
     win.focus();
     w32.focusWindow(Number(win.getNativeWindowHandle().readBigUInt64LE()));
-    // Volume and Wi-Fi can change outside NOVA: refresh while the panel is open only.
+    // Volume and Wi-Fi can change outside Orelle: refresh while the panel is open only.
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.refreshTimer = setInterval(() => void this.pushState(), 4000);
   }

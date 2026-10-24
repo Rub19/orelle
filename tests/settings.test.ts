@@ -14,7 +14,7 @@ describe('settings normalization', () => {
       launcher: { maxResults: 'many', webSearchUrl: 'javascript:alert(1)' },
     });
     expect(s.appearance.theme).toBe('dark');
-    expect(s.appearance.accent).toBe('#0a84ff');
+    expect(s.appearance.accent).toBe(defaultSettings().appearance.accent);
     expect(s.appearance.glassOpacity).toBe(1);
     expect(s.dock.iconSize).toBe(96);
     expect(s.dock.magnifiedSize).toBe(96); // never smaller than the icon size

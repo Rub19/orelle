@@ -4,7 +4,7 @@ import { WIDGET_SIZES, WIDGET_TYPES } from '../../shared/settings';
 import type { StringKey } from '../../shared/i18n';
 import type { Settings, SystemStats, WidgetInstance, WidgetType } from '../../shared/types';
 import { clampRect, formatBytes, formatClock, formatDuration, monthMatrix, snap, weatherGlyph } from '../../shared/widgetModel';
-import { el, nova, setLanguage, t } from '../common/env';
+import { el, orelle, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
 
@@ -44,7 +44,7 @@ function save(delay = 0) {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = window.setTimeout(async () => {
     localWrites++;
-    await nova.updateSettings({ widgets: { items } });
+    await orelle.updateSettings({ widgets: { items } });
     setTimeout(() => localWrites--, 300);
   }, delay);
 }
@@ -68,7 +68,7 @@ const title = (type: WidgetType, extra?: Node | null) =>
 
 const clock: Builder = (inst, body) => {
   const style = (inst.config.style as string) ?? 'digital';
-  body.addEventListener('dblclick', () => nova.widgets.openSystem('clock'));
+  body.addEventListener('dblclick', () => orelle.widgets.openSystem('clock'));
   if (style === 'analog') {
     const svg = `<svg viewBox="0 0 100 100"><circle class="face" cx="50" cy="50" r="46"/>${Array.from({ length: 12 }, (_, i) => {
       const a = (i * Math.PI) / 6;
@@ -119,7 +119,7 @@ const calendar: Builder = (_inst, body) => {
     const today = new Date();
     renderedDay = today.toDateString();
     const label = el('strong', { text: cursor.toLocaleDateString(locale(), { month: 'long', year: 'numeric' }) });
-    label.addEventListener('dblclick', () => nova.widgets.openSystem('calendar'));
+    label.addEventListener('dblclick', () => orelle.widgets.openSystem('calendar'));
     const prev = el('button', { text: '‹', 'aria-label': 'previous' });
     const next = el('button', { text: '›', 'aria-label': 'next' });
     prev.addEventListener('click', () => { cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1); render(); });
@@ -148,7 +148,7 @@ const weather: Builder = (_inst, body) => {
       content.replaceWith(el('div', { class: 'w-empty', text: t('widgets.weather.setup') }));
       return;
     }
-    const d = await nova.widgets.weather(force);
+    const d = await orelle.widgets.weather(force);
     if (!alive) return;
     const holder = el('div', { class: 'col-fill' });
     if (!d) holder.append(el('div', { class: 'w-empty', text: t('widgets.weather.offline') }));
@@ -194,7 +194,7 @@ const system: Builder = (_inst, body) => {
   const rows = el('div', {});
   const spark = el('div', { class: 'spark-wrap' });
   body.append(title('system'), rows, spark);
-  body.addEventListener('dblclick', () => nova.widgets.openSystem('system'));
+  body.addEventListener('dblclick', () => orelle.widgets.openSystem('system'));
   const render = (s: SystemStats) => {
     const disk = s.disks[0];
     const meters = [
@@ -213,7 +213,7 @@ const network: Builder = (_inst, body) => {
   const rates = el('div', { class: 'net-rates' });
   const spark = el('div', { class: 'spark-wrap' });
   body.append(title('network'), rates, spark);
-  body.addEventListener('dblclick', () => nova.widgets.openSystem('network'));
+  body.addEventListener('dblclick', () => orelle.widgets.openSystem('network'));
   const render = (s: SystemStats) => {
     rates.replaceChildren(
       el('div', {}, el('span', { text: `↓ ${t('widgets.down')}` }), el('strong', { text: formatBytes(s.netDown, lang, true) })),
@@ -229,7 +229,7 @@ const network: Builder = (_inst, body) => {
 const battery: Builder = (_inst, body) => {
   const wrap = el('div', { class: 'battery-wrap' });
   body.append(wrap);
-  body.addEventListener('dblclick', () => nova.widgets.openSystem('battery'));
+  body.addEventListener('dblclick', () => orelle.widgets.openSystem('battery'));
   const C = 2 * Math.PI * 26;
   const render = (s: SystemStats) => {
     const b = s.battery;
@@ -248,7 +248,7 @@ const battery: Builder = (_inst, body) => {
 const media: Builder = (_inst, body) => {
   const btn = (g: string, key: 'previous' | 'playPause' | 'next', big = false) => {
     const b = el('button', { class: `w-btn round${big ? ' big primary' : ''}`, html: glyph(g), 'aria-label': key });
-    b.addEventListener('click', () => nova.widgets.media(key));
+    b.addEventListener('click', () => orelle.widgets.media(key));
     return b;
   };
   body.append(title('media'), el('div', { class: 'media-row' }, btn('previous', 'previous'), btn('playPause', 'playPause', true), btn('next', 'next')), el('div', { class: 'w-muted center', text: t('control.media.hint') }));
@@ -322,7 +322,7 @@ const timer: Builder = (inst, body) => {
       notified = true;
       startedAt = null;
       elapsed = duration;
-      new Notification('NOVA', { body: t('widgets.timer.done'), silent: false });
+      new Notification('Orelle', { body: t('widgets.timer.done'), silent: false });
     }
   };
   startBtn.addEventListener('click', () => {
@@ -348,13 +348,13 @@ const recentApps: Builder = (_inst, body) => {
   body.append(grid);
   let alive = true;
   const load = async () => {
-    const apps = await nova.widgets.recentApps();
+    const apps = await orelle.widgets.recentApps();
     if (!alive) return;
-    grid.replaceChildren(...(apps.length ? apps.map((a) => appTile(a.name, a.icon, 'window', () => void nova.widgets.launchRecent(a.id))) : [el('div', { class: 'w-empty', text: t('widgets.recent.empty') })]));
+    grid.replaceChildren(...(apps.length ? apps.map((a) => appTile(a.name, a.icon, 'window', () => void orelle.widgets.launchRecent(a.id))) : [el('div', { class: 'w-empty', text: t('widgets.recent.empty') })]));
   };
   void load();
   const timer = window.setInterval(() => void load(), 60_000);
-  const offIcons = nova.onIconsChanged(() => void load());
+  const offIcons = orelle.onIconsChanged(() => void load());
   return { cleanup() { alive = false; clearInterval(timer); offIcons(); } };
 };
 
@@ -370,8 +370,8 @@ const shortcuts: Builder = (inst, body) => {
     }
     const tiles = await Promise.all(list.map(async (s) => {
       const isUrl = /^https?:\/\//i.test(s.target);
-      const icon = isUrl ? null : await nova.widgets.shortcutIcon(s.target);
-      const tile = appTile(s.name, icon, isUrl ? 'globe' : 'file', () => void nova.widgets.open(s.target));
+      const icon = isUrl ? null : await orelle.widgets.shortcutIcon(s.target);
+      const tile = appTile(s.name, icon, isUrl ? 'globe' : 'file', () => void orelle.widgets.open(s.target));
       tile.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         if (!editing) return;
@@ -389,7 +389,7 @@ const shortcuts: Builder = (inst, body) => {
   body.addEventListener('drop', (e) => {
     e.preventDefault();
     widget().classList.remove('drop');
-    const files = [...(e.dataTransfer?.files ?? [])].map((f) => nova.pathForFile(f)).filter(Boolean);
+    const files = [...(e.dataTransfer?.files ?? [])].map((f) => orelle.pathForFile(f)).filter(Boolean);
     const url = e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain');
     const added: Shortcut[] = files.map((p) => ({ name: p.split(/[\\/]/).pop()!.replace(/\.(lnk|url)$/i, ''), target: p }));
     if (!files.length && url && /^https?:\/\//i.test(url.trim())) added.push({ name: new URL(url.trim()).hostname.replace(/^www\./, ''), target: url.trim() });
@@ -399,7 +399,7 @@ const shortcuts: Builder = (inst, body) => {
     void render();
   });
   void render();
-  const offIcons = nova.onIconsChanged(() => void render());
+  const offIcons = orelle.onIconsChanged(() => void render());
   return { cleanup() { offIcons(); } };
 };
 
@@ -408,7 +408,7 @@ const appUsage: Builder = (_inst, body) => {
   body.append(title('appUsage', el('span', { text: t('widgets.usage.today') })), rows);
   let alive = true;
   const load = async () => {
-    const list = await nova.widgets.screenTime();
+    const list = await orelle.widgets.screenTime();
     if (!alive) return;
     const max = Math.max(1, ...list.map((x) => x.ms));
     rows.replaceChildren(...(list.length ? list.map((x) => {
@@ -515,7 +515,7 @@ function syncStatsSubscription() {
   const want = items.some((w) => !w.hidden && (w.type === 'system' || w.type === 'network' || w.type === 'battery'));
   if (want !== statsOn) {
     statsOn = want;
-    nova.widgets.subscribeStats(want);
+    orelle.widgets.subscribeStats(want);
   }
 }
 
@@ -576,7 +576,7 @@ function renderToolbar() {
     return b;
   });
   const done = el('button', { class: 'w-btn primary done', text: t('widgets.done') });
-  done.addEventListener('click', () => nova.widgets.setEditing(false));
+  done.addEventListener('click', () => orelle.widgets.setEditing(false));
   toolbar.replaceChildren(el('span', { class: 'tb-title', text: t('widgets.add') }), ...chips, done, el('div', { class: 'hint', text: t('widgets.hint') }));
 }
 
@@ -602,7 +602,7 @@ function setEditing(on: boolean) {
 function setInteractive(on: boolean) {
   if (on === interactive) return;
   interactive = on;
-  nova.widgets.setInteractive(on);
+  orelle.widgets.setInteractive(on);
 }
 
 document.addEventListener('mousemove', (e) => {
@@ -625,7 +625,7 @@ setInterval(() => {
 // ---------- Wiring ----------
 
 async function init() {
-  const boot = await nova.bootstrap();
+  const boot = await orelle.bootstrap();
   settings = boot.settings;
   lang = boot.language;
   setLanguage(lang);
@@ -635,7 +635,7 @@ async function init() {
   const now = new Date();
   for (const m of mounted.values()) m.onTick?.(now);
 
-  nova.onSettings((p) => {
+  orelle.onSettings((p) => {
     const langChanged = p.language !== lang;
     const weatherChanged = JSON.stringify(p.settings.widgets.weather) !== JSON.stringify(settings.widgets.weather);
     settings = p.settings;
@@ -650,8 +650,8 @@ async function init() {
       }
     }
   });
-  nova.widgets.onEdit((on) => setEditing(on));
-  nova.widgets.onStats((s) => {
+  orelle.widgets.onEdit((on) => setEditing(on));
+  orelle.widgets.onStats((s) => {
     stats = s;
     cpuHistory.push(s.cpu);
     netHistory.push({ down: s.netDown, up: s.netUp });
@@ -660,7 +660,7 @@ async function init() {
     for (const m of mounted.values()) m.onStats?.(s);
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && editing) nova.widgets.setEditing(false);
+    if (e.key === 'Escape' && editing) orelle.widgets.setEditing(false);
   });
 }
 

@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { clickBehaviour, composeDock, reorderItems, sameApp, type WindowInfo } from '../../shared/dockModel';
 import type { DockEntry, DockItem, DockLayout, DockPosition, Settings } from '../../shared/types';
-import type { NovaContext } from '../context';
+import type { OrelleContext } from '../context';
 import * as w32 from '../native/win32';
 import { launchApp, openPath, openUrl, revealPath, safeLaunch } from '../services/launchService';
 import { log } from '../logger';
@@ -28,7 +28,7 @@ export class DockController {
   private fullscreenHidden = false;
   private hwnd = 0;
 
-  constructor(private readonly ctx: NovaContext) {}
+  constructor(private readonly ctx: OrelleContext) {}
 
   start() {
     const s = this.ctx.settings.get();
@@ -52,14 +52,14 @@ export class DockController {
       alwaysOnTop: true,
       hasShadow: false,
       thickFrame: false,
-      title: 'NOVA Dock',
+      title: 'Orelle Dock',
       webPreferences: {
         preload: this.ctx.preload,
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
         spellcheck: false,
-        additionalArguments: ['--nova-surface=dock'],
+        additionalArguments: ['--orelle-surface=dock'],
       },
     });
     this.win = win;
@@ -223,6 +223,11 @@ export class DockController {
     this.appBar = false;
   }
 
+  /** Last-chance cleanup from process 'exit' (synchronous FFI call; safe even if the window is gone). */
+  releaseAppBarSync() {
+    try { this.releaseAppBar(); } catch { /* exiting */ }
+  }
+
   // ---------- State ----------
 
   // Dock icons are visible immediately, so they are extracted with priority.
@@ -254,10 +259,10 @@ export class DockController {
   private compose() {
     const s = this.ctx.settings.get();
     const recents = this.ctx.usage.recent('app:', 12).map((r) => ({ key: r.id, name: r.title, ...(r.ref ?? {}) }));
-    // NOVA's own buttons are always labelled in the current language.
-    const novaLabel = { launcher: this.ctx.t('dock.launcher'), control: this.ctx.t('control.title'), settings: this.ctx.t('dock.settings') };
+    // Orelle's own buttons are always labelled in the current language.
+    const orelleLabel = { launcher: this.ctx.t('dock.launcher'), control: this.ctx.t('control.title'), settings: this.ctx.t('dock.settings') };
     const composed = composeDock({
-      items: s.dock.items.map((i) => (i.type === 'nova' ? { ...i, name: novaLabel[i.action] } : i)),
+      items: s.dock.items.map((i) => (i.type === 'orelle' ? { ...i, name: orelleLabel[i.action] } : i)),
       windows: this.ctx.tracker.list(),
       foreground: this.ctx.tracker.getForeground(),
       showRunning: s.dock.showRunning,
@@ -343,7 +348,7 @@ export class DockController {
 
   async activate(key: string, opts: { newInstance?: boolean }) {
     const item = this.findItem(key);
-    if (item?.type === 'nova') {
+    if (item?.type === 'orelle') {
       if (item.action === 'launcher') this.ctx.actions.toggleLauncher();
       else if (item.action === 'control') this.ctx.actions.toggleControlCenter();
       else this.ctx.actions.openSettings();
@@ -470,7 +475,7 @@ export class DockController {
       }
       if (entry.kind === 'app') {
         template.push({ label: wins.length ? t('dock.newWindow') : t('dock.open'), click: () => void this.activate(entry.key, { newInstance: true }) });
-      } else if (item?.type !== 'nova') {
+      } else if (item?.type !== 'orelle') {
         template.push({ label: t('dock.open'), click: () => void this.activate(entry.key, {}) });
       }
       const ref = this.appRefFor(entry.key);

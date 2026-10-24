@@ -1,12 +1,12 @@
 // Allowed scripts: only files the user added in Preferences, run with a fixed interpreter.
-// The SHA-256 of the approved content is stored; if the file changes, NOVA asks again before running it.
+// The SHA-256 of the approved content is stored; if the file changes, Orelle asks again before running it.
 import { dialog } from 'electron';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AllowedScript } from '../../shared/types';
-import type { NovaContext } from '../context';
+import type { OrelleContext } from '../context';
 import { log } from '../logger';
 
 const SYS32 = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32');
@@ -16,7 +16,7 @@ export async function fileHash(p: string): Promise<string> {
 }
 
 export class ScriptService {
-  constructor(private readonly ctx: NovaContext) {}
+  constructor(private readonly ctx: OrelleContext) {}
 
   async run(script: AllowedScript): Promise<boolean> {
     if (!fs.existsSync(script.path)) {

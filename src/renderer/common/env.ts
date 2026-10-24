@@ -1,15 +1,15 @@
 // Renderer-side access to the preload API and shared helpers.
-import type { NovaApi } from '../../preload/preload';
+import type { OrelleApi } from '../../preload/preload';
 import { createTranslator, type Translator } from '../../shared/i18n';
 
 declare global {
   interface Window {
-    nova: NovaApi;
-    __novaTestQuery?: (q: string) => void;
+    orelle: OrelleApi;
+    __orelleTestQuery?: (q: string) => void;
   }
 }
 
-export const nova = window.nova;
+export const orelle = window.orelle;
 
 export let t: Translator = createTranslator('fr');
 export function setLanguage(lang: 'fr' | 'en') {

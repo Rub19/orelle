@@ -1,4 +1,4 @@
-# NOVA
+# Orelle
 
 Une couche d’expérience premium pour Windows 11 : un **Dock** inspiré de macOS, un **launcher** universel façon Raycast
 et des **Préférences** complètes. Elle fonctionne au-dessus de Windows, sans le modifier.
@@ -12,20 +12,20 @@ npm install
 npm start
 ```
 
-Au premier lancement, NOVA indexe vos applications, construit un Dock à partir de celles qui sont installées
-et ouvre les Préférences. Ensuite, NOVA reste en arrière-plan (icône dans la zone de notification).
+Au premier lancement, Orelle indexe vos applications, construit un Dock à partir de celles qui sont installées
+et ouvre les Préférences. Ensuite, Orelle reste en arrière-plan (icône dans la zone de notification).
 
 | Script | Rôle |
 |---|---|
-| `npm start` | Compile puis lance NOVA |
+| `npm start` | Compile puis lance Orelle |
 | `npm run dev` | Idem, avec journaux détaillés dans la console |
 | `npm test` | Tests unitaires (Vitest) |
-| `npm run smoke` | Lance NOVA dans un profil temporaire et vérifie les intégrations réelles (Win32, index, Dock, launcher) |
+| `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie les intégrations réelles (Win32, index, Dock, launcher) |
 | `npm run check` | Typecheck + tests + smoke test |
 | `npm run icons` | Régénère l’icône de l’application |
 
-Options : `--nova-user-data=<dossier>` (profil isolé), `--nova-section=dock` (ouvre une page des Préférences),
-`--nova-quit` (arrête proprement l’instance en cours).
+Options : `--orelle-user-data=<dossier>` (profil isolé), `--orelle-section=dock` (ouvre une page des Préférences),
+`--orelle-quit` (arrête proprement l’instance en cours).
 
 ## Utilisation
 
@@ -59,10 +59,10 @@ Exemples : `spot` · `2*(3+4)^2` · `10 km en mi` · `72 f to c` · `wifi` · `v
 
 ## Désinstallation
 
-1. Préférences → Général : désactiver « Lancer NOVA à l’ouverture de session » (ou `NOVA --nova-quit`).
-2. Supprimer le dossier du projet et `%APPDATA%\NOVA`.
+1. Préférences → Général : désactiver « Lancer Orelle à l’ouverture de session » (ou `Orelle --orelle-quit`).
+2. Supprimer le dossier du projet et `%APPDATA%\Orelle`.
 
-NOVA ne laisse rien d’autre sur le système. L’espace réservé par le Dock est libéré dès que l’application s’arrête.
+Orelle ne laisse rien d’autre sur le système. L’espace réservé par le Dock est libéré dès que l’application s’arrête.
 
 ## Structure
 

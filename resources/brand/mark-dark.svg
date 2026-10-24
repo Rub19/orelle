@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Orelle app icon, dark: an oriel (arched bay window) letting warm light through. -->
+  <rect width="1024" height="1024" rx="232" fill="#14161D"/>
+  <rect x="6" y="6" width="1012" height="1012" rx="226" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="12"/>
+  <!-- frame -->
+  <path d="M262 836V452a250 250 0 0 1 500 0v384z" fill="#F2B33D"/>
+  <!-- upper (arched) pane -->
+  <path d="M318 512V452a194 194 0 0 1 388 0v60z" fill="#FFF1D6"/>
+  <!-- lower pane -->
+  <rect x="318" y="556" width="176" height="224" rx="10" fill="#FFE2A6"/><rect x="530" y="556" width="176" height="224" rx="10" fill="#FFE2A6"/>
+  <!-- sill -->
+  <rect x="226" y="836" width="572" height="44" rx="22" fill="#F2B33D"/>
+</svg>

@@ -1,0 +1,44 @@
+@import '../common/tokens.css';
+
+html,
+body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+
+.splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 28px;
+  background: var(--brand-ink);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #f5f3ee;
+  animation: in 420ms var(--ease-out) both;
+}
+.splash.out { animation: out 260ms var(--ease-in-out) both; }
+@keyframes in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes out { to { opacity: 0; transform: scale(0.985); } }
+
+.mark { width: 92px; height: 110px; margin-bottom: 8px; }
+.mark .frame { fill: var(--brand-amber); }
+/* The panes "light up" one after the other, like a window at dusk. */
+.mark .pane { fill: #2a2d38; animation: light 700ms var(--ease-out) forwards; }
+.mark .p1 { animation-name: light-top; animation-delay: 180ms; }
+.mark .p2 { animation-delay: 360ms; }
+.mark .p3 { animation-delay: 480ms; }
+@keyframes light { to { fill: var(--brand-glow); } }
+@keyframes light-top { to { fill: #fff1d6; } }
+
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 34px;
+  letter-spacing: -0.01em;
+}
+p { margin: 0; min-height: 18px; font-size: 12.5px; color: rgba(245, 243, 238, 0.55); }
+.progress { width: 120px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin-top: 8px; }
+.progress i { display: block; width: 40%; height: 100%; border-radius: 2px; background: var(--brand-amber); animation: slide 1.1s var(--ease-in-out) infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(260%); } }

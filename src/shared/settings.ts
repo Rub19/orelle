@@ -1,7 +1,7 @@
 // Default settings, migrations and normalization. Pure functions: unit tested.
 import type { AllowedScript, CustomCommand, DockItem, Settings, ThemeId, WidgetInstance, WidgetType } from './types';
 
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 4;
 
 export const WIDGET_TYPES: WidgetType[] = ['clock', 'calendar', 'weather', 'system', 'network', 'battery', 'media', 'notes', 'todo', 'timer', 'recentApps', 'shortcuts', 'appUsage'];
 
@@ -23,13 +23,13 @@ export const WIDGET_SIZES: Record<WidgetType, { w: number; h: number }> = {
 };
 
 export const THEMES: ThemeId[] = ['system', 'dark', 'light', 'midnight', 'graphite', 'aurora'];
-export const ACCENTS = ['#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#64d2ff', '#8e8e93'];
+export const ACCENTS = ['#f2b33d', '#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#64d2ff', '#8e8e93'];
 
 export function defaultSettings(): Settings {
   return {
     version: SETTINGS_VERSION,
     general: { language: 'auto', launchAtLogin: false, showTrayIcon: true, hideTaskbar: false, hardwareAcceleration: true },
-    appearance: { theme: 'dark', accent: '#0a84ff', glassOpacity: 0.72, effects: 'full' },
+    appearance: { theme: 'dark', accent: '#f2b33d', glassOpacity: 0.72, effects: 'full' },
     dock: {
       enabled: true,
       position: 'bottom',
@@ -106,13 +106,21 @@ const MIGRATIONS: Record<number, (s: Json) => Json> = {
     if (Array.isArray(dock.items) && dock.items.length && !dock.items.some((i) => isObj(i) && i.action === 'control')) {
       const items = [...dock.items];
       const at = items.findIndex((i) => isObj(i) && i.action === 'launcher');
-      // Only Docks that still have NOVA's own launcher button get the new one next to it.
+      // Only Docks that still have Orelle's own launcher button get the new one next to it.
       if (at !== -1) {
-        items.splice(at + 1, 0, { id: 'nova-control', type: 'nova', name: 'Control', action: 'control' });
+        items.splice(at + 1, 0, { id: 'orelle-control', type: 'orelle', name: 'Control', action: 'control' });
         dock.items = items;
       }
     }
     return { ...s, dock, version: 3 };
+  },
+  // v4: the product was renamed from NOVA to Orelle; built-in Dock buttons and launcher ids follow.
+  3: (s) => {
+    const dock = isObj(s.dock) ? { ...s.dock } : {};
+    if (Array.isArray(dock.items)) dock.items = dock.items.map((i) => (isObj(i) && i.type === 'nova' ? { ...i, type: 'orelle' } : i));
+    const launcher = isObj(s.launcher) ? { ...s.launcher } : {};
+    if (Array.isArray(launcher.favorites)) launcher.favorites = launcher.favorites.map((f) => (typeof f === 'string' ? f.replace(/^nova:/, 'orelle:') : f));
+    return { ...s, dock, launcher, version: 4 };
   },
 };
 
@@ -156,9 +164,9 @@ export function sanitizeDockItem(raw: unknown): DockItem | null {
     case 'url':
       if (typeof raw.url !== 'string' || !/^https?:\/\//i.test(raw.url)) return null;
       return { id, type: 'url', name: name || raw.url, url: raw.url.slice(0, 2048) };
-    case 'nova':
+    case 'orelle':
       if (raw.action !== 'launcher' && raw.action !== 'settings' && raw.action !== 'control') return null;
-      return { id, type: 'nova', name: name || 'NOVA', action: raw.action };
+      return { id, type: 'orelle', name: name || 'Orelle', action: raw.action };
     default:
       return null;
   }

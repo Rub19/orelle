@@ -1,5 +1,5 @@
 <#
-  NOVA shell helper — read-only bridge to the Windows Shell.
+  Orelle shell helper — read-only bridge to the Windows Shell.
 
   Modes:
     apps   Enumerates shell:AppsFolder (desktop + Store apps, same list as the Start menu)
@@ -27,7 +27,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 
-public static class NovaIcons {
+public static class OrelleIcons {
   [StructLayout(LayoutKind.Sequential)] struct SIZE { public int cx; public int cy; }
 
   [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -83,7 +83,7 @@ function Get-IconFile([string]$parsingName) {
   $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($parsingName.ToLowerInvariant() + "|$Size")) | ForEach-Object { $_.ToString('x2') })
   $file = Join-Path $CacheDir "$hash.png"
   if (Test-Path -LiteralPath $file) { return $file }
-  if ([NovaIcons]::Save($parsingName, $file, $Size)) { return $file }
+  if ([OrelleIcons]::Save($parsingName, $file, $Size)) { return $file }
   return $null
 }
 

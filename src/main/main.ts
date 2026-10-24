@@ -1,10 +1,10 @@
-// NOVA main process: wires services and surfaces, owns the application lifecycle.
+// Orelle main process: wires services and surfaces, owns the application lifecycle.
 import { app, BrowserWindow, ipcMain, nativeTheme, powerMonitor, screen, type IpcMainInvokeEvent, type WebContents } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createTranslator, resolveLanguage } from '../shared/i18n';
 import type { Bootstrap, Settings, SurfaceKind } from '../shared/types';
-import type { NovaContext } from './context';
+import type { OrelleContext } from './context';
 import { Hotkeys } from './hotkeys';
 import { log } from './logger';
 import * as audio from './native/audio';
@@ -23,7 +23,7 @@ import { TaskbarService } from './services/taskbarService';
 import { UsageService } from './services/usageService';
 import { WeatherService } from './services/weatherService';
 import { WindowTracker } from './services/windowTracker';
-import { NovaTray } from './tray';
+import { OrelleTray } from './tray';
 import { ControlCenterController } from './windows/controlCenterController';
 import { DockController } from './windows/dockController';
 import { LauncherController } from './windows/launcherController';
@@ -31,14 +31,27 @@ import { SettingsController } from './windows/settingsController';
 import { WidgetsController } from './windows/widgetsController';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
-const SMOKE = process.argv.includes('--nova-smoke');
+const SMOKE = process.argv.includes('--orelle-smoke');
 
-// Isolated profile for tests: --nova-user-data=<dir>.
-const customData = argValue('nova-user-data') ?? (SMOKE ? path.join(app.getPath('temp'), `nova-smoke-${process.pid}`) : undefined);
+// Isolated profile for tests: --orelle-user-data=<dir>.
+const customData = argValue('orelle-user-data') ?? (SMOKE ? path.join(app.getPath('temp'), `orelle-smoke-${process.pid}`) : undefined);
 if (customData) app.setPath('userData', customData);
-else app.setPath('userData', path.join(app.getPath('appData'), 'NOVA'));
+else {
+  const dataDir = path.join(app.getPath('appData'), 'Orelle');
+  // The product was called NOVA before v0.2: carry the user's profile over once.
+  const legacy = path.join(app.getPath('appData'), 'NOVA');
+  if (!fs.existsSync(dataDir) && fs.existsSync(path.join(legacy, 'settings.json'))) {
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+      for (const f of ['settings.json', 'usage.json', 'screen-time.json', 'apps.json', 'taskbar-original.json']) {
+        if (fs.existsSync(path.join(legacy, f))) fs.copyFileSync(path.join(legacy, f), path.join(dataDir, f));
+      }
+    } catch { /* start fresh */ }
+  }
+  app.setPath('userData', dataDir);
+}
 
-app.setAppUserModelId('com.nova.desktop');
+app.setAppUserModelId('com.orelle.desktop');
 registerIconScheme();
 
 // Must be decided before Chromium starts: read the raw setting synchronously.
@@ -61,9 +74,12 @@ async function main() {
   const dataDir = app.getPath('userData');
   const logDir = path.join(dataDir, 'logs');
   log.init(logDir);
-  log.info('app', `NOVA ${app.getVersion()} starting (Electron ${process.versions.electron}, ${process.platform} ${process.getSystemVersion()})`);
+  log.info('app', `Orelle ${app.getVersion()} starting (Electron ${process.versions.electron}, ${process.platform} ${process.getSystemVersion()})`);
 
   const settings = new SettingsService(dataDir);
+  // Startup screen (skipped for the silent sign-in start and for tests).
+  const splashShownAt = Date.now();
+  const splash = SMOKE || process.argv.includes('--orelle-autostart') ? null : showSplash(settings.firstRun, resolveLanguage(settings.get().general.language, app.getLocale()));
   const usage = new UsageService(dataDir);
   const icons = new IconService(path.join(dataDir, 'icon-cache'));
   icons.serve();
@@ -78,7 +94,7 @@ async function main() {
 
   const distDir = __dirname;
   const language = () => resolveLanguage(settings.get().general.language, app.getLocale());
-  const ctx: NovaContext = {
+  const ctx: OrelleContext = {
     dataDir,
     logDir,
     settings,
@@ -131,7 +147,7 @@ async function main() {
     },
     suspend: (on) => hotkeys.suspend(on),
   }, weather);
-  const tray = new NovaTray(ctx, path.join(distDir, 'icons'), () => app.quit());
+  const tray = new OrelleTray(ctx, path.join(distDir, 'icons'), () => app.quit());
 
   applyTheme(settings.get());
   dock.registerIpc();
@@ -163,6 +179,19 @@ async function main() {
   syncLoginItem(settings.get());
   syncHotkeys(settings.get());
   if (settings.get().privacy.clipboardHistory && launcher.window) clip.enable(launcher.window);
+  // Close the splash once the Dock is painted (never sooner than its short intro animation).
+  if (splash) {
+    const dockWin = dock.window;
+    await Promise.race([
+      dockWin ? new Promise<void>((r) => dockWin.once('ready-to-show', () => r())) : Promise.resolve(),
+      new Promise((r) => setTimeout(r, 5000)),
+    ]);
+    await new Promise((r) => setTimeout(r, Math.max(0, 1300 - (Date.now() - splashShownAt))));
+    if (!splash.isDestroyed()) {
+      await splash.webContents.executeJavaScript("document.querySelector('.splash').classList.add('out')").catch(() => {});
+      setTimeout(() => !splash.isDestroyed() && splash.destroy(), 280);
+    }
+  }
   if (settings.firstRun && !SMOKE) settingsUi.open('general');
 
   // Background warm-up, once the UI is up.
@@ -187,7 +216,7 @@ async function main() {
   apps.on('change', () => dock.pushState());
   icons.on('change', () => {
     dock.pushState();
-    broadcast('nova:iconsChanged');
+    broadcast('orelle:iconsChanged');
   });
 
   settings.on('change', (next: Settings, prev: Settings) => {
@@ -242,14 +271,19 @@ async function main() {
   powerMonitor.on('resume', onWake);
   powerMonitor.on('unlock-screen', onWake);
 
-  // `NOVA --nova-quit` stops the running instance cleanly (scripts, uninstaller).
+  // `Orelle --orelle-quit` stops the running instance cleanly (scripts, uninstaller).
   app.on('second-instance', (_e, argv) => {
-    if (argv.includes('--nova-quit')) app.quit();
-    else settingsUi.open(argv.find((a) => a.startsWith('--nova-section='))?.split('=')[1]);
+    if (argv.includes('--orelle-quit')) app.quit();
+    else settingsUi.open(argv.find((a) => a.startsWith('--orelle-section='))?.split('=')[1]);
   });
-  // NOVA lives in the background: closing the preferences window must not quit it.
+  // Orelle lives in the background: closing the preferences window must not quit it.
   app.on('window-all-closed', () => { /* stay resident */ });
-  app.on('before-quit', () => {
+  // Every way out (quit, app.exit in tests, process exit) must give back what Orelle borrowed from
+  // the shell: the AppBar reservation and the taskbar state. Windows does not reclaim AppBars itself.
+  let shutDown = false;
+  const shutdown = () => {
+    if (shutDown) return;
+    shutDown = true;
     hotkeys.disableAll();
     tracker.stop();
     files.dispose();
@@ -261,11 +295,35 @@ async function main() {
     settings.flush();
     usage.flush();
     screenTime.flush();
-    log.info('app', 'NOVA stopped');
+    log.info('app', 'Orelle stopped');
     log.flushSync();
-  });
+  };
+  app.on('before-quit', shutdown);
+  process.on('exit', () => dock.releaseAppBarSync());
 
-  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system });
+  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system }, shutdown);
+}
+
+function showSplash(firstRun: boolean, lang: 'fr' | 'en'): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 340,
+    height: 300,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    focusable: false,
+    show: false,
+    center: true,
+    title: 'Orelle',
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+  });
+  win.once('ready-to-show', () => win.showInactive());
+  void win.loadFile(path.join(__dirname, 'renderer', 'splash.html'), { query: { lang, first: firstRun ? '1' : '0' } });
+  return win;
 }
 
 function applyTheme(s: Settings) {
@@ -277,10 +335,13 @@ function syncLoginItem(s: Settings) {
   if (SMOKE) return;
   // A fixed value name, so the uninstaller can remove it.
   const opts = app.isPackaged
-    ? { openAtLogin: s.general.launchAtLogin, name: 'NOVA' }
-    : { openAtLogin: s.general.launchAtLogin, name: 'NOVA', path: process.execPath, args: [app.getAppPath()] };
+    ? { openAtLogin: s.general.launchAtLogin, name: 'Orelle', args: ['--orelle-autostart'] }
+    : { openAtLogin: s.general.launchAtLogin, name: 'Orelle', path: process.execPath, args: [app.getAppPath(), '--orelle-autostart'] };
   try {
     if (app.getLoginItemSettings(opts).openAtLogin !== s.general.launchAtLogin) app.setLoginItemSettings(opts);
+    // Remove the entry left by the pre-rename build, if any.
+    const legacy = { ...opts, name: 'NOVA' };
+    if (app.getLoginItemSettings(legacy).openAtLogin) app.setLoginItemSettings({ ...legacy, openAtLogin: false });
   } catch (err) {
     log.warn('app', 'Cannot update login item', err);
   }
@@ -290,12 +351,12 @@ function broadcast(channel: string, ...args: unknown[]) {
   for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, ...args);
 }
 
-function broadcastSettings(ctx: NovaContext) {
-  broadcast('nova:settings', { settings: ctx.settings.get(), language: ctx.language, darkSystem: nativeTheme.shouldUseDarkColors });
+function broadcastSettings(ctx: OrelleContext) {
+  broadcast('orelle:settings', { settings: ctx.settings.get(), language: ctx.language, darkSystem: nativeTheme.shouldUseDarkColors });
 }
 
 function registerSharedIpc(
-  ctx: NovaContext,
+  ctx: OrelleContext,
   c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController },
 ) {
   const surfaceOf = (wc: WebContents): SurfaceKind | null => {
@@ -307,7 +368,7 @@ function registerSharedIpc(
     return null;
   };
 
-  ipcMain.handle('nova:bootstrap', (e: IpcMainInvokeEvent): Bootstrap | null => {
+  ipcMain.handle('orelle:bootstrap', (e: IpcMainInvokeEvent): Bootstrap | null => {
     const surface = surfaceOf(e.sender);
     if (!surface) return null;
     return {
@@ -322,7 +383,7 @@ function registerSharedIpc(
 
   // Which surface may change which top-level settings group.
   const writable: Partial<Record<SurfaceKind, string[] | 'all'>> = { settings: 'all', dock: ['dock'], widgets: ['widgets'] };
-  ipcMain.handle('nova:updateSettings', (e, patch: unknown) => {
+  ipcMain.handle('orelle:updateSettings', (e, patch: unknown) => {
     const surface = surfaceOf(e.sender);
     const allowed = surface ? writable[surface] : undefined;
     if (!allowed || typeof patch !== 'object' || patch === null) return null;
@@ -334,8 +395,9 @@ function registerSharedIpc(
 // ---------- Smoke test (npm run smoke) ----------
 
 async function runSmoke(
-  ctx: NovaContext,
+  ctx: OrelleContext,
   c: { dock: DockController; launcher: LauncherController; search: SearchService; files: FileIndex; widgets: WidgetsController; control: ControlCenterController; system: SystemService },
+  shutdown: () => void,
 ) {
   const report: Record<string, unknown> = { ok: false };
   const checks: { name: string; ok: boolean; detail?: unknown }[] = [];
@@ -376,12 +438,12 @@ async function runSmoke(
     c.control.show();
     await wait(1500);
     check('control center shows', c.control.isVisible());
-    const capDir = argValue('nova-capture');
+    const capDir = argValue('orelle-capture');
     if (capDir) {
       fs.mkdirSync(capDir, { recursive: true });
       const lw = c.launcher.window!;
       c.launcher.show();
-      await lw.webContents.executeJavaScript(`window.__novaTestQuery && window.__novaTestQuery(${JSON.stringify(argValue('nova-capture-query') ?? 'spo')})`);
+      await lw.webContents.executeJavaScript(`window.__orelleTestQuery && window.__orelleTestQuery(${JSON.stringify(argValue('orelle-capture-query') ?? 'spo')})`);
       await wait(900);
       fs.writeFileSync(path.join(capDir, 'launcher.png'), (await lw.webContents.capturePage()).toPNG());
       c.launcher.hide();
@@ -390,7 +452,7 @@ async function runSmoke(
     c.control.hide();
     await c.files.build();
     check('file index', c.files.ready);
-    // Memory of every NOVA process (KB → MB), after the UI is fully up.
+    // Memory of every Orelle process (KB → MB), after the UI is fully up.
     // Idle footprint after closing the control center (created on demand, then released).
     c.control.release();
     await wait(1500);
@@ -406,9 +468,10 @@ async function runSmoke(
     report.error = String(err);
   }
   report.checks = checks;
-  const out = argValue('nova-smoke-report') ?? path.join(ctx.dataDir, 'smoke-report.json');
+  const out = argValue('orelle-smoke-report') ?? path.join(ctx.dataDir, 'smoke-report.json');
   fs.writeFileSync(out, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
   log.flushSync();
+  shutdown();
   app.exit(report.ok ? 0 : 1);
 }

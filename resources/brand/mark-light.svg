@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Orelle app icon, light variant (for light surfaces). -->
+  <rect width="1024" height="1024" rx="232" fill="#F6F1E8"/>
+  <rect x="6" y="6" width="1012" height="1012" rx="226" fill="none" stroke="#000000" stroke-opacity="0.06" stroke-width="12"/>
+  <path d="M262 836V452a250 250 0 0 1 500 0v384z" fill="#1A1C24"/>
+  <path d="M318 512V452a194 194 0 0 1 388 0v60z" fill="#F7C35C"/>
+  <rect x="318" y="556" width="176" height="224" rx="10" fill="#F2B33D"/><rect x="530" y="556" width="176" height="224" rx="10" fill="#F2B33D"/>
+  <rect x="226" y="836" width="572" height="44" rx="22" fill="#1A1C24"/>
+</svg>

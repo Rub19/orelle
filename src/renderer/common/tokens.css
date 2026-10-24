@@ -1,13 +1,19 @@
-/* NOVA design tokens. Every surface imports this file; themes only swap variables. */
+/* Orelle design tokens. Every surface imports this file; themes only swap variables. */
 
 :root {
   --font: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   --mono: 'Cascadia Mono', 'Cascadia Code', Consolas, monospace;
 
-  --accent: #0a84ff;
-  --accent-rgb: 10, 132, 255;
-  --accent-text: #ffffff;
+  /* Brand palette (resources/brand): warm light through an arched window. */
+  --brand-amber: #f2b33d;
+  --brand-glow: #ffe2a6;
+  --brand-ink: #14161d;
+  --brand-cream: #f6f1e8;
+
+  --accent: #f2b33d;
+  --accent-rgb: 242, 179, 61;
+  --accent-text: #1d1d1f;
   --glass-opacity: 0.72;
 
   --radius-xs: 6px;

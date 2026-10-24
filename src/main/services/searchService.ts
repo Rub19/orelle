@@ -10,7 +10,7 @@ import type { StringKey } from '../../shared/i18n';
 import type { ResultPreview, SearchResponse, SearchResult } from '../../shared/types';
 import { convert } from '../../shared/units';
 import { WINDOWS_SETTINGS } from '../../shared/windowsSettings';
-import type { NovaContext } from '../context';
+import type { OrelleContext } from '../context';
 import * as w32 from '../native/win32';
 import { log } from '../logger';
 import type { ClipboardHistory } from './clipboardHistory';
@@ -29,12 +29,12 @@ const SYSTEM_ACTIONS: { id: SystemAction; key: StringKey; keywords: string; conf
   { id: 'recycle', key: 'system.recycle', keywords: 'corbeille recycle bin trash', confirm: false, glyph: 'trash' },
 ];
 
-const NOVA_ACTIONS: { id: string; key: StringKey; keywords: string; glyph: string }[] = [
-  { id: 'settings', key: 'dock.settings', keywords: 'nova preferences parametres settings reglages', glyph: 'settings' },
-  { id: 'toggleDock', key: 'tray.toggleDock', keywords: 'nova dock afficher masquer show hide', glyph: 'dock' },
-  { id: 'reindex', key: 'settings.about.reindex', keywords: 'nova reindexer reindex applications', glyph: 'refresh' },
-  { id: 'control', key: 'control.title', keywords: 'nova centre controle control center volume luminosite brightness wifi', glyph: 'sliders' },
-  { id: 'widgets', key: 'widgets.edit', keywords: 'nova widgets bureau desktop modifier edit', glyph: 'grid' },
+const ORELLE_ACTIONS: { id: string; key: StringKey; keywords: string; glyph: string }[] = [
+  { id: 'settings', key: 'dock.settings', keywords: 'orelle preferences parametres settings reglages', glyph: 'settings' },
+  { id: 'toggleDock', key: 'tray.toggleDock', keywords: 'orelle dock afficher masquer show hide', glyph: 'dock' },
+  { id: 'reindex', key: 'settings.about.reindex', keywords: 'orelle reindexer reindex applications', glyph: 'refresh' },
+  { id: 'control', key: 'control.title', keywords: 'orelle centre controle control center volume luminosite brightness wifi', glyph: 'sliders' },
+  { id: 'widgets', key: 'widgets.edit', keywords: 'orelle widgets bureau desktop modifier edit', glyph: 'grid' },
 ];
 
 const URL_RE = /^(https?:\/\/)?(localhost(:\d+)?|[\w-]+(\.[\w-]+)*\.[a-z]{2,})(:\d+)?(\/\S*)?$/i;
@@ -42,7 +42,7 @@ const SHUTDOWN = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 
 
 export class SearchService {
   constructor(
-    private readonly ctx: NovaContext,
+    private readonly ctx: OrelleContext,
     private readonly files: FileIndex,
     private readonly clip: ClipboardHistory,
     private readonly scripts: ScriptService,
@@ -140,10 +140,10 @@ export class SearchService {
         const score = Math.max(fuzzyScore(q, title), fuzzyScore(q, a.keywords) * 0.8) * 0.85;
         if (score > 0.4) add({ id: `sys:${a.id}`, kind: 'system', title, subtitle: this.t('launcher.kind.system'), glyph: a.glyph, score, action: this.t('launcher.run') });
       }
-      for (const a of NOVA_ACTIONS) {
+      for (const a of ORELLE_ACTIONS) {
         const title = this.t(a.key);
         const score = Math.max(fuzzyScore(q, title), fuzzyScore(q, a.keywords) * 0.8) * 0.8;
-        if (score > 0.4) add({ id: `nova:${a.id}`, kind: 'nova', title, subtitle: 'NOVA', glyph: a.glyph, score, action: this.t('launcher.run') });
+        if (score > 0.4) add({ id: `orelle:${a.id}`, kind: 'orelle', title, subtitle: 'Orelle', glyph: a.glyph, score, action: this.t('launcher.run') });
       }
     }
 
@@ -207,7 +207,7 @@ export class SearchService {
     }
     if (this.ctx.settings.get().privacy.searchHistory) {
       for (const rec of this.ctx.usage.recent('', 30)) {
-        if (favorites.has(rec.id) || !/^(app|file|set|sys|nova|url|cmd):/.test(rec.id)) continue;
+        if (favorites.has(rec.id) || !/^(app|file|set|sys|orelle|url|cmd):/.test(rec.id)) continue;
         const r = this.resolve(rec.id);
         if (r && !out.some((o) => o.id === r.id)) out.push({ ...r, score: 1 });
         if (out.length >= this.ctx.settings.get().launcher.maxResults + favorites.size) break;
@@ -237,9 +237,9 @@ export class SearchService {
         const a = SYSTEM_ACTIONS.find((x) => x.id === rest);
         return a ? { id, kind: 'system', title: this.t(a.key), subtitle: this.t('launcher.kind.system'), glyph: a.glyph, score: 0, action: this.t('launcher.run') } : null;
       }
-      case 'nova': {
-        const a = NOVA_ACTIONS.find((x) => x.id === rest);
-        return a ? { id, kind: 'nova', title: this.t(a.key), subtitle: 'NOVA', glyph: a.glyph, score: 0, action: this.t('launcher.run') } : null;
+      case 'orelle': {
+        const a = ORELLE_ACTIONS.find((x) => x.id === rest);
+        return a ? { id, kind: 'orelle', title: this.t(a.key), subtitle: 'Orelle', glyph: a.glyph, score: 0, action: this.t('launcher.run') } : null;
       }
       case 'url':
         return /^https?:\/\//i.test(rest) ? { id, kind: 'url', title: rest.replace(/^https?:\/\//i, ''), subtitle: rest, glyph: 'globe', score: 0, action: this.t('launcher.open') } : null;
@@ -348,7 +348,7 @@ export class SearchService {
       }
       case 'sys':
         return this.runSystem(rest as SystemAction);
-      case 'nova':
+      case 'orelle':
         record(rest);
         if (rest === 'settings') this.ctx.actions.openSettings();
         else if (rest === 'toggleDock') this.ctx.actions.toggleDock();

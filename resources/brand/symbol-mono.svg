@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="226 202 572 678">
+  <!-- Orelle monochrome symbol: one colour (currentColor), panes cut out. Tray, favicons, print. -->
+  <path fill="currentColor" fill-rule="evenodd" d="M262 836V452a250 250 0 0 1 500 0v384zM318 512h388v-60a194 194 0 0 0-388 0zM328 556a10 10 0 0 0-10 10v204a10 10 0 0 0 10 10h156a10 10 0 0 0 10-10V566a10 10 0 0 0-10-10zM540 556a10 10 0 0 0-10 10v204a10 10 0 0 0 10 10h156a10 10 0 0 0 10-10V566a10 10 0 0 0-10-10z"/>
+  <rect x="226" y="836" width="572" height="44" rx="22" fill="currentColor"/>
+</svg>

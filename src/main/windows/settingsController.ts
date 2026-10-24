@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { DisplayInfo } from '../../shared/types';
-import type { NovaContext } from '../context';
+import type { OrelleContext } from '../context';
 import { buildDefaultDock } from '../services/firstRun';
 import type { WeatherService } from '../services/weatherService';
 import { log } from '../logger';
@@ -13,7 +13,7 @@ export class SettingsController {
   private win: BrowserWindow | null = null;
 
   constructor(
-    private readonly ctx: NovaContext,
+    private readonly ctx: OrelleContext,
     private readonly hotkeys: { set(name: string, accel: string): { ok: boolean; error?: string }; suspend(on: boolean): void },
     private readonly weather: WeatherService,
   ) {}
@@ -38,19 +38,19 @@ export class SettingsController {
       minWidth: 780,
       minHeight: 520,
       show: false,
-      title: `NOVA — ${this.ctx.t('settings.title')}`,
+      title: `Orelle — ${this.ctx.t('settings.title')}`,
       titleBarStyle: 'hidden',
       titleBarOverlay: { color: '#00000000', symbolColor: dark ? '#f5f5f7' : '#1d1d1f', height: 44 },
       backgroundColor: '#00000000',
       backgroundMaterial: effects === 'off' ? 'none' : 'mica',
-      icon: this.ctx.rendererFile('settings').replace(/renderer[\\/]settings\.html$/, 'icons/nova.ico'),
+      icon: this.ctx.rendererFile('settings').replace(/renderer[\\/]settings\.html$/, 'icons/orelle.ico'),
       webPreferences: {
         preload: this.ctx.preload,
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
         spellcheck: false,
-        additionalArguments: ['--nova-surface=settings', ...(section ? [`--nova-section=${section}`] : [])],
+        additionalArguments: ['--orelle-surface=settings', ...(section ? [`--orelle-section=${section}`] : [])],
       },
     });
     this.win = win;
@@ -135,11 +135,11 @@ export class SettingsController {
     ipcMain.handle('settings:export', async (e) => {
       if (!fromSettings(e)) return { ok: false };
       const res = await dialog.showSaveDialog(this.win!, {
-        defaultPath: `nova-profile-${new Date().toISOString().slice(0, 10)}.nova.json`,
-        filters: [{ name: 'NOVA profile', extensions: ['json'] }],
+        defaultPath: `orelle-profile-${new Date().toISOString().slice(0, 10)}.orelle.json`,
+        filters: [{ name: 'Orelle profile', extensions: ['json'] }],
       });
       if (res.canceled || !res.filePath) return { ok: false, canceled: true };
-      const profile = { format: 'nova-profile', exportedAt: new Date().toISOString(), app: app.getVersion(), settings: this.ctx.settings.get() };
+      const profile = { format: 'orelle-profile', exportedAt: new Date().toISOString(), app: app.getVersion(), settings: this.ctx.settings.get() };
       await fs.promises.writeFile(res.filePath, JSON.stringify(profile, null, 2), 'utf8');
       log.info('settings', 'Profile exported');
       return { ok: true };
@@ -147,13 +147,13 @@ export class SettingsController {
 
     ipcMain.handle('settings:import', async (e) => {
       if (!fromSettings(e)) return { ok: false };
-      const res = await dialog.showOpenDialog(this.win!, { properties: ['openFile'], filters: [{ name: 'NOVA profile', extensions: ['json'] }] });
+      const res = await dialog.showOpenDialog(this.win!, { properties: ['openFile'], filters: [{ name: 'Orelle profile', extensions: ['json'] }] });
       if (res.canceled || !res.filePaths[0]) return { ok: false, canceled: true };
       try {
         const stat = await fs.promises.stat(res.filePaths[0]);
         if (stat.size > 2_000_000) throw new Error('file too large');
         const raw = JSON.parse(await fs.promises.readFile(res.filePaths[0], 'utf8'));
-        if (raw?.format !== 'nova-profile' || typeof raw.settings !== 'object') throw new Error('not a NOVA profile');
+        if (raw?.format !== 'orelle-profile' || typeof raw.settings !== 'object') throw new Error('not a Orelle profile');
         this.ctx.settings.replace(raw.settings);
         log.info('settings', 'Profile imported');
         return { ok: true };

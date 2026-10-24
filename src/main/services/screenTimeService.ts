@@ -31,7 +31,7 @@ export class ScreenTimeService {
     powerMonitor.on('resume', () => this.resume());
   }
 
-  /** Called on every foreground change with the app identity (or null for the desktop / NOVA). */
+  /** Called on every foreground change with the app identity (or null for the desktop / Orelle). */
   focus(app: { key: string; name: string } | null) {
     this.commit();
     this.current = app && !this.paused ? { ...app, since: Date.now() } : null;

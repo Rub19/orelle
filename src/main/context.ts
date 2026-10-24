@@ -7,7 +7,7 @@ import type { SettingsService } from './services/settingsService';
 import type { UsageService } from './services/usageService';
 import type { WindowTracker } from './services/windowTracker';
 
-export interface NovaContext {
+export interface OrelleContext {
   dataDir: string;
   logDir: string;
   settings: SettingsService;

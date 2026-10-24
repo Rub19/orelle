@@ -1,4 +1,4 @@
-// NOVA's monochrome glyph set (24×24, 1.7 stroke, round caps). Drawn for NOVA; no third-party icon font.
+// Orelle's monochrome glyph set (24×24, 1.7 stroke, round caps). Drawn for Orelle; no third-party icon font.
 
 const PATHS: Record<string, string> = {
   search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
@@ -73,7 +73,13 @@ const PATHS: Record<string, string> = {
   eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 5.1A9.7 9.7 0 0 1 12 5c5 0 8.5 4.5 9.5 7a13 13 0 0 1-2.6 3.8M6.4 6.5C4.4 7.8 3 9.8 2.5 12c1 2.5 4.5 7 9.5 7a9.6 9.6 0 0 0 4.9-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 };
 
+/** The Orelle symbol (arched window), single colour, for in-UI branding. Same geometry as resources/brand/symbol-mono.svg. */
+export function brandMark(cls = 'brand-mark'): string {
+  return `<svg class="${cls}" viewBox="226 202 572 678" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M262 836V452a250 250 0 0 1 500 0v384zM318 512h388v-60a194 194 0 0 0-388 0zM328 556a10 10 0 0 0-10 10v204a10 10 0 0 0 10 10h156a10 10 0 0 0 10-10V566a10 10 0 0 0-10-10zM540 556a10 10 0 0 0-10 10v204a10 10 0 0 0 10 10h156a10 10 0 0 0 10-10V566a10 10 0 0 0-10-10z"/><rect x="226" y="836" width="572" height="44" rx="22" fill="currentColor"/></svg>`;
+}
+
 export function glyph(name: string, cls = 'glyph'): string {
+  if (name === 'orelle') return brandMark(cls.replace('glyph', 'brand-mark'));
   const p = PATHS[name] ?? PATHS.sparkle;
   return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`;
 }

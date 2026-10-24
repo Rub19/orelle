@@ -1,4 +1,4 @@
-// Small file logger: one file per day in %APPDATA%/NOVA/logs, 7 days kept. Writes are async and batched.
+// Small file logger: one file per day in %APPDATA%/Orelle/logs, 7 days kept. Writes are async and batched.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -7,7 +7,7 @@ type Level = 'debug' | 'info' | 'warn' | 'error';
 let dir: string | null = null;
 let queue: string[] = [];
 let flushTimer: NodeJS.Timeout | null = null;
-const verbose = process.argv.includes('--nova-dev');
+const verbose = process.argv.includes('--orelle-dev');
 
 function fmt(err: unknown): string {
   if (err instanceof Error) return `${err.message}\n${err.stack ?? ''}`;
@@ -25,7 +25,7 @@ function write(level: Level, scope: string, msg: string, extra?: unknown) {
 function flush() {
   flushTimer = null;
   if (!dir || queue.length === 0) return;
-  const file = path.join(dir, `nova-${new Date().toISOString().slice(0, 10)}.log`);
+  const file = path.join(dir, `orelle-${new Date().toISOString().slice(0, 10)}.log`);
   const data = queue.join('\n') + '\n';
   queue = [];
   fs.appendFile(file, data, () => {});
@@ -46,7 +46,7 @@ export const log = {
   },
   flushSync() {
     if (!dir || queue.length === 0) return;
-    try { fs.appendFileSync(path.join(dir, `nova-${new Date().toISOString().slice(0, 10)}.log`), queue.join('\n') + '\n'); } catch { /* ignore */ }
+    try { fs.appendFileSync(path.join(dir, `orelle-${new Date().toISOString().slice(0, 10)}.log`), queue.join('\n') + '\n'); } catch { /* ignore */ }
     queue = [];
   },
   debug: (scope: string, msg: string, extra?: unknown) => verbose && write('debug', scope, msg, extra),

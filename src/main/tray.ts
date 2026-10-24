@@ -1,11 +1,11 @@
 import { Menu, Tray, nativeImage } from 'electron';
 import path from 'node:path';
-import type { NovaContext } from './context';
+import type { OrelleContext } from './context';
 
-export class NovaTray {
+export class OrelleTray {
   private tray: Tray | null = null;
 
-  constructor(private readonly ctx: NovaContext, private readonly iconsDir: string, private readonly quit: () => void) {}
+  constructor(private readonly ctx: OrelleContext, private readonly iconsDir: string, private readonly quit: () => void) {}
 
   sync() {
     const want = this.ctx.settings.get().general.showTrayIcon;
@@ -18,7 +18,7 @@ export class NovaTray {
     const img = nativeImage.createFromPath(path.join(this.iconsDir, 'tray.png'));
     img.addRepresentation({ scaleFactor: 2, buffer: nativeImage.createFromPath(path.join(this.iconsDir, 'tray@2x.png')).toPNG() });
     this.tray = new Tray(img);
-    this.tray.setToolTip('NOVA');
+    this.tray.setToolTip('Orelle');
     this.tray.setContextMenu(this.menu());
     this.tray.on('click', () => this.ctx.actions.toggleLauncher());
   }

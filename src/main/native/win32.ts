@@ -1,5 +1,5 @@
 // Thin, typed Win32 bindings through koffi (prebuilt N-API FFI, no compiler needed).
-// Every function used by NOVA is declared here; nothing else touches FFI directly.
+// Every function used by Orelle is declared here; nothing else touches FFI directly.
 // If loading fails (non-Windows, missing DLL), `win32` is null and features degrade gracefully.
 import { log } from '../logger';
 
@@ -32,14 +32,14 @@ function bind() {
   const shell32 = koffi.load('shell32.dll');
   const powrprof = koffi.load('powrprof.dll');
 
-  const RECT = koffi.struct('NOVA_RECT', { left: 'int32', top: 'int32', right: 'int32', bottom: 'int32' });
-  const MONITORINFO = koffi.struct('NOVA_MONITORINFO', { cbSize: 'uint32', rcMonitor: RECT, rcWork: RECT, dwFlags: 'uint32' });
-  const APPBARDATA = koffi.struct('NOVA_APPBARDATA', {
+  const RECT = koffi.struct('ORELLE_RECT', { left: 'int32', top: 'int32', right: 'int32', bottom: 'int32' });
+  const MONITORINFO = koffi.struct('ORELLE_MONITORINFO', { cbSize: 'uint32', rcMonitor: RECT, rcWork: RECT, dwFlags: 'uint32' });
+  const APPBARDATA = koffi.struct('ORELLE_APPBARDATA', {
     cbSize: 'uint32', hWnd: 'intptr_t', uCallbackMessage: 'uint32', uEdge: 'uint32', rc: RECT, lParam: 'intptr_t',
   });
-  const EnumProc = koffi.proto('bool __stdcall NovaEnumProc(intptr_t hwnd, intptr_t lp)');
+  const EnumProc = koffi.proto('bool __stdcall OrelleEnumProc(intptr_t hwnd, intptr_t lp)');
   const WinEventProc = koffi.proto(
-    'void __stdcall NovaWinEventProc(intptr_t hook, uint32_t event, intptr_t hwnd, long idObject, long idChild, uint32_t thread, uint32_t time)',
+    'void __stdcall OrelleWinEventProc(intptr_t hook, uint32_t event, intptr_t hwnd, long idObject, long idChild, uint32_t thread, uint32_t time)',
   );
 
   return {
@@ -49,8 +49,8 @@ function bind() {
     APPBARDATA,
     EnumProc,
     WinEventProc,
-    EnumWindows: user32.func('bool __stdcall EnumWindows(NovaEnumProc *cb, intptr_t lp)'),
-    EnumChildWindows: user32.func('bool __stdcall EnumChildWindows(intptr_t parent, NovaEnumProc *cb, intptr_t lp)'),
+    EnumWindows: user32.func('bool __stdcall EnumWindows(OrelleEnumProc *cb, intptr_t lp)'),
+    EnumChildWindows: user32.func('bool __stdcall EnumChildWindows(intptr_t parent, OrelleEnumProc *cb, intptr_t lp)'),
     IsWindow: user32.func('bool __stdcall IsWindow(intptr_t hwnd)'),
     IsWindowVisible: user32.func('bool __stdcall IsWindowVisible(intptr_t hwnd)'),
     IsIconic: user32.func('bool __stdcall IsIconic(intptr_t hwnd)'),
@@ -64,13 +64,13 @@ function bind() {
     BringWindowToTop: user32.func('bool __stdcall BringWindowToTop(intptr_t hwnd)'),
     ShowWindow: user32.func('bool __stdcall ShowWindow(intptr_t hwnd, int cmd)'),
     PostMessageW: user32.func('bool __stdcall PostMessageW(intptr_t hwnd, uint32_t msg, uintptr_t wp, intptr_t lp)'),
-    GetWindowRect: user32.func('bool __stdcall GetWindowRect(intptr_t hwnd, _Out_ NOVA_RECT *rect)'),
+    GetWindowRect: user32.func('bool __stdcall GetWindowRect(intptr_t hwnd, _Out_ ORELLE_RECT *rect)'),
     GetShellWindow: user32.func('intptr_t __stdcall GetShellWindow()'),
     GetDesktopWindow: user32.func('intptr_t __stdcall GetDesktopWindow()'),
     MonitorFromWindow: user32.func('intptr_t __stdcall MonitorFromWindow(intptr_t hwnd, uint32_t flags)'),
-    GetMonitorInfoW: user32.func('bool __stdcall GetMonitorInfoW(intptr_t mon, _Inout_ NOVA_MONITORINFO *info)'),
+    GetMonitorInfoW: user32.func('bool __stdcall GetMonitorInfoW(intptr_t mon, _Inout_ ORELLE_MONITORINFO *info)'),
     SetWinEventHook: user32.func(
-      'intptr_t __stdcall SetWinEventHook(uint32_t min, uint32_t max, intptr_t mod, NovaWinEventProc *cb, uint32_t pid, uint32_t tid, uint32_t flags)',
+      'intptr_t __stdcall SetWinEventHook(uint32_t min, uint32_t max, intptr_t mod, OrelleWinEventProc *cb, uint32_t pid, uint32_t tid, uint32_t flags)',
     ),
     UnhookWinEvent: user32.func('bool __stdcall UnhookWinEvent(intptr_t hook)'),
     LockWorkStation: user32.func('bool __stdcall LockWorkStation()'),
@@ -87,22 +87,22 @@ function bind() {
     ),
     DwmGetWindowAttribute: dwmapi.func('long __stdcall DwmGetWindowAttribute(intptr_t hwnd, uint32_t attr, _Out_ int32_t *value, uint32_t size)'),
     DwmSetWindowAttribute: dwmapi.func('long __stdcall DwmSetWindowAttribute(intptr_t hwnd, uint32_t attr, int32_t *value, uint32_t size)'),
-    SHAppBarMessage: shell32.func('uintptr_t __stdcall SHAppBarMessage(uint32_t msg, _Inout_ NOVA_APPBARDATA *data)'),
+    SHAppBarMessage: shell32.func('uintptr_t __stdcall SHAppBarMessage(uint32_t msg, _Inout_ ORELLE_APPBARDATA *data)'),
     SHGetPropertyStoreForWindow: shell32.func('long __stdcall SHGetPropertyStoreForWindow(intptr_t hwnd, const uint8_t *riid, _Out_ void **store)'),
     PropVariantClear: koffi.load('ole32.dll').func('long __stdcall PropVariantClear(void *pv)'),
-    PROPERTYKEY: koffi.struct('NOVA_PROPERTYKEY', { fmtid: koffi.array('uint8_t', 16), pid: 'uint32_t' }),
-    PROPVARIANT: koffi.struct('NOVA_PROPVARIANT', { vt: 'uint16_t', r1: 'uint16_t', r2: 'uint16_t', r3: 'uint16_t', data: 'void *', extra: 'void *' }),
-    GetValueProto: koffi.proto('long __stdcall NovaPropStoreGetValue(void *self, NOVA_PROPERTYKEY *key, void *pv)'),
-    ReleaseProto: koffi.proto('uint32_t __stdcall NovaRelease(void *self)'),
+    PROPERTYKEY: koffi.struct('ORELLE_PROPERTYKEY', { fmtid: koffi.array('uint8_t', 16), pid: 'uint32_t' }),
+    PROPVARIANT: koffi.struct('ORELLE_PROPVARIANT', { vt: 'uint16_t', r1: 'uint16_t', r2: 'uint16_t', r3: 'uint16_t', data: 'void *', extra: 'void *' }),
+    GetValueProto: koffi.proto('long __stdcall OrellePropStoreGetValue(void *self, ORELLE_PROPERTYKEY *key, void *pv)'),
+    ReleaseProto: koffi.proto('uint32_t __stdcall OrelleRelease(void *self)'),
     SetSuspendState: powrprof.func('bool __stdcall SetSuspendState(bool hibernate, bool force, bool wakeupEventsDisabled)'),
-    SYSTEM_POWER_STATUS: koffi.struct('NOVA_SYSTEM_POWER_STATUS', {
+    SYSTEM_POWER_STATUS: koffi.struct('ORELLE_SYSTEM_POWER_STATUS', {
       ACLineStatus: 'uint8_t', BatteryFlag: 'uint8_t', BatteryLifePercent: 'uint8_t', SystemStatusFlag: 'uint8_t',
       BatteryLifeTime: 'uint32_t', BatteryFullLifeTime: 'uint32_t',
     }),
-    GetSystemPowerStatus: kernel32.func('bool __stdcall GetSystemPowerStatus(_Out_ NOVA_SYSTEM_POWER_STATUS *s)'),
+    GetSystemPowerStatus: kernel32.func('bool __stdcall GetSystemPowerStatus(_Out_ ORELLE_SYSTEM_POWER_STATUS *s)'),
     FindWindowW: user32.func('intptr_t __stdcall FindWindowW(const char16_t *cls, const char16_t *title)'),
     SetWindowPos: user32.func('bool __stdcall SetWindowPos(intptr_t hwnd, intptr_t after, int x, int y, int cx, int cy, uint32_t flags)'),
-    DwmGetWindowAttributeRect: dwmapi.func('long __stdcall DwmGetWindowAttribute(intptr_t hwnd, uint32_t attr, _Out_ NOVA_RECT *value, uint32_t size)'),
+    DwmGetWindowAttributeRect: dwmapi.func('long __stdcall DwmGetWindowAttribute(intptr_t hwnd, uint32_t attr, _Out_ ORELLE_RECT *value, uint32_t size)'),
     IsZoomed: user32.func('bool __stdcall IsZoomed(intptr_t hwnd)'),
     SetWindowLongPtrW: user32.func('intptr_t __stdcall SetWindowLongPtrW(intptr_t hwnd, int index, intptr_t value)'),
     CoInitializeEx: koffi.load('ole32.dll').func('long __stdcall CoInitializeEx(void *reserved, uint32_t flags)'),

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <!-- Orelle lockup for light backgrounds. -->
+  <g transform="translate(20 22) scale(0.378)">
+    <path d="M36 634V250a250 250 0 0 1 500 0v384z" fill="#1A1C24"/>
+    <path d="M92 310V250a194 194 0 0 1 388 0v60z" fill="#F7C35C"/>
+    <rect x="92" y="354" width="176" height="224" rx="10" fill="#F2B33D"/><rect x="304" y="354" width="176" height="224" rx="10" fill="#F2B33D"/>
+    <rect x="0" y="634" width="572" height="44" rx="22" fill="#1A1C24"/>
+  </g>
+  <text x="270" y="214" fill="#1A1C24" font-family="Segoe UI Variable Display, Segoe UI, sans-serif" font-weight="600" font-size="196" letter-spacing="-3">orelle</text>
+</svg>

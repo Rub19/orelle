@@ -1,4 +1,4 @@
-# NOVA — Feuille de route
+# Orelle — Feuille de route
 
 Légende : ✅ implémenté et vérifié · 🟡 partiel · ⬜ à faire
 
@@ -32,7 +32,7 @@ Légende : ✅ implémenté et vérifié · 🟡 partiel · ⬜ à faire
 - ✅ Couche de widgets unique (un seul processus de rendu), rattachée au bureau : sous les fenêtres, visible avec Win+D, click-through hors des widgets
 - ✅ 13 widgets : horloge (numérique / analogique / minimale), calendrier, météo (Open-Meteo, sans clé), système (CPU, RAM, disque + courbe), réseau (débits), batterie, multimédia (touches média), notes, tâches, minuteur / chrono (notification), apps récentes, raccourcis (glisser-déposer), temps d’écran par application
 - ✅ Mode édition : déplacer (grille 8 px, Alt = libre), redimensionner, opacité, style, masquer, supprimer, ajouter ; tout est persistant
-- ✅ Centre de contrôle (Ctrl+Alt+C, Dock, zone de notification) : volume et sourdine réels (Core Audio en COM), périphérique de sortie, luminosité (WMI, portables), Wi-Fi (SSID, signal), batterie, touches média, thème NOVA, barre des tâches, raccourcis vers les pages `ms-settings:` exactes
+- ✅ Centre de contrôle (Ctrl+Alt+C, Dock, zone de notification) : volume et sourdine réels (Core Audio en COM), périphérique de sortie, luminosité (WMI, portables), Wi-Fi (SSID, signal), batterie, touches média, thème Orelle, barre des tâches, raccourcis vers les pages `ms-settings:` exactes
 - ✅ Masquage automatique de la barre des tâches (API AppBar `ABM_SETSTATE`, état d’origine restauré à la fermeture et après un plantage)
 - ✅ Option « Accélération matérielle » (désactivée : ≈ 100 Mo de moins)
 - 🟡 Multimédia : contrôle par touches média universelles ; le titre en cours (WinRT GSMTC) n’est pas encore affiché
