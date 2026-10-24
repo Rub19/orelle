@@ -25,12 +25,19 @@ Légende : ✅ implémenté et vérifié · 🟡 partiel · ⬜ à faire
 - ✅ Raccourci global configurable (Alt+Espace par défaut), enregistreur de raccourci avec détection de conflit
 - ✅ Apps, fenêtres ouvertes, fichiers & dossiers (index local + éléments récents Windows), Paramètres Windows (44 pages), actions système (confirmation pour veille / redémarrage / arrêt / déconnexion), calculatrice sûre, conversions d’unités, URL, recherche web (moteur au choix), commandes personnalisées à mot-clé, historique du presse-papiers (opt-in, mémoire seule)
 - ✅ Classement fuzzy + fréquence/récence, favoris (Ctrl+D), historique, aperçu (miniatures Windows), navigation clavier complète, Ctrl+1…9, épingler au Dock (Ctrl+P)
-- ⬜ Scripts autorisés (liste blanche + confirmation à la première exécution)
+- ✅ Scripts autorisés (.ps1 / .bat / .cmd ajoutés par l’utilisateur, mot-clé, confirmation à la première exécution et à chaque modification du fichier via SHA-256)
 - ⬜ API d’extensions du launcher (→ phase 6)
 
-## Phase 4 — Widgets, centre de contrôle ⬜
-- Widgets : fenêtres « bureau » (WorkerW) persistantes, déplaçables / redimensionnables. Données : CPU/RAM/disque/réseau via Node + `GetSystemTimes`, batterie via `GetSystemPowerStatus`, médias via `GlobalSystemMediaTransportControlsSessionManager` (WinRT → helper).
-- Centre de contrôle : volume (Core Audio via helper), luminosité (WMI `WmiMonitorBrightnessMethods`, portables uniquement), Wi-Fi / Bluetooth → raccourcis vers `ms-settings:` quand Windows ne permet pas de les piloter de façon fiable.
+## Phase 4 — Widgets, centre de contrôle ✅
+- ✅ Couche de widgets unique (un seul processus de rendu), rattachée au bureau : sous les fenêtres, visible avec Win+D, click-through hors des widgets
+- ✅ 13 widgets : horloge (numérique / analogique / minimale), calendrier, météo (Open-Meteo, sans clé), système (CPU, RAM, disque + courbe), réseau (débits), batterie, multimédia (touches média), notes, tâches, minuteur / chrono (notification), apps récentes, raccourcis (glisser-déposer), temps d’écran par application
+- ✅ Mode édition : déplacer (grille 8 px, Alt = libre), redimensionner, opacité, style, masquer, supprimer, ajouter ; tout est persistant
+- ✅ Centre de contrôle (Ctrl+Alt+C, Dock, zone de notification) : volume et sourdine réels (Core Audio en COM), périphérique de sortie, luminosité (WMI, portables), Wi-Fi (SSID, signal), batterie, touches média, thème NOVA, barre des tâches, raccourcis vers les pages `ms-settings:` exactes
+- ✅ Masquage automatique de la barre des tâches (API AppBar `ABM_SETSTATE`, état d’origine restauré à la fermeture et après un plantage)
+- ✅ Option « Accélération matérielle » (désactivée : ≈ 100 Mo de moins)
+- 🟡 Multimédia : contrôle par touches média universelles ; le titre en cours (WinRT GSMTC) n’est pas encore affiché
+- 🟡 GPU : pas de mesure d’utilisation (aucune API publique légère) ; Bluetooth et « Ne pas déranger » ouvrent les réglages (pas d’API fiable pour les piloter)
+- ⬜ Événements de calendrier (nécessite l’accès WinRT aux rendez-vous)
 
 ## Phase 5 — Fenêtres, profils, barre de menus ⬜
 - Exposé / vue d’ensemble avec `DwmRegisterThumbnail`, recherche parmi les fenêtres (déjà disponible dans le launcher)
