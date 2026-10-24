@@ -128,6 +128,10 @@ export class SettingsController {
       return res.canceled ? null : res.filePaths[0] ?? null;
     });
 
+    ipcMain.on('settings:openApp', (e, which: unknown) => {
+      if (this.win && e.sender === this.win.webContents && (which === 'files' || which === 'monitor')) this.ctx.actions.openApp(which);
+    });
+
     ipcMain.on('settings:editWidgets', (e) => {
       if (this.win && e.sender === this.win.webContents) this.ctx.actions.editWidgets();
     });

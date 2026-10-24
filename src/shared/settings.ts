@@ -1,5 +1,5 @@
 // Default settings, migrations and normalization. Pure functions: unit tested.
-import type { AllowedScript, ControlModule, ControlModuleId, CustomCommand, DockItem, Settings, ThemeId, WidgetInstance, WidgetType } from './types';
+import type { AllowedScript, OrelleAction, ControlModule, ControlModuleId, CustomCommand, DockItem, Settings, ThemeId, WidgetInstance, WidgetType } from './types';
 
 export const SETTINGS_VERSION = 4;
 
@@ -204,8 +204,8 @@ export function sanitizeDockItem(raw: unknown): DockItem | null {
       if (typeof raw.url !== 'string' || !/^https?:\/\//i.test(raw.url)) return null;
       return { id, type: 'url', name: name || raw.url, url: raw.url.slice(0, 2048) };
     case 'orelle':
-      if (raw.action !== 'launcher' && raw.action !== 'settings' && raw.action !== 'control') return null;
-      return { id, type: 'orelle', name: name || 'Orelle', action: raw.action };
+      if (!['launcher', 'settings', 'control', 'files', 'monitor'].includes(raw.action as string)) return null;
+      return { id, type: 'orelle', name: name || 'Orelle', action: raw.action as OrelleAction };
     default:
       return null;
   }

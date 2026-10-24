@@ -7,13 +7,14 @@ import { el, orelle, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
 
-type Section = 'general' | 'appearance' | 'dock' | 'launcher' | 'widgets' | 'privacy' | 'backup' | 'about';
+type Section = 'general' | 'appearance' | 'dock' | 'launcher' | 'widgets' | 'apps' | 'privacy' | 'backup' | 'about';
 const SECTIONS: { id: Section; glyph: string; color: string }[] = [
   { id: 'general', glyph: 'sliders', color: '#8e8e93' },
   { id: 'appearance', glyph: 'palette', color: '#bf5af2' },
   { id: 'dock', glyph: 'dock', color: '#0a84ff' },
   { id: 'launcher', glyph: 'search', color: '#5e5ce6' },
   { id: 'widgets', glyph: 'grid', color: '#ff375f' },
+  { id: 'apps', glyph: 'folder', color: '#f2b33d' },
   { id: 'privacy', glyph: 'shield', color: '#30d158' },
   { id: 'backup', glyph: 'archive', color: '#ff9f0a' },
   { id: 'about', glyph: 'info', color: '#64d2ff' },
@@ -223,6 +224,11 @@ function dockItemsGroup(): HTMLElement[] {
       await update({ dock: { items: [...settings.dock.items, { id: crypto.randomUUID(), type: 'folder', name, path: p }] } });
       rerender();
     }, 'btn', 'folder'),
+    button(t('settings.dock.addTools'), async () => {
+      const have = new Set(settings.dock.items.map((i) => (i.type === 'orelle' ? i.action : '')));
+      const add = (['files', 'monitor'] as const).filter((a) => !have.has(a)).map((a) => ({ id: `orelle-${a}`, type: 'orelle' as const, name: a, action: a }));
+      if (add.length) { await update({ dock: { items: [...settings.dock.items, ...add] } }); rerender(); }
+    }, 'btn', 'grid'),
     button(t('settings.dock.addSeparator'), () => void update({ dock: { items: [...settings.dock.items, { id: crypto.randomUUID(), type: 'separator' }] } }).then(rerender), 'btn', 'separator'),
   );
   const parts: HTMLElement[] = [list, toolbar];
@@ -497,8 +503,32 @@ function pageWidgets(): HTMLElement[] {
   ];
 }
 
-function pageLauncher(): HTMLElement[] {
-  const l = settings.launcher;
+function pageApps(): HTMLElement[] {
+  const f = settings.files;
+  const m = settings.monitor;
+  return [
+    ...group(
+      'settings.apps.files',
+      row('settings.apps.openFolders', toggle(f.openFoldersInOrelle, (v) => void update({ files: { openFoldersInOrelle: v } })), 'settings.apps.openFolders.desc'),
+      row('settings.apps.showHidden', toggle(f.showHidden, (v) => void update({ files: { showHidden: v } }))),
+      row('settings.apps.view', segmented([
+        { value: 'grid', label: t('files.view.grid') },
+        { value: 'list', label: t('files.view.list') },
+        { value: 'details', label: t('files.view.details') },
+      ], f.view, (v) => void update({ files: { view: v } }))),
+      row('settings.apps.openFiles', button(t('settings.apps.openFiles'), () => orelle.settings.openApp('files'), 'btn', 'folder')),
+    ),
+    ...group(
+      'settings.apps.monitor',
+      row('settings.apps.alerts', toggle(m.alerts, (v) => void update({ monitor: { alerts: v } })), 'settings.apps.alerts.desc'),
+      row('settings.apps.cpuAlert', slider(50, 100, 5, m.cpuAlert, (v) => `${v} %`, (v) => void update({ monitor: { cpuAlert: v } }))),
+      row('settings.apps.memAlert', slider(50, 100, 5, m.memAlert, (v) => `${v} %`, (v) => void update({ monitor: { memAlert: v } }))),
+      row('settings.apps.openMonitor', button(t('settings.apps.openMonitor'), () => orelle.settings.openApp('monitor'), 'btn', 'chart')),
+    ),
+  ];
+}
+
+function pageLauncher(): HTMLElement[] {  const l = settings.launcher;
   const providers = Object.keys(l.providers) as (keyof LauncherProviders)[];
   const engineValue = ENGINES.some((e) => e.value === l.webSearchUrl) ? l.webSearchUrl : ENGINES[0].value;
   return [
@@ -595,6 +625,7 @@ const PAGES: Record<Section, () => HTMLElement[]> = {
   dock: pageDock,
   launcher: pageLauncher,
   widgets: pageWidgets,
+  apps: pageApps,
   privacy: pagePrivacy,
   backup: pageBackup,
   about: pageAbout,

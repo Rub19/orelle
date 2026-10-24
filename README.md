@@ -1,9 +1,9 @@
-# Orelle
+<p align="center"><img src="resources/brand/png/wordmark-dark-800.png" alt="Orelle" width="360"></p>
 
-Une couche d’expérience premium pour Windows 11 : un **Dock** inspiré de macOS, un **launcher** universel façon Raycast
-et des **Préférences** complètes. Elle fonctionne au-dessus de Windows, sans le modifier.
+**Orelle** est une couche d’expérience premium pour Windows 11. Elle combine un Dock inspiré de macOS, un launcher universel, des widgets de bureau, un centre de contrôle et ses propres applications (Fichiers, Moniteur d’activité). Elle fonctionne au-dessus de Windows, sans le remplacer ni le modifier de façon irréversible.
 
-> v0.1 : phases 1 à 3 de la [feuille de route](docs/ROADMAP.md). Choix techniques et limites : [architecture](docs/ARCHITECTURE.md).
+> Le nom vient d’*oriel*, une fenêtre en baie qui s’avance hors de la façade : une meilleure fenêtre sur Windows.
+> Feuille de route : [docs/ROADMAP.md](docs/ROADMAP.md) · Choix techniques et limites : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Démarrer
 
@@ -12,65 +12,63 @@ npm install
 npm start
 ```
 
-Au premier lancement, Orelle indexe vos applications, construit un Dock à partir de celles qui sont installées
-et ouvre les Préférences. Ensuite, Orelle reste en arrière-plan (icône dans la zone de notification).
+Au premier lancement, Orelle indexe vos applications, construit un Dock à partir de celles qui sont installées, place deux widgets et ouvre les Préférences. Ensuite, Orelle reste en arrière-plan, avec une icône dans la zone de notification.
 
 | Script | Rôle |
 |---|---|
 | `npm start` | Compile puis lance Orelle |
 | `npm run dev` | Idem, avec journaux détaillés dans la console |
 | `npm test` | Tests unitaires (Vitest) |
-| `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie les intégrations réelles (Win32, index, Dock, launcher) |
+| `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie 21 intégrations réelles (Win32, Core Audio, PDH, Dock, launcher, widgets, Fichiers, Moniteur…) |
 | `npm run check` | Typecheck + tests + smoke test |
-| `npm run icons` | Régénère l’icône de l’application |
+| `npm run brand` | Régénère toutes les ressources graphiques depuis `resources/brand/*.svg` |
 
-Options : `--orelle-user-data=<dossier>` (profil isolé), `--orelle-section=dock` (ouvre une page des Préférences),
-`--orelle-quit` (arrête proprement l’instance en cours).
+Options de ligne de commande :
+- `--orelle-open=files[:chemin]`, `--orelle-open=monitor[:onglet]`, `--orelle-open=control`, `--orelle-open=launcher` : ouvrent une surface.
+- `--orelle-section=dock` : ouvre une page des Préférences.
+- `--orelle-quit` : arrête proprement l’instance en cours.
+- `--orelle-user-data=<dossier>` : utilise un profil isolé.
 
-## Utilisation
+## Ce que contient Orelle
 
-**Dock**
-- Clic : lance l’app, la met au premier plan, ou la réduit si elle est déjà active (plusieurs fenêtres : bascule).
-- Maj + clic ou clic milieu : nouvelle fenêtre. Clic droit : fenêtres ouvertes, garder / retirer, afficher dans l’Explorateur, quitter.
-- Glisser une icône pour la déplacer ; la glisser hors du Dock pour la retirer.
-- Déposer un fichier, un dossier, un raccourci ou un `.url` sur le Dock pour l’épingler.
-- Clic droit sur le fond : masquage auto, position, ajout d’éléments.
+| Module | Accès | Points clés |
+|---|---|---|
+| **Dock** | toujours visible | Grossissement, lancement réel, indicateurs, réorganisation par glisser, dépôt de fichiers, menus contextuels, réservation d’espace, masquage automatique, masquage en plein écran |
+| **Launcher** | `Alt+Espace` | Apps, fenêtres, fichiers, Paramètres Windows, calculs, conversions, commandes, scripts autorisés, presse-papiers, favoris |
+| **Centre de contrôle** | `Ctrl+Alt+C`, Dock, zone de notification | Volume réel (Core Audio), micro, luminosité, Wi-Fi, batterie, médias, thème, barre des tâches, modules réordonnables |
+| **Widgets** | bureau (visibles avec Win+D) | 13 widgets, mode édition, opacité, persistance |
+| **Fichiers** | Dock, launcher, centre de contrôle | Onglets, favoris, 3 vues, aperçu, tri, regroupement, filtres, recherche par nom et par contenu, Corbeille, archives `.zip` |
+| **Moniteur d’activité** | launcher, centre de contrôle, Fichiers | CPU, RAM, GPU, disque, réseau avec historique ; processus ; démarrage réversible ; services ; rapport de diagnostic |
+| **Préférences** | Dock, zone de notification | Tous les réglages, thèmes, raccourcis, export et import de profil |
 
-**Launcher** — `Alt + Espace` (modifiable)
+### Raccourcis
 
-| Touche | Action |
-|---|---|
-| `↑` `↓` / `Tab` | Naviguer |
-| `Entrée` | Action principale |
-| `Ctrl + Entrée` | Action secondaire (afficher dans le dossier…) |
-| `Ctrl + 1…9` | Ouvrir le n-ième résultat |
-| `Ctrl + D` | Ajouter / retirer des favoris |
-| `Ctrl + P` | Épingler l’application au Dock |
-| `Échap` | Effacer, puis fermer |
+**Launcher** : `↑ ↓` naviguer · `Entrée` ouvrir · `Ctrl+Entrée` action secondaire · `Ctrl+1…9` · `Ctrl+D` favori · `Ctrl+P` épingler au Dock · `Échap` fermer.
 
-Exemples : `spot` · `2*(3+4)^2` · `10 km en mi` · `72 f to c` · `wifi` · `verrouiller` · `gh electron` · `github.com` · `clip` (si l’historique du presse-papiers est activé).
+**Fichiers** :
+- `Ctrl+T` / `Ctrl+W` : nouvel onglet / fermer l’onglet · `Ctrl+N` : nouvelle fenêtre.
+- `Ctrl+Maj+N` : nouveau dossier · `F2` : renommer · `Suppr` : Corbeille · `Maj+Suppr` : suppression définitive (avec confirmation).
+- `Ctrl+C/X/V` : copier, couper, coller · `Espace` : aperçu · `Ctrl+1/2/3` : vues · `Ctrl+H` : fichiers masqués.
+- `Ctrl+F` : filtrer (`Entrée` cherche récursivement, `Alt+Entrée` cherche aussi dans le contenu) · `Ctrl+L` : saisir un chemin.
+- `Alt+←/→/↑` : précédent, suivant, dossier parent · `F5` : actualiser · taper des lettres sélectionne l’élément correspondant.
 
 ## Sécurité et confidentialité
 
-- Aucun droit administrateur, aucune modification du registre (sauf le démarrage auto, si vous l’activez), aucune commande arbitraire.
-- Les seuls processus lancés sont les applications que vous ouvrez, le script PowerShell de lecture du Shell (`resources/helpers/shell-helper.ps1`, lecture seule) et `shutdown.exe` avec des arguments fixes, après confirmation.
-- Rien n’est envoyé sur Internet. Une recherche web part vers le moteur choisi seulement quand vous la validez.
-- L’historique du presse-papiers est désactivé par défaut, conservé en mémoire uniquement.
+- Aucun droit administrateur, aucune donnée envoyée à un service externe, sauf la météo (Open-Meteo, coordonnées de la ville choisie) et les recherches web que vous validez.
+- Orelle ne modifie la configuration de Windows que sur votre demande, toujours de façon réversible :
+  - démarrage automatique : clé Run de votre compte ;
+  - masquage auto de la barre des tâches : API AppBar, état d’origine restauré ;
+  - applis au démarrage : même indicateur que Windows, avec un journal des changements pour tout annuler.
+- Suppression de fichiers : Corbeille par défaut. La suppression définitive demande une confirmation explicite.
+- Arrêt de processus : confirmation obligatoire, et refus pour les processus essentiels de Windows.
+- Scripts : uniquement ceux que vous ajoutez, avec confirmation à la première exécution et après chaque modification (SHA-256).
 
 ## Désinstallation
 
-1. Préférences → Général : désactiver « Lancer Orelle à l’ouverture de session » (ou `Orelle --orelle-quit`).
-2. Supprimer le dossier du projet et `%APPDATA%\Orelle`.
+1. Dans Préférences › Général, désactivez « Lancer Orelle à l’ouverture de session » et « Masquer automatiquement la barre des tâches ».
+2. Dans Moniteur › Démarrage, cliquez sur « Annuler mes modifications » si vous en avez fait.
+3. Quittez Orelle, puis supprimez le dossier du projet et `%APPDATA%\Orelle`.
 
-Orelle ne laisse rien d’autre sur le système. L’espace réservé par le Dock est libéré dès que l’application s’arrête.
+## Identité visuelle
 
-## Structure
-
-```
-src/shared     logique pure et testée : réglages/migrations, fuzzy, calcul, unités, modèle du Dock, i18n
-src/main       processus principal : services Windows, contrôleurs des fenêtres, IPC
-src/preload    pont unique et typé vers les interfaces
-src/renderer   dock / launcher / settings + design system (common/)
-resources      script Shell en lecture seule, icônes générées
-tests          Vitest
-```
+Les sources se trouvent dans `resources/brand` : icône sombre et claire, symbole couleur et monochrome, logotypes. `npm run brand` génère les PNG et l’ICO Windows dans `resources/icons` et `resources/brand/png`.

@@ -38,6 +38,8 @@ function artFor(e: DockEntry): HTMLElement {
 
 function fallbackArt(e: DockEntry): HTMLElement {
   if (e.kind === 'orelle' && e.action === 'control') return el('div', { class: 'art control', html: glyph('sliders') });
+  if (e.kind === 'orelle' && e.action === 'files') return el('div', { class: 'art files', html: glyph('folder') });
+  if (e.kind === 'orelle' && e.action === 'monitor') return el('div', { class: 'art monitor', html: glyph('chart') });
   if (e.kind === 'orelle' && e.action === 'settings') return el('div', { class: 'art control', html: glyph('settings') });
   // Orelle's own launcher button uses the app icon itself.
   if (e.kind === 'orelle') return el('img', { src: '../icons/orelle-128.png', alt: '', draggable: 'false' });

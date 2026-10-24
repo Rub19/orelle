@@ -105,6 +105,9 @@ body {
 .art.orelle .glyph { fill: #fff; stroke: none; }
 .art.control { background: linear-gradient(145deg, #636366, #2c2c2e); }
 .art.control .glyph { stroke-width: 2.1; }
+/* Orelle's own apps: brand ink tiles with amber glyphs, matching the app icon. */
+.art.files, .art.monitor { background: linear-gradient(160deg, #23262f, var(--brand-ink)); color: var(--brand-amber); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25); }
+.art.files .glyph, .art.monitor .glyph { stroke-width: 2; }
 .art.url { background: linear-gradient(145deg, #3aa0ff, #1b5fd6); }
 .art.folder { background: linear-gradient(145deg, #5ac8fa, #1e88e5); }
 .art.file { background: linear-gradient(145deg, #a1a1aa, #6b6b73); }

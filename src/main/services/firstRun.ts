@@ -24,6 +24,7 @@ export function buildDefaultDock(index: AppIndex): DockItem[] {
   const items: DockItem[] = [
     { id: 'orelle-launcher', type: 'orelle', name: 'Launcher', action: 'launcher' },
     { id: 'orelle-control', type: 'orelle', name: app.getLocale().startsWith('fr') ? 'Centre de contrôle' : 'Control Center', action: 'control' },
+    { id: 'orelle-files', type: 'orelle', name: 'Files', action: 'files' },
   ];
   const used = new Set<string>();
   for (const c of CANDIDATES) {

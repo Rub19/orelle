@@ -260,7 +260,7 @@ export class DockController {
     const s = this.ctx.settings.get();
     const recents = this.ctx.usage.recent('app:', 12).map((r) => ({ key: r.id, name: r.title, ...(r.ref ?? {}) }));
     // Orelle's own buttons are always labelled in the current language.
-    const orelleLabel = { launcher: this.ctx.t('dock.launcher'), control: this.ctx.t('control.title'), settings: this.ctx.t('dock.settings') };
+    const orelleLabel = { launcher: this.ctx.t('dock.launcher'), control: this.ctx.t('control.title'), settings: this.ctx.t('dock.settings'), files: this.ctx.t('files.title'), monitor: this.ctx.t('monitor.title') };
     const composed = composeDock({
       items: s.dock.items.map((i) => (i.type === 'orelle' ? { ...i, name: orelleLabel[i.action] } : i)),
       windows: this.ctx.tracker.list(),
@@ -351,6 +351,7 @@ export class DockController {
     if (item?.type === 'orelle') {
       if (item.action === 'launcher') this.ctx.actions.toggleLauncher();
       else if (item.action === 'control') this.ctx.actions.toggleControlCenter();
+      else if (item.action === 'files' || item.action === 'monitor') this.ctx.actions.openApp(item.action);
       else this.ctx.actions.openSettings();
       return;
     }

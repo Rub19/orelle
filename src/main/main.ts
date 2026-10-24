@@ -32,6 +32,7 @@ import { WidgetsController } from './windows/widgetsController';
 import { AppsController } from './windows/appsController';
 import { FileService } from './services/fileService';
 import { MonitorService } from './services/monitorService';
+import { AlertService } from './services/alertService';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
 const SMOKE = process.argv.includes('--orelle-smoke');
@@ -123,6 +124,7 @@ async function main() {
 
   const scripts = new ScriptService(ctx);
   const orelleApps = new AppsController(ctx, new FileService(ctx, files), new MonitorService(ctx));
+  const alerts = new AlertService(ctx, system, () => orelleApps.openMonitor());
   const search = new SearchService(ctx, files, clip, scripts);
   const dock = new DockController(ctx);
   const launcher = new LauncherController(ctx, search);
@@ -184,6 +186,7 @@ async function main() {
   tray.sync();
   syncLoginItem(settings.get());
   syncHotkeys(settings.get());
+  alerts.sync();
   if (settings.get().privacy.clipboardHistory && launcher.window) clip.enable(launcher.window);
   // Close the splash once the Dock is painted (never sooner than its short intro animation).
   if (splash) {
@@ -237,6 +240,7 @@ async function main() {
     tray.sync();
     if (next.general.launchAtLogin !== prev.general.launchAtLogin) syncLoginItem(next);
     if (next.general.hideTaskbar !== prev.general.hideTaskbar) taskbar.apply(next.general.hideTaskbar);
+    alerts.sync();
     if (next.launcher.enabled !== prev.launcher.enabled || next.launcher.hotkey !== prev.launcher.hotkey || next.controlCenter.hotkey !== prev.controlCenter.hotkey) syncHotkeys(next);
     if (next.appearance.effects !== prev.appearance.effects) {
       launcher.onEffectsChanged();
@@ -322,7 +326,7 @@ async function main() {
   app.on('before-quit', shutdown);
   process.on('exit', () => dock.releaseAppBarSync());
 
-  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system }, shutdown);
+  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps }, shutdown);
 }
 
 function showSplash(firstRun: boolean, lang: 'fr' | 'en'): BrowserWindow {
@@ -419,7 +423,7 @@ function registerSharedIpc(
 
 async function runSmoke(
   ctx: OrelleContext,
-  c: { dock: DockController; launcher: LauncherController; search: SearchService; files: FileIndex; widgets: WidgetsController; control: ControlCenterController; system: SystemService },
+  c: { dock: DockController; launcher: LauncherController; search: SearchService; files: FileIndex; widgets: WidgetsController; control: ControlCenterController; system: SystemService; apps: AppsController },
   shutdown: () => void,
 ) {
   const report: Record<string, unknown> = { ok: false };
@@ -475,6 +479,20 @@ async function runSmoke(
     c.control.hide();
     await c.files.build();
     check('file index', c.files.ready);
+    // Files app backend: list the home folder, resolve places.
+    const home = await c.apps.files.list(app.getPath('home'));
+    check('files: list home', home.ok && home.entries.length > 0, home.ok ? { entries: home.entries.length } : home);
+    check('files: places', c.apps.files.places().some((p) => p.kind === 'drive'));
+    // Monitor backend: one real sample of processes and counters.
+    const sample = await new Promise<import('../shared/appTypes').MonitorSampleDto | null>((resolve) => {
+      const timer = setTimeout(() => resolve(null), 6000);
+      c.apps.monitor.once('sample', (s) => { clearTimeout(timer); resolve(s); });
+      c.apps.monitor.start();
+    });
+    c.apps.monitor.stop();
+    check('monitor: processes', !!sample && sample.processes.length > 20, sample && { processes: sample.processes.length, gpu: sample.gpu, diskBusy: sample.diskBusy, netDown: sample.netDown });
+    const startup = await c.apps.monitor.startupItems();
+    check('monitor: startup apps readable', Array.isArray(startup), { count: startup.length });
     // Memory of every Orelle process (KB → MB), after the UI is fully up.
     // Idle footprint after closing the control center (created on demand, then released).
     c.control.release();

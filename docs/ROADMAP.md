@@ -1,56 +1,49 @@
 # Orelle — Feuille de route
 
-Légende : ✅ implémenté et vérifié · 🟡 partiel · ⬜ à faire
+Légende : ✅ implémenté et vérifié sur Windows · 🟡 partiel · ⬜ à faire
 
-## Phase 1 — Base, design system, paramètres persistants ✅
-- ✅ Projet Electron + TypeScript, build esbuild, CSP, renderers sandboxés
-- ✅ Design system : tokens, 5 thèmes (Sombre, Clair, Minuit, Graphite, Aurora) + Système, couleur d’accent libre, opacité du verre, 3 niveaux d’effets
-- ✅ Paramètres versionnés, migrations, validation stricte, écriture atomique + .bak, export / import / réinitialisation
-- ✅ Interface FR / EN (auto selon la langue du système)
-- ✅ Journaux, instance unique, icône de zone de notification, démarrage auto opt-in
+## Fondations ✅
+- ✅ Electron + TypeScript, renderers sandboxés, CSP stricte, IPC vérifié par fenêtre et par groupe de réglages
+- ✅ Réglages versionnés (v4) avec migrations, validation stricte, écriture atomique, export et import de profil
+- ✅ Interface FR / EN, journaux, instance unique, ligne de commande (`--orelle-open`, `--orelle-quit`)
+- ✅ Identité Orelle : nom, logo (sombre, clair, monochrome, logotype), ICO, écran de démarrage, accent ambre, contraste conforme WCAG
+- ✅ Migration automatique du profil, du démarrage auto et des réglages depuis l’ancien nom NOVA
 
-## Phase 2 — Dock ✅
-- ✅ Dock flottant, grossissement macOS, infobulles, animations d’apparition / disparition / lancement (rebond)
-- ✅ Lancement réel (Win32 + Store), indicateur « en cours », pastille d’accent pour l’app active
-- ✅ Clic : lancer → focus → réduire ; plusieurs fenêtres → bascule ; Maj/clic milieu : nouvelle instance
-- ✅ Apps ouvertes non épinglées, section facultative « récentes », zone facultative des fenêtres réduites
-- ✅ Glisser pour réorganiser, glisser hors du Dock pour retirer, dépôt de fichiers / dossiers / raccourcis / .url
-- ✅ Menus contextuels (fenêtres, nouvelle fenêtre, garder / retirer, afficher dans l’Explorateur, quitter)
-- ✅ Séparateurs, dossiers, fichiers, sites web
-- ✅ Position bas / gauche / droite, taille, grossissement, espacement, masquage auto, choix de l’écran
-- ✅ Réservation d’espace (AppBar), masquage pendant le plein écran
-- 🟡 « Mode compact / étendu » : couvert par taille + grossissement ; pas de préréglage dédié
+## Dock ✅
+- ✅ Grossissement, lancement réel (Win32 et Store, y compris réduites), indicateurs, réorganisation, dépôt de fichiers, menus contextuels
+- ✅ Positions, tailles, masquage automatique, réservation d’espace (AppBar, libérée à toute sortie), masquage en plein écran
+- ✅ Boutons intégrés : launcher, centre de contrôle, Fichiers, Moniteur
 
-## Phase 3 — Launcher ✅
-- ✅ Raccourci global configurable (Alt+Espace par défaut), enregistreur de raccourci avec détection de conflit
-- ✅ Apps, fenêtres ouvertes, fichiers & dossiers (index local + éléments récents Windows), Paramètres Windows (44 pages), actions système (confirmation pour veille / redémarrage / arrêt / déconnexion), calculatrice sûre, conversions d’unités, URL, recherche web (moteur au choix), commandes personnalisées à mot-clé, historique du presse-papiers (opt-in, mémoire seule)
-- ✅ Classement fuzzy + fréquence/récence, favoris (Ctrl+D), historique, aperçu (miniatures Windows), navigation clavier complète, Ctrl+1…9, épingler au Dock (Ctrl+P)
-- ✅ Scripts autorisés (.ps1 / .bat / .cmd ajoutés par l’utilisateur, mot-clé, confirmation à la première exécution et à chaque modification du fichier via SHA-256)
-- ⬜ API d’extensions du launcher (→ phase 6)
+## Launcher ✅
+- ✅ Apps, fenêtres, fichiers, Paramètres Windows, actions système et Orelle, calculs, conversions, commandes, scripts autorisés, presse-papiers, favoris, aperçu
 
-## Phase 4 — Widgets, centre de contrôle ✅
-- ✅ Couche de widgets unique (un seul processus de rendu), rattachée au bureau : sous les fenêtres, visible avec Win+D, click-through hors des widgets
-- ✅ 13 widgets : horloge (numérique / analogique / minimale), calendrier, météo (Open-Meteo, sans clé), système (CPU, RAM, disque + courbe), réseau (débits), batterie, multimédia (touches média), notes, tâches, minuteur / chrono (notification), apps récentes, raccourcis (glisser-déposer), temps d’écran par application
-- ✅ Mode édition : déplacer (grille 8 px, Alt = libre), redimensionner, opacité, style, masquer, supprimer, ajouter ; tout est persistant
-- ✅ Centre de contrôle (Ctrl+Alt+C, Dock, zone de notification) : volume et sourdine réels (Core Audio en COM), périphérique de sortie, luminosité (WMI, portables), Wi-Fi (SSID, signal), batterie, touches média, thème Orelle, barre des tâches, raccourcis vers les pages `ms-settings:` exactes
-- ✅ Masquage automatique de la barre des tâches (API AppBar `ABM_SETSTATE`, état d’origine restauré à la fermeture et après un plantage)
-- ✅ Option « Accélération matérielle » (désactivée : ≈ 100 Mo de moins)
-- 🟡 Multimédia : contrôle par touches média universelles ; le titre en cours (WinRT GSMTC) n’est pas encore affiché
-- 🟡 GPU : pas de mesure d’utilisation (aucune API publique légère) ; Bluetooth et « Ne pas déranger » ouvrent les réglages (pas d’API fiable pour les piloter)
-- ⬜ Événements de calendrier (nécessite l’accès WinRT aux rendez-vous)
+## Centre de contrôle ✅
+- ✅ Modules réordonnables, en trois tailles, masquables (mode « Personnaliser »)
+- ✅ Volume et sourdine, sourdine du micro (Core Audio), luminosité (WMI), Wi-Fi, batterie, touches média, thème, barre des tâches, mini-moniteur, outils Orelle
+- 🟡 Bluetooth, Ne pas déranger, éclairage nocturne, mode avion : raccourcis vers les pages `ms-settings:` exactes (aucune API publique fiable pour les piloter)
+- ⬜ Changement de périphérique audio (aucune API publique : seule l’interface non documentée `IPolicyConfig` le permet)
 
-## Phase 5 — Fenêtres, profils, barre de menus ⬜
-- Exposé / vue d’ensemble avec `DwmRegisterThumbnail`, recherche parmi les fenêtres (déjà disponible dans le launcher)
-- Zones de placement + raccourcis (SetWindowPos), sauvegarde / restauration de dispositions
-- Profils (Gaming, Dev, Streaming, Études) = ensembles Dock + dispositions + apps à lancer
-- Barre de menus supérieure en AppBar `ABE_TOP`, éléments configurables
-- Bureaux virtuels : uniquement via `IVirtualDesktopManager` public (pas de faux bureaux)
+## Widgets ✅
+- ✅ 13 widgets, couche unique rattachée au bureau, mode édition, persistance
+- 🟡 Multimédia sans titre du morceau ; pas d’événements de calendrier
 
-## Phase 6 — Extensions, automatisations, IA ⬜
-- Manifeste d’extension (permissions déclarées), exécution isolée (processus utilitaire sandboxé), activation individuelle
-- Fournisseur IA configurable (aucun par défaut), consentement explicite avant tout envoi, confirmation des actions sensibles
+## Fichiers ✅
+- ✅ Onglets, fenêtres multiples, barre latérale (favoris, emplacements, volumes avec occupation), fil d’Ariane éditable
+- ✅ Vues grille, liste et détails, tri naturel, regroupement par type ou date, filtres, fichiers masqués
+- ✅ Aperçu (miniatures Windows, texte), propriétés, renommage en place, nouveau dossier ou fichier, copier, couper, coller, glisser-déposer vers et depuis d’autres apps
+- ✅ Corbeille, suppression définitive confirmée, `.zip` (création) et extraction via le `tar.exe` de Windows, recherche par nom et par contenu, progression, gestion des erreurs d’accès
+- ✅ Intégration réversible : option « Ouvrir les dossiers dans Orelle Fichiers » (Dock, launcher) ; aucune association Windows modifiée
+- ⬜ Remplacer l’Explorateur pour `Win+E` (non prévu sans mécanisme réversible fiable)
 
-## Phase 7 — Qualité, packaging ⬜
-- 🟡 Tests : 32 tests unitaires + smoke test Electron (`npm run check`)
-- ⬜ Installateur (electron-builder NSIS, installation par utilisateur, sans admin), mise à jour, signature
-- ⬜ Mesures de performance automatisées (mémoire au repos, temps d’ouverture du launcher)
+## Moniteur d’activité ✅
+- ✅ CPU, RAM, GPU (PDH), disque, réseau, avec historique et graphiques
+- ✅ Processus groupés (applications, arrière-plan, Windows) : CPU, mémoire, disque, GPU par processus, état « ne répond pas »
+- ✅ Fermeture d’app et arrêt forcé avec confirmation (processus essentiels protégés), ouverture de l’emplacement
+- ✅ Applis au démarrage réversibles (indicateur `StartupApproved`, journal, annulation), services en lecture seule, infos matérielles, rapport TXT ou JSON
+- ✅ Alertes processeur et mémoire configurables (notifications Windows)
+
+## À faire ⬜
+- Barre supérieure (AppBar `ABE_TOP`), gestion des fenêtres (zones, raccourcis de placement, vue d’ensemble avec `DwmRegisterThumbnail`), espaces de travail et profils (Gaming, Dev, Streaming, Productivité)
+- Centre de notifications Orelle, capture d’écran, gestionnaire audio détaillé, gestionnaire d’applications (désinstallation via `ms-settings:appsfeatures`)
+- Extensions déclaratives, automatisations, IA facultative (consentement explicite, aucun fournisseur par défaut)
+- Installateur NSIS par utilisateur, mises à jour, CI

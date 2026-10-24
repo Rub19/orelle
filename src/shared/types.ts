@@ -12,7 +12,7 @@ export type DockItem =
   | { id: string; type: 'orelle'; name: string; action: OrelleAction }
   | { id: string; type: 'separator' };
 
-export type OrelleAction = 'launcher' | 'settings' | 'control';
+export type OrelleAction = 'launcher' | 'settings' | 'control' | 'files' | 'monitor';
 
 export type ControlModuleId =
   | 'wifi' | 'bluetooth' | 'focus' | 'theme' | 'taskbar' | 'widgets' | 'nightlight' | 'airplane'

@@ -17,7 +17,7 @@ export class AppsController {
   private watchers = new Map<number, fs.FSWatcher>();
   private latest: MonitorSample | null = null;
 
-  constructor(private readonly ctx: OrelleContext, private readonly files: FileService, private readonly monitor: MonitorService) {
+  constructor(private readonly ctx: OrelleContext, readonly files: FileService, readonly monitor: MonitorService) {
     files.on('progress', (op) => {
       for (const w of this.filesWindows) if (!w.isDestroyed()) w.webContents.send('files:progress', op);
     });
