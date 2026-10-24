@@ -15,6 +15,7 @@ export class ControlCenterController {
   private shownAt = 0;
   private refreshTimer: NodeJS.Timeout | null = null;
   private releaseTimer: NodeJS.Timeout | null = null;
+  private statsListener = (s: unknown) => this.win?.webContents.send('control:stats', s);
 
   constructor(private readonly ctx: OrelleContext, private readonly system: SystemService, private readonly toggleWidgetsEdit: () => void) {}
 
@@ -95,11 +96,16 @@ export class ControlCenterController {
     // Volume and Wi-Fi can change outside Orelle: refresh while the panel is open only.
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.refreshTimer = setInterval(() => void this.pushState(), 4000);
+    this.system.off('stats', this.statsListener);
+    this.system.on('stats', this.statsListener);
+    this.system.subscribe('control');
   }
 
   hide() {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.refreshTimer = null;
+    this.system.off('stats', this.statsListener);
+    this.system.unsubscribe('control');
     if (this.win?.isVisible()) this.win.hide();
     // Free the renderer if the panel stays closed for a while; reopening recreates it.
     if (this.releaseTimer) clearTimeout(this.releaseTimer);
@@ -132,6 +138,7 @@ export class ControlCenterController {
     const from = (e: IpcMainEvent | IpcMainInvokeEvent) => !!this.win && e.sender === this.win.webContents;
     ipcMain.handle('control:setVolume', (e, v: unknown) => (from(e) && typeof v === 'number' ? audio.setVolume(v) : false));
     ipcMain.handle('control:setMuted', (e, v: unknown) => (from(e) ? audio.setMuted(!!v) : false));
+    ipcMain.handle('control:setMicMuted', (e, v: unknown) => (from(e) ? audio.setMicrophoneMuted(!!v) : false));
     ipcMain.on('control:setBrightness', (e, v: unknown) => {
       if (from(e) && typeof v === 'number') this.system.setBrightness(v);
     });
@@ -163,6 +170,9 @@ export class ControlCenterController {
       } else if (action === 'launcher') {
         this.hide();
         this.ctx.actions.toggleLauncher();
+      } else if (action === 'files' || action === 'monitor') {
+        this.hide();
+        this.ctx.actions.openApp(action);
       }
     });
     ipcMain.on('control:hide', (e) => {

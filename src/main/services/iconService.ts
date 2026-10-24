@@ -37,6 +37,28 @@ export class IconService extends EventEmitter {
     });
   }
 
+  private keyMap: Record<string, string> | null = null;
+  private keyMapTimer: NodeJS.Timeout | null = null;
+
+  /**
+   * Shared icon for a key (e.g. "ext:.pdf"): the first file seen with that key is used as the
+   * representative, so a folder of 2 000 PDFs costs one extraction, not 2 000.
+   */
+  getByKey(key: string, parsingName: string, urgent = false): string | null {
+    if (!this.keyMap) {
+      try { this.keyMap = JSON.parse(fs.readFileSync(path.join(this.cacheDir, 'keys.json'), 'utf8')); } catch { this.keyMap = {}; }
+    }
+    const map = this.keyMap!;
+    let rep = map[key];
+    if (!rep || (this.failed.has(rep) && rep !== parsingName)) {
+      rep = parsingName;
+      map[key] = rep;
+      if (this.keyMapTimer) clearTimeout(this.keyMapTimer);
+      this.keyMapTimer = setTimeout(() => fs.writeFile(path.join(this.cacheDir, 'keys.json'), JSON.stringify(map), () => {}), 1000);
+    }
+    return this.get(rep, urgent);
+  }
+
   fileFor(parsingName: string): string {
     const hash = createHash('sha1').update(`${parsingName.toLowerCase()}|${ICON_SIZE}`, 'utf8').digest('hex');
     return path.join(this.cacheDir, `${hash}.png`);

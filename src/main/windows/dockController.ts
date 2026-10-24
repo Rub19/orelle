@@ -355,7 +355,8 @@ export class DockController {
       return;
     }
     if (item?.type === 'folder' || item?.type === 'file') {
-      await safeLaunch(() => openPath(item.path), item.path);
+      if (item.type === 'folder' && this.ctx.settings.get().files.openFoldersInOrelle && !item.path.startsWith('shell:')) this.ctx.actions.openApp('files', item.path);
+      else await safeLaunch(() => openPath(item.path), item.path);
       return;
     }
     if (item?.type === 'url') {

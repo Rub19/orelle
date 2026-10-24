@@ -14,6 +14,17 @@ export type DockItem =
 
 export type OrelleAction = 'launcher' | 'settings' | 'control';
 
+export type ControlModuleId =
+  | 'wifi' | 'bluetooth' | 'focus' | 'theme' | 'taskbar' | 'widgets' | 'nightlight' | 'airplane'
+  | 'volume' | 'brightness' | 'media' | 'battery' | 'system' | 'tools' | 'links';
+
+export interface ControlModule {
+  id: ControlModuleId;
+  visible: boolean;
+  /** Grid span: s = a third of a row, m = half, l = full row. */
+  size: 's' | 'm' | 'l';
+}
+
 export interface AllowedScript {
   id: string;
   name: string;
@@ -134,8 +145,23 @@ export interface Settings {
     seeded: boolean;
     weather: { city: string; latitude: number | null; longitude: number | null; unit: 'c' | 'f' };
   };
+  files: {
+    favorites: { name: string; path: string }[];
+    showHidden: boolean;
+    view: 'grid' | 'list' | 'details';
+    sort: { key: 'name' | 'mtime' | 'size' | 'kind'; desc: boolean };
+    /** Folders opened from the Dock / launcher open in Orelle Files instead of File Explorer. */
+    openFoldersInOrelle: boolean;
+  };
+  monitor: {
+    alerts: boolean;
+    cpuAlert: number;
+    memAlert: number;
+  };
   controlCenter: {
     hotkey: string;
+    /** Module order, size and visibility, edited from the panel's "Customize" mode. */
+    modules: ControlModule[];
   };
 }
 
@@ -154,6 +180,7 @@ export interface SystemStats {
 
 export interface ControlState {
   volume: { level: number; muted: boolean; device: string } | null;
+  microphone: { level: number; muted: boolean; device: string } | null;
   brightness: number | null;
   wifi: { connected: boolean; ssid: string | null; signal: number | null } | null;
   battery: SystemStats['battery'];
@@ -267,7 +294,7 @@ export interface AppInfo {
   icon: string | null;
 }
 
-export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash';
+export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor';
 
 export interface Bootstrap {
   surface: SurfaceKind;

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' orelle-icon: data:; font-src 'self'" />
+    <title>Fichiers</title>
+    <link rel="stylesheet" href="files.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar" id="sidebar"></aside>
+      <section class="main">
+        <header class="titlebar">
+          <div class="tabs" id="tabs"></div>
+        </header>
+        <div class="toolbar" id="toolbar"></div>
+        <div class="filters" id="filters"></div>
+        <div class="body">
+          <div class="content" id="content" tabindex="0"></div>
+          <aside class="preview" id="preview" hidden></aside>
+        </div>
+        <footer class="status" id="status"></footer>
+      </section>
+    </div>
+    <div id="menu" class="menu" hidden></div>
+    <div id="modal" class="modal-wrap" hidden></div>
+    <div id="toasts" class="toasts"></div>
+    <script src="files.js"></script>
+  </body>
+</html>

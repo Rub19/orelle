@@ -1,5 +1,5 @@
 // Default settings, migrations and normalization. Pure functions: unit tested.
-import type { AllowedScript, CustomCommand, DockItem, Settings, ThemeId, WidgetInstance, WidgetType } from './types';
+import type { AllowedScript, ControlModule, ControlModuleId, CustomCommand, DockItem, Settings, ThemeId, WidgetInstance, WidgetType } from './types';
 
 export const SETTINGS_VERSION = 4;
 
@@ -24,6 +24,43 @@ export const WIDGET_SIZES: Record<WidgetType, { w: number; h: number }> = {
 
 export const THEMES: ThemeId[] = ['system', 'dark', 'light', 'midnight', 'graphite', 'aurora'];
 export const ACCENTS = ['#f2b33d', '#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#64d2ff', '#8e8e93'];
+
+export const CONTROL_MODULES: ControlModule[] = [
+  { id: 'wifi', visible: true, size: 's' },
+  { id: 'bluetooth', visible: true, size: 's' },
+  { id: 'focus', visible: true, size: 's' },
+  { id: 'theme', visible: true, size: 's' },
+  { id: 'nightlight', visible: true, size: 's' },
+  { id: 'taskbar', visible: true, size: 's' },
+  { id: 'volume', visible: true, size: 'l' },
+  { id: 'brightness', visible: true, size: 'l' },
+  { id: 'media', visible: true, size: 'l' },
+  { id: 'battery', visible: true, size: 'm' },
+  { id: 'system', visible: true, size: 'm' },
+  { id: 'tools', visible: true, size: 'l' },
+  { id: 'widgets', visible: false, size: 's' },
+  { id: 'airplane', visible: false, size: 's' },
+  { id: 'links', visible: true, size: 'l' },
+];
+
+export function defaultControlModules(): ControlModule[] {
+  return CONTROL_MODULES.map((m) => ({ ...m }));
+}
+
+/** Keeps the user's order/sizes, drops unknown ids and appends modules added in newer versions. */
+export function normalizeControlModules(raw: unknown): ControlModule[] {
+  const known = new Map(CONTROL_MODULES.map((m) => [m.id, m]));
+  const out: ControlModule[] = [];
+  if (Array.isArray(raw)) {
+    for (const r of raw) {
+      if (!isObj(r) || typeof r.id !== 'string' || !known.has(r.id as ControlModuleId) || out.some((o) => o.id === r.id)) continue;
+      const def = known.get(r.id as ControlModuleId)!;
+      out.push({ id: def.id, visible: bool(r.visible, def.visible), size: oneOf(r.size, ['s', 'm', 'l'] as const, def.size) });
+    }
+  }
+  for (const m of CONTROL_MODULES) if (!out.some((o) => o.id === m.id)) out.push({ ...m });
+  return out;
+}
 
 export function defaultSettings(): Settings {
   return {
@@ -82,7 +119,9 @@ export function defaultSettings(): Settings {
       seeded: false,
       weather: { city: '', latitude: null, longitude: null, unit: 'c' },
     },
-    controlCenter: { hotkey: 'Ctrl+Alt+C' },
+    files: { favorites: [], showHidden: false, view: 'grid', sort: { key: 'name', desc: false }, openFoldersInOrelle: false },
+    monitor: { alerts: false, cpuAlert: 90, memAlert: 90 },
+    controlCenter: { hotkey: 'Ctrl+Alt+C', modules: defaultControlModules() },
   };
 }
 
@@ -236,6 +275,9 @@ export function normalizeSettings(raw: unknown): Settings {
   const wg = isObj(s.widgets) ? s.widgets : {};
   const wth = isObj(wg.weather) ? wg.weather : {};
   const cc = isObj(s.controlCenter) ? s.controlCenter : {};
+  const fl = isObj(s.files) ? s.files : {};
+  const fs = isObj(fl.sort) ? fl.sort : {};
+  const mo = isObj(s.monitor) ? s.monitor : {};
   const seenWidgets = new Set<string>();
   const widgets = (Array.isArray(wg.items) ? wg.items : [])
     .map(sanitizeWidget)
@@ -313,7 +355,22 @@ export function normalizeSettings(raw: unknown): Settings {
         unit: oneOf(wth.unit, ['c', 'f'] as const, 'c'),
       },
     },
-    controlCenter: { hotkey: str(cc.hotkey, d.controlCenter.hotkey, 64) },
+    files: {
+      favorites: (Array.isArray(fl.favorites) ? fl.favorites : [])
+        .filter((x): x is Json => isObj(x) && typeof x.path === 'string' && /^[a-z]:\\/i.test(x.path as string))
+        .slice(0, 50)
+        .map((x) => ({ name: str(x.name, '', 120) || String(x.path).split('\\').filter(Boolean).pop() || String(x.path), path: String(x.path).slice(0, 1024) })),
+      showHidden: bool(fl.showHidden, d.files.showHidden),
+      view: oneOf(fl.view, ['grid', 'list', 'details'] as const, d.files.view),
+      sort: { key: oneOf(fs.key, ['name', 'mtime', 'size', 'kind'] as const, 'name'), desc: bool(fs.desc, false) },
+      openFoldersInOrelle: bool(fl.openFoldersInOrelle, d.files.openFoldersInOrelle),
+    },
+    monitor: {
+      alerts: bool(mo.alerts, d.monitor.alerts),
+      cpuAlert: Math.round(clamp(mo.cpuAlert, 50, 100, d.monitor.cpuAlert)),
+      memAlert: Math.round(clamp(mo.memAlert, 50, 100, d.monitor.memAlert)),
+    },
+    controlCenter: { hotkey: str(cc.hotkey, d.controlCenter.hotkey, 64), modules: normalizeControlModules(cc.modules) },
   };
 }
 

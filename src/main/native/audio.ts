@@ -22,7 +22,8 @@ function makeProtos() {
   };
 }
 
-function withEndpoint<T>(fn: (volume: unknown, device: unknown) => T): T | null {
+/** flow: 0 = playback (eRender), 1 = recording (eCapture). */
+function withEndpoint<T>(fn: (volume: unknown, device: unknown) => T, flow: 0 | 1 = 0): T | null {
   const api = koffiApi();
   if (!api) return null;
   protos ??= makeProtos();
@@ -32,8 +33,8 @@ function withEndpoint<T>(fn: (volume: unknown, device: unknown) => T): T | null 
   let volume: unknown = null;
   try {
     const dev: unknown[] = [null];
-    // eRender = 0, eMultimedia = 1
-    if (comCall(enumerator, 4, protos.getDefault, 0, 1, dev) !== 0 || !dev[0]) return null;
+    // role eMultimedia = 1 (eCommunications for capture would follow the call device instead)
+    if (comCall(enumerator, 4, protos.getDefault, flow, 1, dev) !== 0 || !dev[0]) return null;
     device = dev[0];
     const vol: unknown[] = [null];
     if (comCall(device, 3, protos.activate, guidBytes(IID_IAudioEndpointVolume), 0x17, null, vol) !== 0 || !vol[0]) return null;
@@ -86,4 +87,18 @@ export function setVolume(level: number): boolean {
 
 export function setMuted(muted: boolean): boolean {
   return !!withEndpoint((vol) => comCall(vol, 14, protos!.setMute, muted ? 1 : 0, null) === 0);
+}
+
+export function getMicrophone(): { muted: boolean; device: string; level: number } | null {
+  return withEndpoint((vol, dev) => {
+    const level = [0];
+    const mute = [0];
+    comCall(vol, 9, protos!.getScalar, level);
+    comCall(vol, 15, protos!.getMute, mute);
+    return { level: Math.round(level[0] * 100), muted: mute[0] !== 0, device: deviceName(dev) };
+  }, 1);
+}
+
+export function setMicrophoneMuted(muted: boolean): boolean {
+  return !!withEndpoint((vol) => comCall(vol, 14, protos!.setMute, muted ? 1 : 0, null) === 0, 1);
 }

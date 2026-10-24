@@ -153,6 +153,6 @@ export class SystemService extends EventEmitter {
 
   async controlState(): Promise<ControlState> {
     const [wifi, brightness] = await Promise.all([this.wifi(), this.brightness()]);
-    return { volume: audio.getVolume(), brightness, wifi, battery: w32.getPowerStatus() };
+    return { volume: audio.getVolume(), microphone: audio.getMicrophone(), brightness, wifi, battery: w32.getPowerStatus() };
   }
 }

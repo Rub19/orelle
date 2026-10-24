@@ -29,6 +29,9 @@ import { DockController } from './windows/dockController';
 import { LauncherController } from './windows/launcherController';
 import { SettingsController } from './windows/settingsController';
 import { WidgetsController } from './windows/widgetsController';
+import { AppsController } from './windows/appsController';
+import { FileService } from './services/fileService';
+import { MonitorService } from './services/monitorService';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
 const SMOKE = process.argv.includes('--orelle-smoke');
@@ -114,10 +117,12 @@ async function main() {
       pinToDock: (ref) => dock.pinRef(ref),
       toggleControlCenter: () => control.toggle(),
       editWidgets: () => widgets.toggleEditing(),
+      openApp: (which, arg) => (which === 'files' ? orelleApps.openFiles(arg) : orelleApps.openMonitor(arg)),
     },
   };
 
   const scripts = new ScriptService(ctx);
+  const orelleApps = new AppsController(ctx, new FileService(ctx, files), new MonitorService(ctx));
   const search = new SearchService(ctx, files, clip, scripts);
   const dock = new DockController(ctx);
   const launcher = new LauncherController(ctx, search);
@@ -155,7 +160,8 @@ async function main() {
   settingsUi.registerIpc();
   widgets.registerIpc();
   control.registerIpc();
-  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control });
+  orelleApps.registerIpc();
+  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps });
 
   // ---------- First run: build a Dock from installed apps ----------
   if (settings.firstRun || settings.get().dock.items.length === 0) {
@@ -236,6 +242,7 @@ async function main() {
       launcher.onEffectsChanged();
       control.onEffectsChanged();
       settingsUi.updateTitleBar();
+      orelleApps.updateTitleBars();
     }
     if (next.privacy.clipboardHistory !== prev.privacy.clipboardHistory) {
       if (next.privacy.clipboardHistory && launcher.window) clip.enable(launcher.window);
@@ -247,6 +254,7 @@ async function main() {
 
   nativeTheme.on('updated', () => {
     settingsUi.updateTitleBar();
+    orelleApps.updateTitleBars();
     broadcastSettings(ctx);
   });
 
@@ -357,7 +365,7 @@ function broadcastSettings(ctx: OrelleContext) {
 
 function registerSharedIpc(
   ctx: OrelleContext,
-  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController },
+  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController },
 ) {
   const surfaceOf = (wc: WebContents): SurfaceKind | null => {
     if (c.dock.window?.webContents === wc) return 'dock';
@@ -365,6 +373,8 @@ function registerSharedIpc(
     if (c.settingsUi.window?.webContents === wc) return 'settings';
     if (c.widgets.window?.webContents === wc) return 'widgets';
     if (c.control.window?.webContents === wc) return 'control';
+    if (c.apps.isFiles(wc)) return 'files';
+    if (c.apps.isMonitor(wc)) return 'monitor';
     return null;
   };
 
@@ -382,7 +392,7 @@ function registerSharedIpc(
   });
 
   // Which surface may change which top-level settings group.
-  const writable: Partial<Record<SurfaceKind, string[] | 'all'>> = { settings: 'all', dock: ['dock'], widgets: ['widgets'] };
+  const writable: Partial<Record<SurfaceKind, string[] | 'all'>> = { settings: 'all', dock: ['dock'], widgets: ['widgets'], control: ['controlCenter'], files: ['files'], monitor: ['monitor'] };
   ipcMain.handle('orelle:updateSettings', (e, patch: unknown) => {
     const surface = surfaceOf(e.sender);
     const allowed = surface ? writable[surface] : undefined;

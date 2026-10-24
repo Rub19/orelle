@@ -35,6 +35,8 @@ const ORELLE_ACTIONS: { id: string; key: StringKey; keywords: string; glyph: str
   { id: 'reindex', key: 'settings.about.reindex', keywords: 'orelle reindexer reindex applications', glyph: 'refresh' },
   { id: 'control', key: 'control.title', keywords: 'orelle centre controle control center volume luminosite brightness wifi', glyph: 'sliders' },
   { id: 'widgets', key: 'widgets.edit', keywords: 'orelle widgets bureau desktop modifier edit', glyph: 'grid' },
+  { id: 'files', key: 'files.title', keywords: 'orelle fichiers files explorateur explorer finder dossiers folders', glyph: 'folder' },
+  { id: 'monitor', key: 'monitor.title', keywords: 'orelle moniteur activite gestionnaire des taches task manager processus process cpu ram', glyph: 'chart' },
 ];
 
 const URL_RE = /^(https?:\/\/)?(localhost(:\d+)?|[\w-]+(\.[\w-]+)*\.[a-z]{2,})(:\d+)?(\/\S*)?$/i;
@@ -309,6 +311,10 @@ export class SearchService {
       case 'file':
         if (mode === 'alt') { revealPath(rest); return true; }
         record(path.basename(rest));
+        if (this.ctx.settings.get().files.openFoldersInOrelle && fs.existsSync(rest) && fs.statSync(rest).isDirectory()) {
+          this.ctx.actions.openApp('files', rest);
+          return true;
+        }
         return safeLaunch(() => openPath(rest), rest);
       case 'set':
         record(rest);
@@ -355,6 +361,7 @@ export class SearchService {
         else if (rest === 'reindex') void this.ctx.apps.refresh();
         else if (rest === 'control') this.ctx.actions.toggleControlCenter();
         else if (rest === 'widgets') this.ctx.actions.editWidgets();
+        else if (rest === 'files' || rest === 'monitor') this.ctx.actions.openApp(rest);
         return true;
       default:
         return false;

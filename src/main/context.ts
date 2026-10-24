@@ -28,5 +28,7 @@ export interface OrelleContext {
     pinToDock(ref: { appId?: string; path?: string; name: string }): void;
     toggleControlCenter(): void;
     editWidgets(): void;
+    /** Orelle's own apps (file browser, activity monitor). */
+    openApp(app: 'files' | 'monitor', arg?: string): void;
   };
 }

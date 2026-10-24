@@ -4,6 +4,7 @@ import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'ele
 import type {
   AllowedScript, AppInfo, Bootstrap, ControlState, DisplayInfo, DockLayout, DockState, ResultPreview, SearchResponse, Settings, SystemStats, WeatherData,
 } from '../shared/types';
+import type { FileEntry, FileOperation, FileProperties, FsError, MonitorSampleDto, Place, StartupItemDto } from '../shared/appTypes';
 
 type Off = () => void;
 const on = <T extends unknown[]>(channel: string, cb: (...args: T) => void): Off => {
@@ -83,11 +84,62 @@ const api = {
     onState: (cb: (s: ControlState) => void) => on('control:state', cb),
     setVolume: (v: number): Promise<boolean> => ipcRenderer.invoke('control:setVolume', v),
     setMuted: (v: boolean): Promise<boolean> => ipcRenderer.invoke('control:setMuted', v),
+    setMicMuted: (v: boolean): Promise<boolean> => ipcRenderer.invoke('control:setMicMuted', v),
+    onStats: (cb: (s: SystemStats) => void) => on('control:stats', cb),
     setBrightness: (v: number) => ipcRenderer.send('control:setBrightness', v),
     media: (key: 'playPause' | 'next' | 'previous') => ipcRenderer.send('control:media', key),
     openSettings: (uri: string) => ipcRenderer.send('control:openSettings', uri),
-    action: (a: 'toggleTheme' | 'toggleDock' | 'toggleTaskbar' | 'editWidgets' | 'lock' | 'preferences' | 'launcher') => ipcRenderer.send('control:action', a),
+    action: (a: 'toggleTheme' | 'toggleDock' | 'toggleTaskbar' | 'editWidgets' | 'lock' | 'preferences' | 'launcher' | 'files' | 'monitor') => ipcRenderer.send('control:action', a),
     hide: () => ipcRenderer.send('control:hide'),
+  },
+
+  files: {
+    startPath: (): string | null => new URLSearchParams(location.search).get('path'),
+    places: (): Promise<Place[]> => ipcRenderer.invoke('files:places'),
+    recent: (): Promise<FileEntry[]> => ipcRenderer.invoke('files:recent'),
+    list: (dir: string): Promise<{ ok: true; entries: FileEntry[] } | { ok: false; error: FsError }> => ipcRenderer.invoke('files:list', dir),
+    icons: (items: { path: string; dir: boolean }[]): Promise<Record<string, string | null>> => ipcRenderer.invoke('files:icons', items),
+    thumbnail: (p: string, size?: number): Promise<string | null> => ipcRenderer.invoke('files:thumbnail', p, size),
+    preview: (p: string): Promise<{ kind: 'image' | 'text' | 'none'; data?: string; truncated?: boolean }> => ipcRenderer.invoke('files:preview', p),
+    properties: (p: string): Promise<FileProperties | null> => ipcRenderer.invoke('files:properties', p),
+    mkdir: (dir: string, name: string): Promise<{ ok: boolean; path?: string; error?: FsError }> => ipcRenderer.invoke('files:mkdir', dir, name),
+    newFile: (dir: string, name: string): Promise<{ ok: boolean; path?: string; error?: FsError }> => ipcRenderer.invoke('files:newFile', dir, name),
+    rename: (p: string, name: string): Promise<{ ok: boolean; path?: string; error?: FsError }> => ipcRenderer.invoke('files:rename', p, name),
+    transfer: (paths: string[], dest: string, mode: 'copy' | 'move'): Promise<string | null> => ipcRenderer.invoke('files:transfer', paths, dest, mode),
+    remove: (paths: string[], permanent: boolean): Promise<string | null> => ipcRenderer.invoke('files:remove', paths, permanent),
+    archive: (kind: 'compress' | 'extract', paths: string[], dest: string): Promise<string | null> => ipcRenderer.invoke('files:archive', kind, paths, dest),
+    search: (root: string, q: string, content: boolean): Promise<FileEntry[]> => ipcRenderer.invoke('files:search', root, q, content),
+    open: (p: string): Promise<string | null> => ipcRenderer.invoke('files:open', p),
+    openWith: (p: string) => ipcRenderer.send('files:openWith', p),
+    showInExplorer: (p: string) => ipcRenderer.send('files:showInExplorer', p),
+    copyPath: (paths: string[]) => ipcRenderer.send('files:copyPath', paths),
+    newWindow: (dir?: string) => ipcRenderer.send('files:newWindow', dir),
+    terminal: (dir: string) => ipcRenderer.send('files:terminal', dir),
+    startDrag: (paths: string[]) => ipcRenderer.send('files:startDrag', paths),
+    watch: (dir: string | null) => ipcRenderer.send('files:watch', dir),
+    onChanged: (cb: (dir: string) => void) => on('files:changed', cb),
+    onProgress: (cb: (op: FileOperation) => void) => on('files:progress', cb),
+    openMonitor: () => ipcRenderer.send('files:openMonitor'),
+  },
+
+  monitor: {
+    startTab: (): string | null => new URLSearchParams(location.search).get('tab'),
+    onSample: (cb: (s: MonitorSampleDto) => void) => on('monitor:sample', cb),
+    onTab: (cb: (tab: string) => void) => on('monitor:tab', cb),
+    history: (): Promise<Omit<MonitorSampleDto, 'processes'>[]> => ipcRenderer.invoke('monitor:history'),
+    latest: (): Promise<MonitorSampleDto | null> => ipcRenderer.invoke('monitor:latest'),
+    end: (pid: number): Promise<{ ok: boolean; error?: string; canceled?: boolean }> => ipcRenderer.invoke('monitor:end', pid),
+    close: (pid: number): Promise<number> => ipcRenderer.invoke('monitor:close', pid),
+    startup: (): Promise<StartupItemDto[]> => ipcRenderer.invoke('monitor:startup'),
+    setStartup: (id: string, enabled: boolean): Promise<boolean> => ipcRenderer.invoke('monitor:startupSet', id, enabled),
+    restoreStartup: (): Promise<number> => ipcRenderer.invoke('monitor:startupRestore'),
+    journal: (): Promise<{ at: number; id: string; name: string }[]> => ipcRenderer.invoke('monitor:journal'),
+    services: (): Promise<{ name: string; display: string; state: string; start: string; pid: number }[]> => ipcRenderer.invoke('monitor:services'),
+    info: (): Promise<Record<string, unknown> | null> => ipcRenderer.invoke('monitor:info'),
+    exportReport: (): Promise<{ ok: boolean; canceled?: boolean }> => ipcRenderer.invoke('monitor:export'),
+    reveal: (p: string) => ipcRenderer.send('monitor:reveal', p),
+    openFolder: (p: string) => ipcRenderer.send('monitor:openFolder', p),
+    system: (what: 'services' | 'startup' | 'taskmgr') => ipcRenderer.send('monitor:system', what),
   },
 };
 
