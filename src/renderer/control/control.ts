@@ -77,7 +77,7 @@ const BUILD: Record<ControlModuleId, () => HTMLElement> = {
     const light = settings.appearance.theme === 'light';
     return toggleTile(light ? 'sun' : 'moon', light ? t('control.lightMode') : t('control.darkMode'), 'Orelle', !light, () => orelle.control.action('toggleTheme'));
   },
-  taskbar: () => toggleTile('taskbar', t('control.taskbar'), settings.general.hideTaskbar ? t('common.off') : t('common.on'), !settings.general.hideTaskbar, () => orelle.control.action('toggleTaskbar')),
+  taskbar: () => toggleTile('taskbar', t('control.taskbar'), t(`settings.taskbar.${settings.general.taskbarMode}` as StringKey), settings.general.taskbarMode === 'normal', () => orelle.control.action('toggleTaskbar')),
   widgets: () => toggleTile('grid', t('control.widgets'), t('widgets.edit'), false, () => orelle.control.action('editWidgets')),
   volume() {
     const vol = state?.volume;

@@ -1,0 +1,15 @@
+{
+  "id": "orelle.web-search",
+  "name": "Recherches web",
+  "version": "1.0.0",
+  "author": "Orelle",
+  "description": "Mots-clés de recherche pour quelques sites courants : tapez « wiki Lyon », « so electron » ou « map Paris ».",
+  "commands": [
+    { "id": "stackoverflow", "title": "Stack Overflow", "keyword": "so", "url": "https://stackoverflow.com/search?q={query}", "subtitle": "Rechercher sur Stack Overflow" },
+    { "id": "npm", "title": "npm", "keyword": "npm", "url": "https://www.npmjs.com/search?q={query}", "subtitle": "Paquets JavaScript" },
+    { "id": "wikipedia", "title": "Wikipédia", "keyword": "wiki", "url": "https://fr.wikipedia.org/w/index.php?search={query}", "subtitle": "Rechercher sur Wikipédia" },
+    { "id": "maps", "title": "Plans", "keyword": "map", "url": "https://www.openstreetmap.org/search?query={query}", "subtitle": "Chercher un lieu sur OpenStreetMap" },
+    { "id": "mdn", "title": "MDN Web Docs", "keyword": "mdn", "url": "https://developer.mozilla.org/search?q={query}", "subtitle": "Documentation web" },
+    { "id": "translate", "title": "Traduire", "keyword": "tr", "url": "https://www.deepl.com/translator#auto/fr/{query}", "subtitle": "Traduire avec DeepL" }
+  ]
+}

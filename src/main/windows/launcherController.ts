@@ -1,5 +1,5 @@
 // The launcher: a pre-created, hidden acrylic window shown instantly on the global shortcut.
-import { BrowserWindow, ipcMain, screen, type IpcMainInvokeEvent } from 'electron';
+import { BrowserWindow, clipboard, ipcMain, screen, type IpcMainInvokeEvent } from 'electron';
 import { randomUUID } from 'node:crypto';
 import type { OrelleContext } from '../context';
 import * as w32 from '../native/win32';
@@ -112,6 +112,12 @@ export class LauncherController {
     ipcMain.handle('launcher:execute', async (e, id: unknown, mode: unknown) => {
       if (!fromLauncher(e) || typeof id !== 'string') return false;
       // Hide first so focus returns to the target app immediately.
+      // AI questions keep the launcher open: the answer is shown in its preview pane.
+      if (id.startsWith('ai:')) {
+        const closes = await this.search.execute(id, 'primary');
+        if (closes) this.hide();
+        return true;
+      }
       const closes = !id.startsWith('sys:') || id === 'sys:lock';
       if (closes) this.hide();
       const ok = await this.search.execute(id, mode === 'alt' ? 'alt' : 'primary');
@@ -131,6 +137,9 @@ export class LauncherController {
       if (!app) return false;
       this.ctx.actions.pinToDock({ appId: app.appId, path: app.target ?? undefined, name: app.name });
       return true;
+    });
+    ipcMain.on('launcher:copy', (e, text: unknown) => {
+      if (fromLauncher(e) && typeof text === 'string') clipboard.writeText(text.slice(0, 100_000));
     });
     ipcMain.on('launcher:hide', (e) => {
       if (fromLauncher(e)) this.hide();

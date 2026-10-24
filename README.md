@@ -1,6 +1,6 @@
 <p align="center"><img src="resources/brand/png/wordmark-dark-800.png" alt="Orelle" width="360"></p>
 
-**Orelle** est une couche d’expérience premium pour Windows 11. Elle combine un Dock inspiré de macOS, un launcher universel, des widgets de bureau, un centre de contrôle et ses propres applications (Fichiers, Moniteur d’activité). Elle fonctionne au-dessus de Windows, sans le remplacer ni le modifier de façon irréversible.
+**Orelle** est une couche d’expérience premium pour Windows 11. Elle combine une barre supérieure et un Dock inspirés de macOS, un menu Orelle, un launcher universel (avec IA facultative), des widgets, un centre de contrôle et de notifications, la gestion des fenêtres, des profils d’activité, des extensions, des automatisations et ses propres applications (Fichiers, Moniteur d’activité). Elle fonctionne au-dessus de Windows, sans le remplacer ni le modifier de façon irréversible.
 
 > Le nom vient d’*oriel*, une fenêtre en baie qui s’avance hors de la façade : une meilleure fenêtre sur Windows.
 > Feuille de route : [docs/ROADMAP.md](docs/ROADMAP.md) · Choix techniques et limites : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
@@ -19,29 +19,43 @@ Au premier lancement, Orelle indexe vos applications, construit un Dock à parti
 | `npm start` | Compile puis lance Orelle |
 | `npm run dev` | Idem, avec journaux détaillés dans la console |
 | `npm test` | Tests unitaires (Vitest) |
-| `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie 21 intégrations réelles (Win32, Core Audio, PDH, Dock, launcher, widgets, Fichiers, Moniteur…) |
+| `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie 30 intégrations réelles (Win32, Core Audio, PDH, AppBar, Dock, barre supérieure, menu, notifications, launcher, extensions, profils, Fichiers, Moniteur…) |
 | `npm run check` | Typecheck + tests + smoke test |
+| `npm run dist` | Construit l’installateur Windows par utilisateur (`release/Orelle Setup <version>.exe`, sans droits administrateur) |
 | `npm run brand` | Régénère toutes les ressources graphiques depuis `resources/brand/*.svg` |
 
 Options de ligne de commande :
-- `--orelle-open=files[:chemin]`, `--orelle-open=monitor[:onglet]`, `--orelle-open=control`, `--orelle-open=launcher` : ouvrent une surface.
+- `--orelle-open=files[:chemin]`, `--orelle-open=monitor[:onglet]`, `--orelle-open=control`, `--orelle-open=launcher`, `--orelle-open=menu`, `--orelle-open=notifications` : ouvrent une surface.
 - `--orelle-section=dock` : ouvre une page des Préférences.
 - `--orelle-quit` : arrête proprement l’instance en cours.
+- `--orelle-restore-taskbar` : remet la barre des tâches Windows dans son état d’origine (utilisé par le désinstalleur).
 - `--orelle-user-data=<dossier>` : utilise un profil isolé.
 
 ## Ce que contient Orelle
 
 | Module | Accès | Points clés |
 |---|---|---|
+| **Barre supérieure** | haut de l’écran | Menu Orelle, application au premier plan avec actions de fenêtre et dispositions, profil actif, médias, CPU, réseau, volume (molette), batterie, notifications, recherche, centre de contrôle, aperçu de la barre des tâches, horloge — éléments réordonnables |
+| **Menu Orelle** | logo de la barre, touche Windows (option) | Recherche, apps épinglées et récentes, toutes les applications A–Z, profils, verrouiller / veille / redémarrer / arrêter (confirmés), accès au vrai menu Démarrer |
+| **Notifications** | horloge ou cloche de la barre | Historique local des notifications Orelle, calendrier mensuel, mode concentration, lien vers le centre Windows |
 | **Dock** | toujours visible | Grossissement, lancement réel, indicateurs, réorganisation par glisser, dépôt de fichiers, menus contextuels, réservation d’espace, masquage automatique, masquage en plein écran |
 | **Launcher** | `Alt+Espace` | Apps, fenêtres, fichiers, Paramètres Windows, calculs, conversions, commandes, scripts autorisés, presse-papiers, favoris |
 | **Centre de contrôle** | `Ctrl+Alt+C`, Dock, zone de notification | Volume réel (Core Audio), micro, luminosité, Wi-Fi, batterie, médias, thème, barre des tâches, modules réordonnables |
 | **Widgets** | bureau (visibles avec Win+D) | 13 widgets, mode édition, opacité, persistance |
 | **Fichiers** | Dock, launcher, centre de contrôle | Onglets, favoris, 3 vues, aperçu, tri, regroupement, filtres, recherche par nom et par contenu, Corbeille, archives `.zip` |
 | **Moniteur d’activité** | launcher, centre de contrôle, Fichiers | CPU, RAM, GPU, disque, réseau avec historique ; processus ; démarrage réversible ; services ; rapport de diagnostic |
+| **Fenêtres** | `Ctrl+Alt+flèches`, menu de l’app, launcher | Moitiés, quarts, tiers, agrandir, centrer ; dispositions enregistrées et restaurées (lance les apps manquantes) |
+| **Profils** | barre, menu, launcher, automatisations | Gaming, Développement, Streaming, Productivité (modifiables) : thème, barre des tâches, widgets, concentration, alertes, apps à lancer, disposition ; tout est rétabli à la désactivation |
+| **Extensions** | launcher | Manifestes JSON déclaratifs (pages web, dossiers, texte) ; aucun code tiers exécuté ; permissions affichées ; deux extensions fournies |
+| **Automatisations** | Préférences | Heure, lancement d’une app, démarrage, raccourci → profil, disposition, thème, concentration, notification, ouverture |
+| **Assistant IA** | launcher : `?` + question | Facultatif, désactivé par défaut : Claude (Anthropic), OpenAI ou Ollama local ; votre clé, chiffrée ; consentement explicite |
 | **Préférences** | Dock, zone de notification | Tous les réglages, thèmes, raccourcis, export et import de profil |
 
 ### Raccourcis
+
+**Fenêtres** : `Ctrl+Alt+←/→/↑/↓` moitiés · `Ctrl+Alt+U/I/J/K` quarts · `Ctrl+Alt+D/F/G` tiers · `Ctrl+Alt+Entrée` agrandir · `Ctrl+Alt+M` centrer.
+
+**Touche Windows** (option, Préférences › Général) : un appui seul ouvre le menu Orelle ou le launcher ; `Win+lettre` reste inchangé et le vrai menu Démarrer reste accessible depuis le menu Orelle.
 
 **Launcher** : `↑ ↓` naviguer · `Entrée` ouvrir · `Ctrl+Entrée` action secondaire · `Ctrl+1…9` · `Ctrl+D` favori · `Ctrl+P` épingler au Dock · `Échap` fermer.
 
@@ -54,20 +68,29 @@ Options de ligne de commande :
 
 ## Sécurité et confidentialité
 
-- Aucun droit administrateur, aucune donnée envoyée à un service externe, sauf la météo (Open-Meteo, coordonnées de la ville choisie) et les recherches web que vous validez.
+- Aucun droit administrateur, aucune donnée envoyée à un service externe, sauf la météo (Open-Meteo, coordonnées de la ville choisie), les recherches web que vous validez et, si vous l’activez avec votre consentement explicite, les questions posées à l’assistant IA (rien d’autre que la question).
+- Clé d’API de l’IA chiffrée avec la protection de données de Windows (DPAPI, `safeStorage`), jamais exportée. Avec Claude, le repli côté serveur d’Anthropic est activé (`fallbacks: "default"`) : une demande refusée peut être relancée sur le modèle de repli, facturé à son tarif.
+- Touche Windows : crochet clavier de bas niveau installé uniquement si l’option est activée ; il n’agit que sur l’appui seul de la touche Windows et laisse passer toutes les autres touches sans les lire.
 - Orelle ne modifie la configuration de Windows que sur votre demande, toujours de façon réversible :
   - démarrage automatique : clé Run de votre compte ;
-  - masquage auto de la barre des tâches : API AppBar, état d’origine restauré ;
+  - barre des tâches Windows (normale, masquage auto, masquée) : API AppBar et visibilité de la fenêtre, rien dans le registre ; l’état d’origine est restauré à la fermeture, après un plantage au lancement suivant, et par le désinstalleur ;
   - applis au démarrage : même indicateur que Windows, avec un journal des changements pour tout annuler.
 - Suppression de fichiers : Corbeille par défaut. La suppression définitive demande une confirmation explicite.
 - Arrêt de processus : confirmation obligatoire, et refus pour les processus essentiels de Windows.
 - Scripts : uniquement ceux que vous ajoutez, avec confirmation à la première exécution et après chaque modification (SHA-256).
+- Extensions : déclaratives, sans code ; celles que vous ajoutez restent désactivées tant que vous ne les activez pas après avoir lu leurs permissions. Elles ne peuvent ouvrir que des pages `https`, des dossiers (jamais un programme) ou copier un texte.
+- Automatisations : aucune ligne de commande interprétée ; seules les fonctions d’Orelle et les cibles que vous avez saisies.
 
-## Désinstallation
+## Installation et désinstallation
 
-1. Dans Préférences › Général, désactivez « Lancer Orelle à l’ouverture de session » et « Masquer automatiquement la barre des tâches ».
-2. Dans Moniteur › Démarrage, cliquez sur « Annuler mes modifications » si vous en avez fait.
-3. Quittez Orelle, puis supprimez le dossier du projet et `%APPDATA%\Orelle`.
+`npm run dist` produit un installateur NSIS **par utilisateur** (installé dans `%LOCALAPPDATA%\Programs\Orelle`, aucun droit administrateur demandé). Le désinstalleur (Paramètres Windows › Applications) :
+1. arrête Orelle proprement (`--orelle-quit`), ce qui libère l’espace réservé à l’écran et rétablit la barre des tâches ;
+2. rétablit la barre des tâches même après un plantage (`--orelle-restore-taskbar`) ;
+3. supprime l’entrée « Orelle » de démarrage automatique de votre compte.
+
+Vos réglages restent dans `%APPDATA%\Orelle` (supprimez ce dossier pour tout effacer). Pensez aussi à Moniteur › Démarrage › « Annuler mes modifications » si vous avez désactivé des applis au démarrage.
+
+L’installateur n’est pas signé numériquement : Windows SmartScreen peut afficher un avertissement au premier lancement.
 
 ## Identité visuelle
 

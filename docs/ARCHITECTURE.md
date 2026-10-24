@@ -94,3 +94,13 @@ borne et valide chaque champ (aucune valeur importée ne peut casser l’app). C
 - Instance unique ; `Orelle --orelle-quit` arrête proprement l’instance en cours (scripts, désinstalleur).
 - Reprise après veille / déverrouillage : raccourci ré-enregistré, fenêtres ré-énumérées, Dock repositionné.
 - Changements d’écran (ajout, retrait, DPI) : Dock repositionné (coordonnées DIP ↔ physiques via l’API `screen`).
+
+## Couche « shell » (v0.3)
+
+- **Barre supérieure** (`windows/topBarController.ts`) : fenêtre non activable enregistrée comme AppBar `ABE_TOP`. Windows impose une hauteur minimale de fenêtre (~39 px) et Chromium replace sous le haut de la zone de travail les fenêtres qui s’y trouvent : la fenêtre fait donc 48 px, est positionnée par `SetWindowPos` avec `SWP_NOSENDCHANGING`, et sa partie basse transparente laisse passer les clics (`setIgnoreMouseEvents` piloté par le renderer). Seuls 30 px sont réservés.
+- **Barre des tâches** (`services/taskbarService.ts`) : trois modes. « Masquée » = masquage auto (`ABM_SETSTATE`) + `ShowWindow(SW_HIDE)` sur `Shell_TrayWnd` / `Shell_SecondaryTrayWnd`, avec un crochet `EVENT_OBJECT_SHOW` qui la re-masque si l’Explorateur la réaffiche. L’état d’origine est écrit dans `taskbar-original.json` et restauré à toute sortie, au lancement suivant et par `--orelle-restore-taskbar`.
+- **Touche Windows** (`native/keyboard.ts`) : crochet `WH_KEYBOARD_LL` installé seulement si l’option est active ; un appui seul est masqué par la touche virtuelle non attribuée 0xE8 avant le relâchement (Démarrer ne s’ouvre pas), les combinaisons `Win+…` passent inchangées, les événements injectés sont ignorés.
+- **Panneaux** (`windows/panelWindow.ts`, `windows/shellPanels.ts`) : menu Orelle et centre de notifications, créés à la demande et libérés après une minute fermés.
+- **Recherche extensible** (`SearchPlugin` dans `services/searchService.ts`) : extensions, profils, dispositions et IA ajoutent leurs résultats au launcher avec un préfixe d’identifiant propre.
+- **Extensions** (`shared/extensionModel.ts`) : manifestes déclaratifs validés strictement ; aucun code d’extension n’est chargé.
+- **IA** (`services/aiService.ts`) : SDK officiel `@anthropic-ai/sdk` (modèle par défaut `claude-opus-5-5`, `output_config.effort: "low"`, repli serveur `fallbacks: "default"`, gestion de `stop_reason: "refusal"` et des erreurs typées), OpenAI et Ollama via `fetch`. Clé chiffrée par `safeStorage` (DPAPI) dans `ai-key.bin`, hors des réglages exportables.

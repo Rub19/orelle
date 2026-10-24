@@ -114,6 +114,9 @@ function select(i: number) {
 function schedulePreview() {
   if (previewTimer) clearTimeout(previewTimer);
   const r = results[selected];
+  if (r?.kind === 'ai' && aiQuery === r.id.slice(3)) return;
+  aiQuery = null;
+  previewEl.classList.remove('ai');
   if (!r) {
     previewEl.hidden = true;
     return;
@@ -145,6 +148,30 @@ function showPreview(p: ResultPreview, r: SearchResult) {
   previewEl.hidden = false;
 }
 
+// ---------- AI answer ----------
+
+let aiQuery: string | null = null;
+
+function showAi(a: { query: string; state: 'loading' | 'answer' | 'error'; text?: string; model?: string }) {
+  if (aiQuery !== a.query) return;
+  const parts: HTMLElement[] = [el('h2', { text: a.query })];
+  if (a.state === 'loading') parts.push(el('div', { class: 'ai-answer loading', text: t('ai.thinking') }));
+  else {
+    parts.push(el('div', { class: `ai-answer${a.state === 'error' ? ' error' : ''}`, text: a.text ?? '' }));
+    if (a.state === 'answer') {
+      const copy = el('button', { class: 'ai-copy', text: t('ai.copyAnswer') });
+      copy.addEventListener('click', () => {
+        orelle.launcher.copy(a.text ?? '');
+        toast(t('launcher.copied'));
+      });
+      parts.push(el('div', { class: 'ai-meta' }, el('span', { text: t('ai.answerBy', { model: a.model ?? '' }) }), copy));
+    }
+  }
+  previewEl.replaceChildren(...parts);
+  previewEl.hidden = false;
+  previewEl.classList.add('ai');
+}
+
 // ---------- Footer ----------
 
 function hint(label: string, keys: string[], primary = false) {
@@ -159,7 +186,7 @@ function updateFooter() {
   if (r) {
     parts.push(hint(r.action, ['↵'], true));
     if (r.altAction) parts.push(hint(r.altAction, ['Ctrl', '↵']));
-    if (/^(app|file|set|sys|orelle|url|cmd):/.test(r.id)) parts.push(hint(t('launcher.hint.favorite'), ['Ctrl', 'D']));
+    if (/^(app|file|set|sys|orelle|url|cmd|ext|profile|layout):/.test(r.id)) parts.push(hint(t('launcher.hint.favorite'), ['Ctrl', 'D']));
   }
   parts.push(hint(t('launcher.hint.close'), [document.documentElement.lang === 'fr' ? 'Échap' : 'Esc']));
   footer.replaceChildren(...parts);
@@ -182,6 +209,7 @@ async function run(i: number, mode: 'primary' | 'alt') {
   busy = true;
   try {
     if (r.kind === 'calc' || r.kind === 'unit' || r.kind === 'clipboard') toast(t('launcher.copied'));
+    if (r.kind === 'ai') aiQuery = r.id.slice(3);
     await orelle.launcher.execute(r.id, mode);
   } finally {
     busy = false;
@@ -273,6 +301,7 @@ async function init() {
     applyTheme(settings, darkSystem);
     input.placeholder = t('launcher.placeholder');
   });
+  orelle.launcher.onAi(showAi);
   void runSearch('');
 }
 

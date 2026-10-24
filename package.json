@@ -1,8 +1,8 @@
 {
   "name": "orelle",
   "productName": "Orelle",
-  "version": "0.1.0",
-  "description": "Orelle — premium desktop experience layer for Windows 11 (Dock, launcher, settings).",
+  "version": "0.3.0",
+  "description": "Orelle — premium desktop experience layer for Windows 11 (Dock, top bar, launcher, widgets, control center, files, activity monitor, profiles).",
   "main": "dist/main.js",
   "private": true,
   "license": "UNLICENSED",
@@ -15,14 +15,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "smoke": "node scripts/build.mjs && electron . --orelle-smoke",
-    "check": "npm run typecheck && npm test && npm run smoke"
+    "check": "npm run typecheck && npm test && npm run smoke",
+    "dist": "node scripts/build.mjs && electron-builder --win nsis --x64 --publish never"
   },
   "dependencies": {
     "koffi": "3.3.3"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "0.133.0",
     "@types/node": "22.18.0",
     "electron": "44.9.3",
+    "electron-builder": "26.17.0",
     "esbuild": "0.28.2",
     "typescript": "5.9.3",
     "vitest": "4.0.6"
@@ -31,5 +34,56 @@
     "koffi@3.3.3": true,
     "esbuild@0.28.2": true,
     "electron@44.9.3": true
+  },
+  "author": "Rub19",
+  "build": {
+    "appId": "com.orelle.desktop",
+    "productName": "Orelle",
+    "copyright": "© 2026 Orelle",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources/installer"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "!dist/**/*.map"
+    ],
+    "asarUnpack": [
+      "node_modules/koffi/**"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/helpers",
+        "to": "helpers"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icons/orelle.ico",
+      "requestedExecutionLevel": "asInvoker",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Orelle",
+      "uninstallDisplayName": "Orelle",
+      "installerIcon": "resources/icons/orelle.ico",
+      "uninstallerIcon": "resources/icons/orelle.ico",
+      "deleteAppDataOnUninstall": false,
+      "include": "resources/installer/installer.nsh"
+    }
   }
 }

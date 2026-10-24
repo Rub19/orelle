@@ -1,8 +1,8 @@
 // Optional resource alerts (Preferences › Orelle apps): a Windows notification when CPU or memory
 // stays above the chosen threshold. Off by default; sampling only runs while alerts are on.
-import { Notification } from 'electron';
 import type { SystemStats } from '../../shared/types';
 import type { OrelleContext } from '../context';
+import type { NotificationService } from './notificationService';
 import type { SystemService } from './systemService';
 import { log } from '../logger';
 
@@ -15,7 +15,10 @@ export class AlertService {
   private active = false;
   private listener = (s: SystemStats) => this.check(s);
 
-  constructor(private readonly ctx: OrelleContext, private readonly system: SystemService, private readonly openMonitor: () => void) {}
+  constructor(private readonly ctx: OrelleContext, private readonly system: SystemService, private readonly notifications: NotificationService) {}
+
+  /** Set by profiles that ask for silence (games, streaming). */
+  muted = false;
 
   sync() {
     const want = this.ctx.settings.get().monitor.alerts;
@@ -42,12 +45,14 @@ export class AlertService {
       if (now - this.since[k]! < SUSTAIN_MS || now - this.lastAlert[k] < COOLDOWN_MS) continue;
       this.lastAlert[k] = now;
       const t = this.ctx.t;
-      const n = new Notification({
+      if (this.muted) continue;
+      this.notifications.notify({
         title: t(k === 'cpu' ? 'alerts.cpu.title' : 'alerts.mem.title'),
         body: t('alerts.body', { value: Math.round(values[k]), limit: limits[k] }),
+        source: 'alerts',
+        glyph: k === 'cpu' ? 'cpu' : 'chart',
+        action: 'monitor',
       });
-      n.on('click', this.openMonitor);
-      n.show();
       log.info('alerts', `${k} alert at ${Math.round(values[k])}%`);
     }
   }

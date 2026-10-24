@@ -1,0 +1,14 @@
+{
+  "id": "orelle.folders",
+  "name": "Dossiers rapides",
+  "version": "1.0.0",
+  "author": "Orelle",
+  "description": "Ouvre vos dossiers les plus utilisés depuis le lanceur. Exemple d’extension qui n’ouvre que des dossiers, jamais de programme.",
+  "commands": [
+    { "id": "downloads", "title": "Téléchargements", "keyword": "dl", "path": "%USERPROFILE%\\Downloads" },
+    { "id": "documents", "title": "Documents", "keyword": "docs", "path": "%USERPROFILE%\\Documents" },
+    { "id": "pictures", "title": "Images", "keyword": "img", "path": "%USERPROFILE%\\Pictures" },
+    { "id": "appdata", "title": "AppData (Roaming)", "keyword": "appdata", "path": "%APPDATA%" },
+    { "id": "orelle-ext", "title": "Dossier des extensions Orelle", "keyword": "ext", "path": "%APPDATA%\\Orelle\\extensions" }
+  ]
+}

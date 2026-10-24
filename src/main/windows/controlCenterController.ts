@@ -86,8 +86,9 @@ export class ControlCenterController {
     const win = this.win;
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const wa = display.workArea;
-    // Bottom-right, like Windows quick settings, above the Dock / taskbar.
-    win.setBounds({ x: wa.x + wa.width - WIDTH - 12, y: wa.y + wa.height - HEIGHT - 12, width: WIDTH, height: HEIGHT });
+    // Under the top bar's right side when it is on; otherwise bottom-right, like Windows quick settings.
+    const top = this.ctx.settings.get().topBar.enabled;
+    win.setBounds({ x: wa.x + wa.width - WIDTH - 8, y: top ? wa.y + 6 : wa.y + wa.height - HEIGHT - 12, width: WIDTH, height: Math.min(HEIGHT, wa.height - 12) });
     this.shownAt = Date.now();
     void this.pushState();
     win.show();
@@ -157,7 +158,10 @@ export class ControlCenterController {
         const light = s.appearance.theme === 'light';
         this.ctx.settings.update({ appearance: { theme: light ? 'dark' : 'light' } });
       } else if (action === 'toggleDock') this.ctx.actions.toggleDock();
-      else if (action === 'toggleTaskbar') this.ctx.settings.update({ general: { hideTaskbar: !s.general.hideTaskbar } });
+      else if (action === 'toggleTaskbar') {
+        const order = ['normal', 'autohide', 'hidden'] as const;
+        this.ctx.settings.update({ general: { taskbarMode: order[(order.indexOf(s.general.taskbarMode) + 1) % order.length] } });
+      }
       else if (action === 'editWidgets') {
         this.hide();
         this.toggleWidgetsEdit();

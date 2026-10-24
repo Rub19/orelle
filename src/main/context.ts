@@ -30,5 +30,7 @@ export interface OrelleContext {
     editWidgets(): void;
     /** Orelle's own apps (file browser, activity monitor). */
     openApp(app: 'files' | 'monitor', arg?: string): void;
+    /** Orelle notification center (set once the service exists). */
+    notify?(n: { title: string; body: string; source: string; glyph: string; action?: string }): void;
   };
 }

@@ -4,7 +4,26 @@ import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'ele
 import type {
   AllowedScript, AppInfo, Bootstrap, ControlState, DisplayInfo, DockLayout, DockState, ResultPreview, SearchResponse, Settings, SystemStats, WeatherData,
 } from '../shared/types';
+import type { OrelleNotification } from '../shared/types';
 import type { FileEntry, FileOperation, FileProperties, FsError, MonitorSampleDto, Place, StartupItemDto } from '../shared/appTypes';
+
+export interface TopBarStateDto {
+  app: { name: string; title: string; icon: string | null } | null;
+  profile: { name: string; glyph: string } | null;
+  unread: number;
+  focus: boolean;
+  volume: { level: number; muted: boolean } | null;
+  stats: Pick<SystemStats, 'cpu' | 'netDown' | 'netUp' | 'battery'> | null;
+  taskbarHidden: boolean;
+}
+export interface MenuAppDto { id: string; name: string; icon: string | null }
+export interface MenuDataDto { apps: MenuAppDto[]; pinned: MenuAppDto[]; profiles: { id: string; name: string; glyph: string; on: boolean }[]; user: string }
+export interface ExtensionInfoDto {
+  id: string; name: string; version: string; author: string; description: string; builtin: boolean; enabled: boolean;
+  commands: { title: string; keyword: string; kind: string }[];
+  permissions: ({ kind: 'web'; hosts: string[] } | { kind: 'files'; paths: string[] } | { kind: 'clipboard' })[];
+  error?: string; dir: string;
+}
 
 type Off = () => void;
 const on = <T extends unknown[]>(channel: string, cb: (...args: T) => void): Off => {
@@ -41,6 +60,8 @@ const api = {
     toggleFavorite: (id: string): Promise<boolean> => ipcRenderer.invoke('launcher:toggleFavorite', id),
     pin: (id: string): Promise<boolean> => ipcRenderer.invoke('launcher:pin', id),
     hide: () => ipcRenderer.send('launcher:hide'),
+    onAi: (cb: (a: { query: string; state: 'loading' | 'answer' | 'error'; text?: string; model?: string }) => void) => on('launcher:ai', cb),
+    copy: (text: string) => ipcRenderer.send('launcher:copy', text),
   },
 
   settings: {
@@ -63,6 +84,48 @@ const api = {
     openFolder: (which: 'logs' | 'data') => ipcRenderer.send('settings:openFolder', which),
     pickFolder: (): Promise<string | null> => ipcRenderer.invoke('settings:pickFolder'),
     openWinSettings: (uri: string) => ipcRenderer.send('settings:openWinSettings', uri),
+    extensions: (reload = false): Promise<ExtensionInfoDto[]> => ipcRenderer.invoke('settings:extensions', reload),
+    openExtensionsFolder: () => ipcRenderer.send('settings:openExtensionsFolder'),
+    aiStatus: (): Promise<{ hasKey: boolean; encryption: boolean }> => ipcRenderer.invoke('settings:aiStatus'),
+    aiSetKey: (key: string): Promise<boolean> => ipcRenderer.invoke('settings:aiSetKey', key),
+    aiConsent: (on: boolean): Promise<boolean> => ipcRenderer.invoke('settings:aiConsent', on),
+    aiTest: (): Promise<{ state: string; text?: string; model?: string }> => ipcRenderer.invoke('settings:aiTest'),
+    saveLayout: (name: string): Promise<boolean> => ipcRenderer.invoke('settings:saveLayout', name),
+    restoreLayout: (id: string) => ipcRenderer.send('settings:restoreLayout', id),
+    toggleProfile: (id: string) => ipcRenderer.send('settings:toggleProfile', id),
+    runAutomation: (id: string) => ipcRenderer.send('settings:runAutomation', id),
+  },
+
+  panel: {
+    onShow: (cb: () => void) => on('panel:show', cb),
+  },
+
+  topbar: {
+    onState: (cb: (s: TopBarStateDto) => void) => on('topbar:state', cb),
+    action: (a: string, x?: number) => ipcRenderer.send('topbar:action', a, x),
+    volume: (delta: number) => ipcRenderer.send('topbar:volume', delta),
+    contextMenu: () => ipcRenderer.send('topbar:context'),
+    setInteractive: (v: boolean) => ipcRenderer.send('topbar:interactive', v),
+  },
+
+  menu: {
+    data: (): Promise<MenuDataDto | null> => ipcRenderer.invoke('menu:data'),
+    onRefresh: (cb: () => void) => on('menu:refresh', cb),
+    launch: (appId: string): Promise<boolean> => ipcRenderer.invoke('menu:launch', appId),
+    pin: (appId: string) => ipcRenderer.send('menu:pin', appId),
+    profile: (id: string) => ipcRenderer.send('menu:profile', id),
+    action: (a: 'lock' | 'sleep' | 'restart' | 'shutdown' | 'signout' | 'settings' | 'files' | 'monitor' | 'launcher' | 'windowsStart') => ipcRenderer.send('menu:action', a),
+    hide: () => ipcRenderer.send('menu:hide'),
+  },
+
+  notifications: {
+    list: (): Promise<OrelleNotification[] | null> => ipcRenderer.invoke('notifications:list'),
+    onChanged: (cb: () => void) => on('notifications:changed', cb),
+    activate: (id: string) => ipcRenderer.send('notifications:activate', id),
+    remove: (id: string) => ipcRenderer.send('notifications:remove', id),
+    clear: () => ipcRenderer.send('notifications:clear'),
+    open: (what: 'windows' | 'calendar' | 'settings') => ipcRenderer.send('notifications:open', what),
+    hide: () => ipcRenderer.send('notifications:hide'),
   },
 
   widgets: {

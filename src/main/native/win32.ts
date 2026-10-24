@@ -266,6 +266,15 @@ export function focusWindow(hwnd: HWND): boolean {
   return Number(api.GetForegroundWindow()) === hwnd;
 }
 
+/** Opens the Windows Start menu (Ctrl+Esc, the shortcut Windows reserves for it). */
+export function openStartMenu() {
+  if (!api) return;
+  api.keybd_event(0x11, 0, 0, 0);
+  api.keybd_event(0x1b, 0, 0, 0);
+  api.keybd_event(0x1b, 0, KEYEVENTF_KEYUP, 0);
+  api.keybd_event(0x11, 0, KEYEVENTF_KEYUP, 0);
+}
+
 export const minimizeWindow = (hwnd: HWND) => !!api?.ShowWindow(hwnd, SW_MINIMIZE);
 /** Politely asks the window to close (the app may prompt to save). */
 export const closeWindow = (hwnd: HWND) => !!api?.PostMessageW(hwnd, WM_CLOSE, 0, 0);
@@ -357,6 +366,7 @@ export function appBarSetPos(hwnd: HWND, edge: number, rc: Rect, thickness: numb
   if (edge === ABE.bottom) d.rc.top = d.rc.bottom - thickness;
   else if (edge === ABE.left) d.rc.right = d.rc.left + thickness;
   else if (edge === ABE.right) d.rc.left = d.rc.right - thickness;
+  else if (edge === ABE.top) d.rc.bottom = d.rc.top + thickness;
   api.SHAppBarMessage(3 /* ABM_SETPOS */, d);
   return d.rc;
 }
@@ -396,6 +406,25 @@ export function getTaskbarAutoHide(): boolean | null {
   if (!api) return null;
   const d = appBarData(trayWindow());
   return (Number(api.SHAppBarMessage(4 /* ABM_GETSTATE */, d)) & ABS_AUTOHIDE) !== 0;
+}
+
+/** Main taskbar plus the taskbars of secondary monitors. */
+export function taskbarWindows(): HWND[] {
+  if (!api) return [];
+  return enumTopLevelWindows().filter((h) => {
+    const cls = getClassName(h);
+    return cls === 'Shell_TrayWnd' || cls === 'Shell_SecondaryTrayWnd';
+  });
+}
+
+export function setTaskbarVisible(visible: boolean) {
+  if (!api) return;
+  // SW_SHOWNA (8) shows without stealing focus; SW_HIDE (0).
+  for (const h of taskbarWindows()) api.ShowWindow(h, visible ? 8 : 0);
+}
+
+export function isTaskbarVisible(): boolean {
+  return !!api && taskbarWindows().some((h) => api!.IsWindowVisible(h));
 }
 
 export function setTaskbarAutoHide(on: boolean): boolean {
@@ -475,6 +504,15 @@ export function placeWindow(hwnd: HWND, target: Rect): boolean {
     target.right - target.left + dl + dr, target.bottom - target.top + dt + db,
     SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
   );
+}
+
+/**
+ * Raw outer-rect move (physical pixels) for Orelle's own bars. SWP_NOSENDCHANGING skips
+ * WM_WINDOWPOSCHANGING, in which Chromium keeps windows below the top of the work area.
+ */
+export function setWindowRect(hwnd: HWND, r: Rect): boolean {
+  if (!api) return false;
+  return !!api.SetWindowPos(hwnd, 0, r.left, r.top, r.right - r.left, r.bottom - r.top, SWP_NOZORDER | SWP_NOACTIVATE | 0x0400 /* SWP_NOSENDCHANGING */);
 }
 
 export function maximizeWindow(hwnd: HWND) {

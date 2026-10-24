@@ -1,7 +1,8 @@
 // Default settings, migrations and normalization. Pure functions: unit tested.
+import { defaultExtras, normalizeExtras } from './settingsExtras';
 import type { AllowedScript, OrelleAction, ControlModule, ControlModuleId, CustomCommand, DockItem, Settings, ThemeId, WidgetInstance, WidgetType } from './types';
 
-export const SETTINGS_VERSION = 4;
+export const SETTINGS_VERSION = 5;
 
 export const WIDGET_TYPES: WidgetType[] = ['clock', 'calendar', 'weather', 'system', 'network', 'battery', 'media', 'notes', 'todo', 'timer', 'recentApps', 'shortcuts', 'appUsage'];
 
@@ -65,7 +66,7 @@ export function normalizeControlModules(raw: unknown): ControlModule[] {
 export function defaultSettings(): Settings {
   return {
     version: SETTINGS_VERSION,
-    general: { language: 'auto', launchAtLogin: false, showTrayIcon: true, hideTaskbar: false, hardwareAcceleration: true },
+    general: { language: 'auto', launchAtLogin: false, showTrayIcon: true, taskbarMode: 'hidden', winKey: 'menu', hardwareAcceleration: true },
     appearance: { theme: 'dark', accent: '#f2b33d', glassOpacity: 0.72, effects: 'full' },
     dock: {
       enabled: true,
@@ -122,6 +123,7 @@ export function defaultSettings(): Settings {
     files: { favorites: [], showHidden: false, view: 'grid', sort: { key: 'name', desc: false }, openFoldersInOrelle: false },
     monitor: { alerts: false, cpuAlert: 90, memAlert: 90 },
     controlCenter: { hotkey: 'Ctrl+Alt+C', modules: defaultControlModules() },
+    ...defaultExtras(),
   };
 }
 
@@ -160,6 +162,17 @@ const MIGRATIONS: Record<number, (s: Json) => Json> = {
     const launcher = isObj(s.launcher) ? { ...s.launcher } : {};
     if (Array.isArray(launcher.favorites)) launcher.favorites = launcher.favorites.map((f) => (typeof f === 'string' ? f.replace(/^nova:/, 'orelle:') : f));
     return { ...s, dock, launcher, version: 4 };
+  },
+  // v5: the taskbar switch became a mode (normal / auto-hide / fully hidden).
+  4: (s) => {
+    const general = isObj(s.general) ? { ...s.general } : {};
+    // An existing profile keeps what it had; a brand-new one gets the v5 defaults (taskbar hidden, Orelle menu).
+    if ('hideTaskbar' in general) {
+      general.taskbarMode ??= general.hideTaskbar === true ? 'autohide' : 'normal';
+      general.winKey ??= 'windows';
+    }
+    delete general.hideTaskbar;
+    return { ...s, general, version: 5 };
   },
 };
 
@@ -300,7 +313,8 @@ export function normalizeSettings(raw: unknown): Settings {
       language: oneOf(g.language, ['auto', 'fr', 'en'] as const, d.general.language),
       launchAtLogin: bool(g.launchAtLogin, d.general.launchAtLogin),
       showTrayIcon: bool(g.showTrayIcon, d.general.showTrayIcon),
-      hideTaskbar: bool(g.hideTaskbar, d.general.hideTaskbar),
+      taskbarMode: oneOf(g.taskbarMode, ['normal', 'autohide', 'hidden'] as const, d.general.taskbarMode),
+      winKey: oneOf(g.winKey, ['windows', 'menu', 'launcher'] as const, d.general.winKey),
       hardwareAcceleration: bool(g.hardwareAcceleration, d.general.hardwareAcceleration),
     },
     appearance: {
@@ -371,6 +385,7 @@ export function normalizeSettings(raw: unknown): Settings {
       memAlert: Math.round(clamp(mo.memAlert, 50, 100, d.monitor.memAlert)),
     },
     controlCenter: { hotkey: str(cc.hotkey, d.controlCenter.hotkey, 64), modules: normalizeControlModules(cc.modules) },
+    ...normalizeExtras(s),
   };
 }
 

@@ -42,7 +42,22 @@ const ORELLE_ACTIONS: { id: string; key: StringKey; keywords: string; glyph: str
 const URL_RE = /^(https?:\/\/)?(localhost(:\d+)?|[\w-]+(\.[\w-]+)*\.[a-z]{2,})(:\d+)?(\/\S*)?$/i;
 const SHUTDOWN = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'shutdown.exe');
 
+/** A source of launcher results owned by another service (extensions, profiles, layouts, AI). */
+export interface SearchPlugin {
+  /** Id prefix of its results: `<prefix>:<rest>`. */
+  prefix: string;
+  search(q: string): SearchResult[];
+  execute(rest: string, mode: 'primary' | 'alt'): Promise<boolean> | boolean;
+  resolve?(rest: string): SearchResult | null;
+}
+
 export class SearchService {
+  private plugins: SearchPlugin[] = [];
+
+  register(plugin: SearchPlugin) {
+    this.plugins.push(plugin);
+  }
+
   constructor(
     private readonly ctx: OrelleContext,
     private readonly files: FileIndex,
@@ -176,6 +191,14 @@ export class SearchService {
       add({ id: `url:${url}`, kind: 'url', title: this.t('launcher.openUrl', { url: q }), subtitle: url, glyph: 'globe', score: 1.4, action: this.t('launcher.open') });
     }
 
+    for (const plugin of this.plugins) {
+      try {
+        for (const r of plugin.search(q)) add(r);
+      } catch (err) {
+        log.warn('search', `${plugin.prefix} search failed`, err);
+      }
+    }
+
     out.sort((a, b) => b.score - a.score);
     const max = s.maxResults;
     const results = out.slice(0, max);
@@ -209,7 +232,7 @@ export class SearchService {
     }
     if (this.ctx.settings.get().privacy.searchHistory) {
       for (const rec of this.ctx.usage.recent('', 30)) {
-        if (favorites.has(rec.id) || !/^(app|file|set|sys|orelle|url|cmd):/.test(rec.id)) continue;
+        if (favorites.has(rec.id) || !/^(app|file|set|sys|orelle|url|cmd|ext|profile|layout):/.test(rec.id)) continue;
         const r = this.resolve(rec.id);
         if (r && !out.some((o) => o.id === r.id)) out.push({ ...r, score: 1 });
         if (out.length >= this.ctx.settings.get().launcher.maxResults + favorites.size) break;
@@ -252,7 +275,7 @@ export class SearchService {
         return c ? { id, kind: 'command', title: a ? `${c.name} — ${a}` : c.name, subtitle: `${c.keyword} …`, glyph: 'command', score: 0, action: this.t('launcher.run') } : null;
       }
       default:
-        return null;
+        return this.plugins.find((p) => p.prefix === kind)?.resolve?.(rest) ?? null;
     }
   }
 
@@ -363,9 +386,16 @@ export class SearchService {
         else if (rest === 'widgets') this.ctx.actions.editWidgets();
         else if (rest === 'files' || rest === 'monitor') this.ctx.actions.openApp(rest);
         return true;
-      default:
-        return false;
+      default: {
+        const plugin = this.plugins.find((p) => p.prefix === kind);
+        return plugin ? plugin.execute(rest, mode) : false;
+      }
     }
+  }
+
+  /** Lock, sleep, restart… with the same confirmation as from the launcher (used by the Orelle menu). */
+  system(action: string) {
+    return SYSTEM_ACTIONS.some((a) => a.id === action) ? this.runSystem(action as SystemAction) : Promise.resolve(false);
   }
 
   private async runSystem(action: SystemAction): Promise<boolean> {

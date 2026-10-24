@@ -373,3 +373,37 @@ select option { background: var(--surface-solid); color: var(--text); }
 .about-hero img { width: 72px; height: 72px; }
 .about-hero h2 { margin: 0; font-family: var(--font-display); font-size: 22px; letter-spacing: 0.06em; }
 .about-hero p { margin: 4px 0 0; color: var(--text-2); }
+
+/* ---------- Shell pages (top bar, windows, profiles, extensions, automations, AI) ---------- */
+.btn.icon-only.up .glyph { transform: rotate(180deg); }
+.shortcut-grid { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; padding: 12px 16px; font-size: 13px; align-items: center; }
+.shortcut-grid .kbd { font-family: var(--mono); font-size: 11.5px; padding: 2px 8px; border-radius: 6px; background: var(--control); border: 1px solid var(--control-border); color: var(--text-2); justify-self: end; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 2px; }
+.chips .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 3px 6px 3px 10px; border-radius: 999px; background: var(--control); border: 1px solid var(--control-border); color: var(--text); }
+.chips .chip.toggle { padding: 4px 10px; font: inherit; font-size: 12px; }
+.chips .chip.toggle.on { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+.chip-x { width: 18px; height: 18px; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); display: grid; place-items: center; }
+.chip-x:hover { background: var(--hover); color: var(--text); }
+.chip-x .glyph { width: 10px; height: 10px; }
+.group.profile, .group.ext { margin-bottom: 14px; }
+.profile-head, .ext-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--separator); }
+.profile-head .input { flex: 1; font-weight: 600; }
+.profile-ico { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--control); color: var(--text-2); flex: none; }
+.profile-ico.on { background: var(--accent); color: var(--accent-text); }
+.profile-ico .glyph { width: 17px; height: 17px; }
+.ext-head .it-name { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.ext-head .it-name small { color: var(--text-3); font-size: 11.5px; }
+.ext-desc { margin: 10px 16px 0; font-size: 12.5px; color: var(--text-2); }
+.ext-perms { margin: 10px 16px 0; font-size: 12.5px; }
+.ext-perms ul { margin: 4px 0 0; padding-left: 18px; color: var(--text-2); }
+.group.ext .chips, .group.ext .error-text { padding: 8px 16px 12px; }
+.empty-text { color: var(--text-3); font-size: 12.5px; padding: 14px 16px; margin: 0; list-style: none; }
+.auto-form { padding: 6px 0; }
+.auto-form .form-inline { padding: 6px 16px; align-items: center; flex-wrap: wrap; }
+.auto-form .lbl { width: 56px; flex: none; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.auto-form .toolbar, .auto-form .error-text { padding: 6px 16px; }
+.ai-status { font-size: 12px; color: var(--text-2); margin-top: 4px; overflow-wrap: anywhere; }
+.label .chips { padding-top: 8px; }
+.ext-head .it-ico { width: 30px; height: 30px; display: grid; place-items: center; flex: none; }
+.ext-head .it-ico .ph { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: var(--control); }
+.ext-head .it-ico .ph .glyph { width: 15px; height: 15px; }

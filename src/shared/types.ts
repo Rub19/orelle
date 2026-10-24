@@ -50,6 +50,82 @@ export type WidgetType =
   | 'shortcuts'
   | 'appUsage';
 
+export type TaskbarMode = 'normal' | 'autohide' | 'hidden';
+
+export type TopBarItemId = 'media' | 'cpu' | 'network' | 'volume' | 'battery' | 'notifications' | 'control' | 'search' | 'taskbar' | 'clock';
+
+export interface SavedWindow {
+  /** Executable path (lower-cased) or AUMID identifying the app. */
+  app: string;
+  title: string;
+  /** Rect in physical pixels on the virtual screen. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  maximized: boolean;
+}
+
+export interface SavedLayout {
+  id: string;
+  name: string;
+  createdAt: number;
+  windows: SavedWindow[];
+}
+
+export interface ActivityProfile {
+  id: string;
+  name: string;
+  glyph: string;
+  /** Apps (dock-style references) launched when the profile is activated. */
+  launch: { appId?: string; path?: string; name: string }[];
+  /** Optional window layout restored after launching. */
+  layoutId: string | null;
+  theme: ThemeId | null;
+  taskbarMode: TaskbarMode | null;
+  /** Hide desktop widgets while active (e.g. gaming). */
+  hideWidgets: boolean;
+  /** Orelle focus mode (no toasts) while active. */
+  focus: boolean;
+  /** Pause resource alerts while active. */
+  muteAlerts: boolean;
+}
+
+export type AutomationTrigger =
+  | { kind: 'time'; at: string; days: number[] }
+  | { kind: 'appLaunched'; app: string }
+  | { kind: 'startup' }
+  | { kind: 'hotkey'; accel: string };
+
+export type AutomationAction =
+  | { kind: 'profile'; id: string }
+  | { kind: 'open'; target: string }
+  | { kind: 'theme'; theme: ThemeId }
+  | { kind: 'layout'; id: string }
+  | { kind: 'notify'; text: string }
+  | { kind: 'focus'; on: boolean };
+
+export interface Automation {
+  id: string;
+  name: string;
+  enabled: boolean;
+  trigger: AutomationTrigger;
+  actions: AutomationAction[];
+}
+
+export interface OrelleNotification {
+  id: string;
+  at: number;
+  title: string;
+  body: string;
+  /** Short source label, e.g. "Moniteur". */
+  source: string;
+  glyph: string;
+  /** Optional action opened on click (internal command id). */
+  action?: string;
+  read: boolean;
+}
+
 export interface WidgetInstance {
   id: string;
   type: WidgetType;
@@ -92,10 +168,53 @@ export interface Settings {
     language: Language;
     launchAtLogin: boolean;
     showTrayIcon: boolean;
-    /** Turns on Windows' own taskbar auto-hide while Orelle runs; the previous state is restored on exit. */
-    hideTaskbar: boolean;
+    /**
+     * Windows taskbar while Orelle runs: untouched, Windows' own auto-hide, or fully hidden (Orelle's
+     * top bar and Dock replace it). The original state is restored on exit and after a crash.
+     */
+    taskbarMode: TaskbarMode;
+    /** What a lone press of the Windows key does. */
+    winKey: 'windows' | 'menu' | 'launcher';
     /** GPU compositing; off saves ~100 MB of memory at the cost of smoother animations (applies after restart). */
     hardwareAcceleration: boolean;
+  };
+  topBar: {
+    enabled: boolean;
+    display: string;
+    showActiveApp: boolean;
+    showSeconds: boolean;
+    showDate: boolean;
+    /** Right-hand status items, in order. */
+    items: { id: TopBarItemId; visible: boolean }[];
+  };
+  windows: {
+    /** Ctrl+Alt+arrows / Enter / C to place the active window. */
+    snapping: boolean;
+    layouts: SavedLayout[];
+  };
+  profiles: {
+    active: string | null;
+    list: ActivityProfile[];
+  };
+  notifications: {
+    enabled: boolean;
+    /** Keep a history in the notification center (stored locally). */
+    history: boolean;
+    /** Focus mode: Orelle shows no toasts (they still reach the history). */
+    focus: boolean;
+  };
+  extensions: {
+    /** id → enabled. Extensions are declarative JSON manifests; no third-party code is executed. */
+    enabled: Record<string, boolean>;
+  };
+  automations: Automation[];
+  ai: {
+    provider: 'none' | 'anthropic' | 'openai' | 'ollama';
+    model: string;
+    /** OpenAI-compatible or Ollama base URL. */
+    endpoint: string;
+    /** The user explicitly agreed to send launcher questions to the provider. */
+    consent: boolean;
   };
   appearance: {
     theme: ThemeId;
@@ -247,7 +366,11 @@ export type ResultKind =
   | 'url'
   | 'command'
   | 'clipboard'
-  | 'orelle';
+  | 'orelle'
+  | 'extension'
+  | 'profile'
+  | 'layout'
+  | 'ai';
 
 export interface SearchResult {
   id: string;
@@ -294,7 +417,7 @@ export interface AppInfo {
   icon: string | null;
 }
 
-export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor';
+export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications';
 
 export interface Bootstrap {
   surface: SurfaceKind;

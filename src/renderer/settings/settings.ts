@@ -6,15 +6,23 @@ import type { AppInfo, Bootstrap, DeepPartial, DisplayInfo, DockItem, LauncherPr
 import { el, orelle, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
+import { pageAi, pageAutomations, pageExtensions, pageNotifications, pageProfiles, pageTopBar, pageWindows, type Kit } from './shellPages';
 
-type Section = 'general' | 'appearance' | 'dock' | 'launcher' | 'widgets' | 'apps' | 'privacy' | 'backup' | 'about';
+type Section = 'general' | 'appearance' | 'topbar' | 'dock' | 'launcher' | 'windows' | 'profiles' | 'widgets' | 'notifications' | 'apps' | 'extensions' | 'automations' | 'ai' | 'privacy' | 'backup' | 'about';
 const SECTIONS: { id: Section; glyph: string; color: string }[] = [
   { id: 'general', glyph: 'sliders', color: '#8e8e93' },
   { id: 'appearance', glyph: 'palette', color: '#bf5af2' },
+  { id: 'topbar', glyph: 'window', color: '#0a84ff' },
   { id: 'dock', glyph: 'dock', color: '#0a84ff' },
   { id: 'launcher', glyph: 'search', color: '#5e5ce6' },
+  { id: 'windows', glyph: 'columns', color: '#5e5ce6' },
+  { id: 'profiles', glyph: 'gamepad', color: '#ff9f0a' },
   { id: 'widgets', glyph: 'grid', color: '#ff375f' },
+  { id: 'notifications', glyph: 'bellOn', color: '#ff453a' },
   { id: 'apps', glyph: 'folder', color: '#f2b33d' },
+  { id: 'extensions', glyph: 'sparkle', color: '#30d158' },
+  { id: 'automations', glyph: 'bolt', color: '#ffd60a' },
+  { id: 'ai', glyph: 'sparkle', color: '#bf5af2' },
   { id: 'privacy', glyph: 'shield', color: '#30d158' },
   { id: 'backup', glyph: 'archive', color: '#ff9f0a' },
   { id: 'about', glyph: 'info', color: '#64d2ff' },
@@ -131,7 +139,16 @@ function pageGeneral(): HTMLElement[] {
       ], g.language, (v) => void update({ general: { language: v as Settings['general']['language'] } }))),
       row('settings.launchAtLogin', toggle(g.launchAtLogin, (v) => void update({ general: { launchAtLogin: v } })), 'settings.launchAtLogin.desc'),
       row('settings.tray', toggle(g.showTrayIcon, (v) => void update({ general: { showTrayIcon: v } })), 'settings.tray.desc'),
-      row('settings.general.hideTaskbar', toggle(g.hideTaskbar, (v) => void update({ general: { hideTaskbar: v } })), 'settings.general.hideTaskbar.desc'),
+      row('settings.general.taskbarMode', segmented([
+        { value: 'normal', label: t('settings.taskbar.normal') },
+        { value: 'autohide', label: t('settings.taskbar.autohide') },
+        { value: 'hidden', label: t('settings.taskbar.hidden') },
+      ], g.taskbarMode, (v) => void update({ general: { taskbarMode: v } })), 'settings.general.taskbarMode.desc'),
+      row('settings.general.winKey', selectBox([
+        { value: 'windows', label: t('settings.winKey.windows') },
+        { value: 'menu', label: t('settings.winKey.menu') },
+        { value: 'launcher', label: t('settings.winKey.launcher') },
+      ], g.winKey, (v) => void update({ general: { winKey: v as Settings['general']['winKey'] } })), 'settings.general.winKey.desc'),
       row('settings.general.gpu', toggle(g.hardwareAcceleration, (v) => void update({ general: { hardwareAcceleration: v } })), 'settings.general.gpu.desc'),
     ),
   ];
@@ -619,13 +636,34 @@ function pageAbout(): HTMLElement[] {
   ];
 }
 
+const kit: Kit = {
+  settings: () => settings,
+  displays: () => displays,
+  apps: () => apps,
+  update: (patch) => update(patch),
+  rerender: () => rerender(),
+  row,
+  group,
+  toggle,
+  segmented,
+  selectBox,
+  button,
+};
+
 const PAGES: Record<Section, () => HTMLElement[]> = {
   general: pageGeneral,
   appearance: pageAppearance,
+  topbar: () => pageTopBar(kit),
   dock: pageDock,
   launcher: pageLauncher,
+  windows: () => pageWindows(kit),
+  profiles: () => pageProfiles(kit),
   widgets: pageWidgets,
+  notifications: () => pageNotifications(kit),
   apps: pageApps,
+  extensions: () => pageExtensions(kit),
+  automations: () => pageAutomations(kit),
+  ai: () => pageAi(kit),
   privacy: pagePrivacy,
   backup: pageBackup,
   about: pageAbout,
@@ -707,7 +745,7 @@ async function init() {
   displays = await orelle.settings.displays();
   void orelle.settings.apps().then((list) => {
     apps = list;
-    if (current === 'dock' && !suppressRerender) rerender();
+    if ((current === 'dock' || current === 'profiles') && !suppressRerender) rerender();
   });
   renderNav();
   rerender();
