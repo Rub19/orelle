@@ -36,6 +36,10 @@ const ORELLE_ACTIONS: { id: string; key: StringKey; keywords: string; glyph: str
   { id: 'control', key: 'control.title', keywords: 'orelle centre controle control center volume luminosite brightness wifi', glyph: 'sliders' },
   { id: 'widgets', key: 'widgets.edit', keywords: 'orelle widgets bureau desktop modifier edit', glyph: 'grid' },
   { id: 'files', key: 'files.title', keywords: 'orelle fichiers files explorateur explorer finder dossiers folders', glyph: 'folder' },
+  { id: 'mission', key: 'mission.title', keywords: 'orelle mission control apercu fenetres overview windows expose', glyph: 'grid' },
+  { id: 'audio', key: 'tools.audio', keywords: 'orelle audio son volume sound mixer melangeur peripherique device micro', glyph: 'volume' },
+  { id: 'storage', key: 'tools.storage', keywords: 'orelle stockage storage disque espace disk space doublons duplicates nettoyage cleanup', glyph: 'drive' },
+  { id: 'clipboardManager', key: 'tools.clipboard', keywords: 'orelle presse-papiers clipboard historique history', glyph: 'clipboard' },
   { id: 'monitor', key: 'monitor.title', keywords: 'orelle moniteur activite gestionnaire des taches task manager processus process cpu ram', glyph: 'chart' },
 ];
 
@@ -182,7 +186,7 @@ export class SearchService {
       const rest = q.replace(/^\S+\s*/, '');
       this.clip.list().forEach((c, i) => {
         if (rest && !c.text.toLowerCase().includes(rest.toLowerCase())) return;
-        add({ id: `clip:${i}`, kind: 'clipboard', title: c.text.replace(/\s+/g, ' ').slice(0, 120), subtitle: new Date(c.at).toLocaleTimeString(this.numberLocale()), glyph: 'clipboard', score: 1.5 - i * 0.01, action: this.t('launcher.copy'), preview: { title: this.t('launcher.kind.clipboard'), lines: [], large: c.text.slice(0, 2000) } });
+        add({ id: `clip:${c.id}`, kind: 'clipboard', title: c.kind === 'image' ? `${this.t('clipboard.image')} ${c.text}` : c.text.replace(/\s+/g, ' ').slice(0, 120), subtitle: `${c.pinned ? '★ ' : ''}${new Date(c.at).toLocaleTimeString(this.numberLocale())}${c.source ? ` · ${c.source}` : ''}`, glyph: c.kind === 'image' ? 'image' : 'clipboard', score: (c.pinned ? 1.6 : 1.5) - i * 0.01, action: this.t('launcher.copy'), preview: c.kind === 'image' ? { title: this.t('launcher.kind.clipboard'), lines: [], thumbnail: c.thumb } : { title: this.t('launcher.kind.clipboard'), lines: [], large: c.text.slice(0, 2000) } });
       });
     }
 
@@ -371,8 +375,7 @@ export class SearchService {
         return this.scripts.run(sc);
       }
       case 'clip': {
-        const item = this.clip.list()[Number(rest)];
-        if (item) await clipboard.writeText(item.text);
+        await this.clip.copy(rest);
         return true;
       }
       case 'sys':
@@ -385,6 +388,9 @@ export class SearchService {
         else if (rest === 'control') this.ctx.actions.toggleControlCenter();
         else if (rest === 'widgets') this.ctx.actions.editWidgets();
         else if (rest === 'files' || rest === 'monitor') this.ctx.actions.openApp(rest);
+        else if (rest === 'audio' || rest === 'storage') this.ctx.actions.openApp('tools', rest);
+        else if (rest === 'clipboardManager') this.ctx.actions.openApp('tools', 'clipboard');
+        else if (rest === 'mission') setTimeout(() => this.ctx.actions.toggleMission?.(), 150);
         return true;
       default: {
         const plugin = this.plugins.find((p) => p.prefix === kind);

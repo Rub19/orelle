@@ -87,10 +87,10 @@ export class SettingsController {
     });
 
     ipcMain.handle('settings:setHotkey', (e, name: unknown, accel: unknown) => {
-      if (!fromSettings(e) || typeof accel !== 'string' || (name !== 'launcher' && name !== 'control')) return { ok: false, error: 'invalid' };
+      if (!fromSettings(e) || typeof accel !== 'string' || (name !== 'launcher' && name !== 'control' && name !== 'overview')) return { ok: false, error: 'invalid' };
       this.hotkeys.suspend(false);
       const res = this.hotkeys.set(name, accel);
-      if (res.ok) this.ctx.settings.update(name === 'launcher' ? { launcher: { hotkey: accel } } : { controlCenter: { hotkey: accel } });
+      if (res.ok) this.ctx.settings.update(name === 'launcher' ? { launcher: { hotkey: accel } } : name === 'overview' ? { windows: { overviewHotkey: accel } } : { controlCenter: { hotkey: accel } });
       return res;
     });
 

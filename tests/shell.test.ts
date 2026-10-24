@@ -70,7 +70,7 @@ describe('shell settings (v5)', () => {
   it('provides the four default profiles and a complete top bar', () => {
     const d = defaultExtras();
     expect(d.profiles.list.map((p) => p.id)).toEqual(['gaming', 'dev', 'streaming', 'focus']);
-    expect(d.topBar.items.length).toBe(10);
+    expect(d.topBar.items.length).toBe(11);
     expect(d.ai.provider).toBe('none');
     expect(d.ai.consent).toBe(false);
   });
@@ -97,7 +97,7 @@ describe('shell settings (v5)', () => {
   it('keeps the user order of top bar items and appends new ones', () => {
     const n = normalizeExtras({ topBar: { items: [{ id: 'clock', visible: true }, { id: 'nope' }, { id: 'cpu', visible: true }] } });
     expect(n.topBar.items.slice(0, 2).map((i) => i.id)).toEqual(['clock', 'cpu']);
-    expect(n.topBar.items.length).toBe(10);
+    expect(n.topBar.items.length).toBe(11);
   });
 });
 
@@ -110,5 +110,26 @@ describe('v4 → v5 migration', () => {
     const fresh = normalizeSettings(undefined);
     expect(fresh.general.taskbarMode).toBe('hidden');
     expect(fresh.general.winKey).toBe('menu');
+  });
+});
+
+describe('Mission Control layout', async () => {
+  const { layoutCards } = await import('../src/shared/overviewLayout');
+  it('keeps every card inside the stage and preserves aspect ratios', () => {
+    const aspects = [16 / 9, 4 / 3, 1, 16 / 10, 0.6];
+    const cards = layoutCards(aspects, 1600, 900);
+    expect(cards).toHaveLength(5);
+    cards.forEach((c, i) => {
+      expect(c.x).toBeGreaterThanOrEqual(0);
+      expect(c.y).toBeGreaterThanOrEqual(0);
+      expect(c.x + c.w).toBeLessThanOrEqual(1600);
+      expect(c.y + c.h).toBeLessThanOrEqual(900);
+      expect(Math.abs(c.w / c.h - aspects[i])).toBeLessThan(0.05);
+    });
+  });
+  it('handles one window and none', () => {
+    expect(layoutCards([], 800, 600)).toEqual([]);
+    const [one] = layoutCards([16 / 9], 1600, 900);
+    expect(one.w).toBeGreaterThan(800);
   });
 });

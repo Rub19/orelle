@@ -23,7 +23,7 @@ export const SNAP_HOTKEYS: Partial<Record<SnapTarget, string>> = {
   centerThird: 'Ctrl+Alt+F',
   rightThird: 'Ctrl+Alt+G',
   maximize: 'Ctrl+Alt+Enter',
-  center: 'Ctrl+Alt+M',
+  center: 'Ctrl+Alt+Home',
 };
 
 /** Pure geometry, unit tested: the rectangle a target occupies inside a work area. */

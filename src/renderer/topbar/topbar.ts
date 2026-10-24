@@ -73,6 +73,7 @@ const ITEMS: Record<TopBarItemId, () => HTMLElement | null> = {
     return b;
   },
   search: () => btn('icon', t('topbar.search'), 'search', ico('search')),
+  overview: () => btn('icon', t('mission.title'), 'overview', ico('grid')),
   control: () => btn('icon', t('control.title'), 'control', ico('sliders')),
   taskbar: () => (state?.taskbarHidden ? btn('icon', t('topbar.taskbarPeek'), 'taskbar', ico('taskbar')) : null),
   clock: () => btn('clock', t('topbar.clock'), 'clock', el('span', { class: 'time', text: clockText() })),

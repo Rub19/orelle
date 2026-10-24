@@ -266,6 +266,15 @@ export function focusWindow(hwnd: HWND): boolean {
   return Number(api.GetForegroundWindow()) === hwnd;
 }
 
+/** Ctrl+V into the window in front (used after the user picks a clipboard entry to paste). */
+export function sendPaste() {
+  if (!api) return;
+  api.keybd_event(0x11, 0, 0, 0);
+  api.keybd_event(0x56, 0, 0, 0);
+  api.keybd_event(0x56, 0, KEYEVENTF_KEYUP, 0);
+  api.keybd_event(0x11, 0, KEYEVENTF_KEYUP, 0);
+}
+
 /** Opens the Windows Start menu (Ctrl+Esc, the shortcut Windows reserves for it). */
 export function openStartMenu() {
   if (!api) return;

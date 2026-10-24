@@ -52,7 +52,7 @@ export type WidgetType =
 
 export type TaskbarMode = 'normal' | 'autohide' | 'hidden';
 
-export type TopBarItemId = 'media' | 'cpu' | 'network' | 'volume' | 'battery' | 'notifications' | 'control' | 'search' | 'taskbar' | 'clock';
+export type TopBarItemId = 'media' | 'cpu' | 'network' | 'volume' | 'battery' | 'notifications' | 'control' | 'search' | 'overview' | 'taskbar' | 'clock';
 
 export interface SavedWindow {
   /** Executable path (lower-cased) or AUMID identifying the app. */
@@ -187,9 +187,24 @@ export interface Settings {
     /** Right-hand status items, in order. */
     items: { id: TopBarItemId; visible: boolean }[];
   };
+  clipboard: {
+    /** Unpinned entries kept in memory. */
+    maxItems: number;
+    images: boolean;
+    /** Executable names (lower case) whose copies are never recorded. */
+    excludedApps: string[];
+    /** Opens the clipboard manager ('' = none). */
+    hotkey: string;
+  };
+  storage: {
+    /** Folders the Storage Manager never offers to delete from. */
+    exclusions: string[];
+  };
   windows: {
     /** Ctrl+Alt+arrows / Enter / C to place the active window. */
     snapping: boolean;
+    /** Global shortcut of Mission Control ('' = none). */
+    overviewHotkey: string;
     layouts: SavedLayout[];
   };
   profiles: {
@@ -417,7 +432,7 @@ export interface AppInfo {
   icon: string | null;
 }
 
-export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications';
+export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications' | 'mission' | 'tools';
 
 export interface Bootstrap {
   surface: SurfaceKind;

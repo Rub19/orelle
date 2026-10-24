@@ -10,10 +10,10 @@ const oneOf = <T extends string>(v: unknown, list: readonly T[], d: T): T => (ty
 const num = (v: unknown, min: number, max: number, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : d);
 
 const THEMES: ThemeId[] = ['system', 'dark', 'light', 'midnight', 'graphite', 'aurora'];
-export const TOP_BAR_ITEMS: TopBarItemId[] = ['media', 'cpu', 'network', 'volume', 'battery', 'notifications', 'search', 'control', 'taskbar', 'clock'];
+export const TOP_BAR_ITEMS: TopBarItemId[] = ['media', 'cpu', 'network', 'volume', 'battery', 'notifications', 'search', 'overview', 'control', 'taskbar', 'clock'];
 const DEFAULT_HIDDEN: TopBarItemId[] = ['media', 'cpu'];
 
-export type Extras = Pick<Settings, 'topBar' | 'windows' | 'profiles' | 'notifications' | 'extensions' | 'automations' | 'ai'>;
+export type Extras = Pick<Settings, 'topBar' | 'clipboard' | 'storage' | 'windows' | 'profiles' | 'notifications' | 'extensions' | 'automations' | 'ai'>;
 
 export function defaultProfiles(lang: 'fr' | 'en' = 'fr'): ActivityProfile[] {
   const fr = lang === 'fr';
@@ -36,7 +36,9 @@ export function defaultExtras(): Extras {
       showDate: true,
       items: TOP_BAR_ITEMS.map((id) => ({ id, visible: !DEFAULT_HIDDEN.includes(id) })),
     },
-    windows: { snapping: true, layouts: [] },
+    clipboard: { maxItems: 100, images: true, excludedApps: ['keepass.exe', 'keepassxc.exe', '1password.exe', 'bitwarden.exe', 'dashlane.exe'], hotkey: 'Ctrl+Alt+V' },
+    storage: { exclusions: [] },
+    windows: { snapping: true, overviewHotkey: 'Ctrl+Alt+O', layouts: [] },
     profiles: { active: null, list: defaultProfiles() },
     notifications: { enabled: true, history: true, focus: false },
     extensions: { enabled: {} },
@@ -127,6 +129,9 @@ export function normalizeExtras(s: Json): Extras {
   const no = isObj(s.notifications) ? s.notifications : {};
   const ex = isObj(s.extensions) ? s.extensions : {};
   const ai = isObj(s.ai) ? s.ai : {};
+  const cb = isObj(s.clipboard) ? s.clipboard : {};
+  const st = isObj(s.storage) ? s.storage : {};
+  const strList = (v: unknown, max: number, re: RegExp) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === 'string' && re.test(x)).map((x) => x.trim()))].slice(0, max) : null);
 
   // Top bar items: keep the user's order, drop unknown ids, append new ones.
   const items: Extras['topBar']['items'] = [];
@@ -149,8 +154,16 @@ export function normalizeExtras(s: Json): Extras {
       showDate: bool(tb.showDate, d.topBar.showDate),
       items,
     },
+    clipboard: {
+      maxItems: Math.round(num(cb.maxItems, 10, 500, d.clipboard.maxItems)),
+      images: bool(cb.images, d.clipboard.images),
+      excludedApps: (strList(cb.excludedApps, 50, /^[\w .-]{1,64}\.exe$/i) ?? d.clipboard.excludedApps).map((x) => x.toLowerCase()),
+      hotkey: typeof cb.hotkey === 'string' && (cb.hotkey === '' || /^[\w+]{3,40}$/.test(cb.hotkey)) ? cb.hotkey : d.clipboard.hotkey,
+    },
+    storage: { exclusions: strList(st.exclusions, 50, /^[a-z]:\\/i) ?? [] },
     windows: {
       snapping: bool(wi.snapping, d.windows.snapping),
+      overviewHotkey: typeof wi.overviewHotkey === 'string' && (wi.overviewHotkey === '' || /^[\w+]{3,40}$/.test(wi.overviewHotkey)) ? wi.overviewHotkey : d.windows.overviewHotkey,
       layouts: (Array.isArray(wi.layouts) ? wi.layouts : []).map(normLayout).filter((l): l is SavedLayout => !!l).slice(0, 30),
     },
     profiles: {

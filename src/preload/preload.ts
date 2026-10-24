@@ -16,6 +16,12 @@ export interface TopBarStateDto {
   stats: Pick<SystemStats, 'cpu' | 'netDown' | 'netUp' | 'battery'> | null;
   taskbarHidden: boolean;
 }
+export interface MissionWindowDto { hwnd: number; title: string; app: string; icon: string | null; minimized: boolean; aspect: number; active: boolean }
+export interface AudioDeviceDto { id: string; name: string; flow: 'output' | 'input'; isDefault: boolean; level: number; muted: boolean; peak: number }
+export interface AudioSessionDto { pid: number; system: boolean; active: boolean; level: number; muted: boolean; peak: number; name: string; icon: string | null; exe: string }
+export interface FileItemDto { path: string; size: number; mtime: number }
+export interface ScanResultDto { ok: boolean; canceled?: boolean; root: string; total: number; files: number; skipped: number; children: { path: string; name: string; size: number; files: number; dir: boolean }[]; largest: FileItemDto[]; ms: number }
+export interface ClipItemDto { id: string; kind: 'text' | 'image'; text: string; thumb: string | null; width?: number; height?: number; at: number; pinned: boolean; source: string | null }
 export interface MenuAppDto { id: string; name: string; icon: string | null }
 export interface MenuDataDto { apps: MenuAppDto[]; pinned: MenuAppDto[]; profiles: { id: string; name: string; glyph: string; on: boolean }[]; user: string }
 export interface ExtensionInfoDto {
@@ -69,7 +75,7 @@ const api = {
     initialSection: (): string | null => process.argv.find((a) => a.startsWith('--orelle-section='))?.split('=')[1] ?? null,
     apps: (): Promise<AppInfo[]> => ipcRenderer.invoke('settings:apps'),
     displays: (): Promise<DisplayInfo[]> => ipcRenderer.invoke('settings:displays'),
-    setHotkey: (name: 'launcher' | 'control', accel: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('settings:setHotkey', name, accel),
+    setHotkey: (name: 'launcher' | 'control' | 'overview', accel: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('settings:setHotkey', name, accel),
     geocode: (q: string): Promise<{ name: string; country: string; latitude: number; longitude: number }[] | null> => ipcRenderer.invoke('settings:geocode', q),
     addScript: (): Promise<AllowedScript | null> => ipcRenderer.invoke('settings:addScript'),
     pickPath: (kind: 'file' | 'folder'): Promise<string | null> => ipcRenderer.invoke('settings:pickPath', kind),
@@ -108,13 +114,47 @@ const api = {
     setInteractive: (v: boolean) => ipcRenderer.send('topbar:interactive', v),
   },
 
+  tools: {
+    startSection: (): string | null => new URLSearchParams(location.search).get('section'),
+    onSection: (cb: (s: string) => void) => on('tools:section', cb),
+    audio: (): Promise<{ devices: AudioDeviceDto[]; sessions: AudioSessionDto[] } | null> => ipcRenderer.invoke('tools:audio'),
+    audioSet: (change: { kind: 'device'; id: string; level?: number; muted?: boolean } | { kind: 'session'; pid: number; system: boolean; level?: number; muted?: boolean }): Promise<boolean> => ipcRenderer.invoke('tools:audioSet', change),
+    openSound: (which: 'output' | 'input' | 'apps') => ipcRenderer.send('tools:openSound', which),
+    drives: (): Promise<{ drives: { root: string; total: number; free: number }[]; home: string }> => ipcRenderer.invoke('tools:drives'),
+    analyze: (root: string): Promise<ScanResultDto | null> => ipcRenderer.invoke('tools:analyze', root),
+    duplicates: (root: string, minMB: number): Promise<{ ok: boolean; canceled?: boolean; groups: { size: number; hash: string; files: FileItemDto[] }[]; wasted: number } | null> => ipcRenderer.invoke('tools:duplicates', root, minMB),
+    cancel: () => ipcRenderer.send('tools:cancel'),
+    onProgress: (cb: (p: { scanned: number; current: string; phase?: string }) => void) => on('tools:progress', cb),
+    cleanup: (): Promise<{ id: 'temp' | 'crashdumps' | 'downloads'; path: string; size: number; files: number; olderThanDays: number }[]> => ipcRenderer.invoke('tools:cleanup'),
+    clean: (id: 'temp' | 'crashdumps'): Promise<{ ok: boolean; removed: number; freed: number; canceled?: boolean } | null> => ipcRenderer.invoke('tools:clean', id),
+    recycle: (paths: string[]): Promise<{ ok: boolean; removed: number; refused: number; canceled?: boolean } | null> => ipcRenderer.invoke('tools:recycle', paths),
+    pickFolder: (): Promise<string | null> => ipcRenderer.invoke('tools:pickFolder'),
+    reveal: (p: string) => ipcRenderer.send('tools:reveal', p),
+    openFolder: (p: string) => ipcRenderer.send('tools:openFolder', p),
+    clipList: (): Promise<{ enabled: boolean; items: ClipItemDto[] } | null> => ipcRenderer.invoke('tools:clipList'),
+    onClipChanged: (cb: () => void) => on('tools:clipChanged', cb),
+    clipCopy: (id: string): Promise<boolean> => ipcRenderer.invoke('tools:clipCopy', id),
+    clipPaste: (id: string): Promise<boolean> => ipcRenderer.invoke('tools:clipPaste', id),
+    clipPin: (id: string, on: boolean) => ipcRenderer.send('tools:clipPin', id, on),
+    clipRemove: (id: string) => ipcRenderer.send('tools:clipRemove', id),
+    clipClear: (all: boolean) => ipcRenderer.send('tools:clipClear', all),
+  },
+
+  mission: {
+    onData: (cb: (list: MissionWindowDto[]) => void) => on('mission:data', cb),
+    layout: (rects: { hwnd: number; x: number; y: number; w: number; h: number; visible: boolean }[]) => ipcRenderer.send('mission:layout', rects),
+    activate: (hwnd: number) => ipcRenderer.send('mission:activate', hwnd),
+    close: (hwnd: number) => ipcRenderer.send('mission:close', hwnd),
+    hide: () => ipcRenderer.send('mission:hide'),
+  },
+
   menu: {
     data: (): Promise<MenuDataDto | null> => ipcRenderer.invoke('menu:data'),
     onRefresh: (cb: () => void) => on('menu:refresh', cb),
     launch: (appId: string): Promise<boolean> => ipcRenderer.invoke('menu:launch', appId),
     pin: (appId: string) => ipcRenderer.send('menu:pin', appId),
     profile: (id: string) => ipcRenderer.send('menu:profile', id),
-    action: (a: 'lock' | 'sleep' | 'restart' | 'shutdown' | 'signout' | 'settings' | 'files' | 'monitor' | 'launcher' | 'windowsStart') => ipcRenderer.send('menu:action', a),
+    action: (a: 'lock' | 'sleep' | 'restart' | 'shutdown' | 'signout' | 'settings' | 'files' | 'monitor' | 'launcher' | 'windowsStart' | 'mission') => ipcRenderer.send('menu:action', a),
     hide: () => ipcRenderer.send('menu:hide'),
   },
 

@@ -1,0 +1,63 @@
+@import '../common/tokens.css';
+
+html,
+body { width: 100%; height: 100%; overflow: hidden; background: transparent; user-select: none; }
+
+.shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 10, 14, 0.55);
+  color: #f5f5f7;
+  animation: fade var(--dur) var(--ease-out);
+}
+[data-effects='off'] .shell { background: #121216; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.head { display: grid; grid-template-columns: 1fr minmax(260px, 480px) 1fr; align-items: center; gap: 16px; padding: 26px 40px 10px; }
+.title { display: flex; align-items: center; gap: 10px; }
+.title .glyph { width: 20px; height: 20px; color: var(--brand-amber); }
+.title strong { font-family: var(--font-display); font-size: 18px; font-weight: 650; }
+.count { color: rgba(235, 235, 245, 0.55); font-size: 13px; }
+.searchbox { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.14); }
+.searchbox .lens { display: grid; color: rgba(235, 235, 245, 0.5); }
+.searchbox .glyph { width: 16px; height: 16px; }
+.search { flex: 1; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; font-size: 14.5px; }
+.search::placeholder { color: rgba(235, 235, 245, 0.45); }
+.search::-webkit-search-cancel-button { display: none; }
+.tools { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+.hint { font-size: 12px; color: rgba(235, 235, 245, 0.45); }
+.chip { border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.08); color: inherit; border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px; }
+.chip:hover { background: rgba(255, 255, 255, 0.14); }
+.chip.on { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+
+.stage { position: relative; flex: 1; margin: 18px 48px 40px; }
+
+.card { position: absolute; display: flex; flex-direction: column; animation: pop var(--dur-slow) var(--ease-out) both; outline: none; }
+@keyframes pop { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+.frame { position: relative; border-radius: 8px; background: rgba(255, 255, 255, 0.06); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.7); transition: box-shadow var(--dur) var(--ease-out); }
+/* The live thumbnail is drawn by DWM over the frame: selection is a ring just outside it. */
+.card.sel .frame { box-shadow: 0 0 0 3px var(--accent), 0 18px 40px -16px rgba(0, 0, 0, 0.7); }
+.card.active .label strong::after { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 7px; vertical-align: middle; }
+.frame.minimized { display: grid; place-items: center; border: 1px dashed rgba(255, 255, 255, 0.2); }
+.min { display: flex; flex-direction: column; align-items: center; gap: 8px; color: rgba(235, 235, 245, 0.55); }
+.min img, .min .glyph { width: 40px; height: 40px; }
+.min small { font-size: 12px; }
+
+.label { display: flex; align-items: center; gap: 8px; height: 30px; padding: 6px 2px 0; min-width: 0; }
+.label .ico { width: 18px; height: 18px; flex: none; object-fit: contain; }
+.label .txt { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
+.label strong { font-size: 12.5px; white-space: nowrap; }
+.label small { font-size: 12px; color: rgba(235, 235, 245, 0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.x { width: 22px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: rgba(235, 235, 245, 0.5); display: grid; place-items: center; flex: none; opacity: 0; }
+.card:hover .x, .card.sel .x { opacity: 1; }
+.x:hover { background: rgba(255, 69, 58, 0.85); color: #fff; }
+.x .glyph { width: 11px; height: 11px; }
+
+.empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; color: rgba(235, 235, 245, 0.5); }
+.empty .glyph { width: 44px; height: 44px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .shell { animation: none; }
+}

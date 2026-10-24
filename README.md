@@ -53,7 +53,7 @@ Options de ligne de commande :
 
 ### Raccourcis
 
-**Fenêtres** : `Ctrl+Alt+←/→/↑/↓` moitiés · `Ctrl+Alt+U/I/J/K` quarts · `Ctrl+Alt+D/F/G` tiers · `Ctrl+Alt+Entrée` agrandir · `Ctrl+Alt+M` centrer.
+**Fenêtres** : `Ctrl+Alt+←/→/↑/↓` moitiés · `Ctrl+Alt+U/I/J/K` quarts · `Ctrl+Alt+D/F/G` tiers · `Ctrl+Alt+Entrée` agrandir · `Ctrl+Alt+Home` centrer.
 
 **Touche Windows** (option, Préférences › Général) : un appui seul ouvre le menu Orelle ou le launcher ; `Win+lettre` reste inchangé et le vrai menu Démarrer reste accessible depuis le menu Orelle.
 

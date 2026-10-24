@@ -19,6 +19,7 @@ export interface Kit {
   segmented: <T extends string>(options: { value: T; label: string }[], value: T, onChange: (v: T) => void) => HTMLElement;
   selectBox: (options: { value: string; label: string }[], value: string, onChange: (v: string) => void) => HTMLElement;
   button: (label: string, onClick: () => void, cls?: string, glyphName?: string) => HTMLButtonElement;
+  hotkeyControl: (name: 'launcher' | 'control' | 'overview') => HTMLElement;
 }
 
 const note = (key: StringKey) => el('p', { class: 'note', text: t(key) });
@@ -43,7 +44,7 @@ export function pageTopBar(k: Kit): HTMLElement[] {
     void k.update({ topBar: { items: next } }).then(k.rerender);
   };
   const list = el('ul', { class: 'items' }, ...items.map((it, i) => el('li', {},
-    el('div', { class: 'it-ico' }, el('div', { class: 'ph', html: glyph({ media: 'music', cpu: 'cpu', network: 'network', volume: 'volume', battery: 'battery', notifications: 'bellOn', control: 'sliders', search: 'search', taskbar: 'taskbar', clock: 'clock' }[it.id]) })),
+    el('div', { class: 'it-ico' }, el('div', { class: 'ph', html: glyph({ media: 'music', cpu: 'cpu', network: 'network', volume: 'volume', battery: 'battery', notifications: 'bellOn', control: 'sliders', search: 'search', overview: 'grid', taskbar: 'taskbar', clock: 'clock' }[it.id]) })),
     el('div', { class: 'it-name' }, el('strong', { text: t(`settings.topbar.item.${it.id}` as StringKey) }), el('small', { text: t(`settings.topbar.item.${it.id}.desc` as StringKey) })),
     k.button('', () => move(i, -1), 'btn icon-only', 'chevronDown'),
     k.toggle(it.visible, (v) => void k.update({ topBar: { items: items.map((x) => (x.id === it.id ? { ...x, visible: v } : x)) } })),
@@ -73,7 +74,7 @@ export function pageWindows(k: Kit): HTMLElement[] {
     ['windows.snap.left', 'Ctrl+Alt+←'], ['windows.snap.right', 'Ctrl+Alt+→'], ['windows.snap.top', 'Ctrl+Alt+↑'], ['windows.snap.bottom', 'Ctrl+Alt+↓'],
     ['windows.snap.topLeft', 'Ctrl+Alt+U'], ['windows.snap.topRight', 'Ctrl+Alt+I'], ['windows.snap.bottomLeft', 'Ctrl+Alt+J'], ['windows.snap.bottomRight', 'Ctrl+Alt+K'],
     ['windows.snap.leftThird', 'Ctrl+Alt+D'], ['windows.snap.centerThird', 'Ctrl+Alt+F'], ['windows.snap.rightThird', 'Ctrl+Alt+G'],
-    ['windows.snap.maximize', 'Ctrl+Alt+Entrée'], ['windows.snap.center', 'Ctrl+Alt+M'],
+    ['windows.snap.maximize', 'Ctrl+Alt+Entrée'], ['windows.snap.center', 'Ctrl+Alt+Home'],
   ];
   const table = el('div', { class: 'shortcut-grid' }, ...shortcuts.flatMap(([key, accel]) => [el('span', { text: t(key) }), el('span', { class: 'kbd', text: accel })]));
   const layouts = s.windows.layouts;
@@ -89,7 +90,10 @@ export function pageWindows(k: Kit): HTMLElement[] {
     setTimeout(k.rerender, 80);
   }, 'btn primary', 'plus');
   return [
-    ...k.group(null, k.row('settings.windows.snapping', k.toggle(s.windows.snapping, (v) => void k.update({ windows: { snapping: v } })), 'settings.windows.snapping.desc')),
+    ...k.group(null,
+      k.row('settings.windows.snapping', k.toggle(s.windows.snapping, (v) => void k.update({ windows: { snapping: v } })), 'settings.windows.snapping.desc'),
+      k.row('settings.windows.overview', k.hotkeyControl('overview'), 'settings.windows.overview.desc'),
+    ),
     el('div', { class: 'group-title', text: t('settings.windows.shortcuts') }),
     el('div', { class: 'group', 'data-search': t('settings.windows.shortcuts').toLowerCase() }, table),
     el('div', { class: 'group-title', text: t('windows.layouts') }),

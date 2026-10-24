@@ -338,8 +338,8 @@ function pageDock(): HTMLElement[] {
   ];
 }
 
-type HotkeyName = 'launcher' | 'control';
-const currentHotkey = (name: HotkeyName) => (name === 'launcher' ? settings.launcher.hotkey : settings.controlCenter.hotkey);
+export type HotkeyName = 'launcher' | 'control' | 'overview';
+const currentHotkey = (name: HotkeyName) => (name === 'launcher' ? settings.launcher.hotkey : name === 'overview' ? settings.windows.overviewHotkey : settings.controlCenter.hotkey);
 
 function hotkeyControl(name: HotkeyName = 'launcher'): HTMLElement {
   const wrap = el('div', {});
@@ -366,6 +366,7 @@ function hotkeyControl(name: HotkeyName = 'launcher'): HTMLElement {
     const res = await orelle.settings.setHotkey(name, accel);
     if (res.ok) {
       if (name === 'launcher') settings.launcher.hotkey = accel;
+      else if (name === 'overview') settings.windows.overviewHotkey = accel;
       else settings.controlCenter.hotkey = accel;
       msg.replaceChildren(el('span', { class: 'ok-text', text: '✓' }));
     } else {
@@ -648,6 +649,7 @@ const kit: Kit = {
   segmented,
   selectBox,
   button,
+  hotkeyControl: (name) => hotkeyControl(name),
 };
 
 const PAGES: Record<Section, () => HTMLElement[]> = {

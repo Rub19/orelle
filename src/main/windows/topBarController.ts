@@ -61,6 +61,7 @@ export class TopBarController {
       toggleNotifications: () => void;
       toggleControl: () => void;
       toggleLauncher: () => void;
+      toggleMission: () => void;
     },
   ) {}
 
@@ -341,6 +342,7 @@ export class TopBarController {
         case 'control':
         case 'volume': this.d.toggleControl(); break;
         case 'search': this.d.toggleLauncher(); break;
+        case 'overview': this.d.toggleMission(); break;
         case 'taskbar': this.d.taskbar.peek(); break;
         case 'cpu': this.ctx.actions.openApp('monitor'); break;
         case 'network': void shell.openExternal('ms-settings:network-status'); break;

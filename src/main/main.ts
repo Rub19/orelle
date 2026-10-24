@@ -1,5 +1,6 @@
 // Orelle main process: wires services and surfaces, owns the application lifecycle.
 import { app, BrowserWindow, ipcMain, nativeTheme, powerMonitor, screen, shell, type IpcMainInvokeEvent, type WebContents } from 'electron';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createTranslator, resolveLanguage } from '../shared/i18n';
@@ -43,6 +44,9 @@ import { WinKeyHook } from './native/keyboard';
 import { registerExtrasIpc } from './extrasIpc';
 import { MenuController, NotificationCenterController } from './windows/shellPanels';
 import { TopBarController } from './windows/topBarController';
+import { MissionControlController } from './windows/missionControlController';
+import { ToolsController, type ToolsSection } from './windows/toolsController';
+import { StorageService } from './services/storageService';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
 const SMOKE = process.argv.includes('--orelle-smoke');
@@ -109,7 +113,6 @@ async function main() {
   const apps = new AppIndex(dataDir, icons);
   const tracker = new WindowTracker(process.pid);
   const files = new FileIndex();
-  const clip = new ClipboardHistory();
   const system = new SystemService();
   const weather = new WeatherService();
   const screenTime = new ScreenTimeService(dataDir);
@@ -137,10 +140,15 @@ async function main() {
       pinToDock: (ref) => dock.pinRef(ref),
       toggleControlCenter: () => control.toggle(),
       editWidgets: () => widgets.toggleEditing(),
-      openApp: (which, arg) => (which === 'files' ? orelleApps.openFiles(arg) : orelleApps.openMonitor(arg)),
+      openApp: (which, arg) => (which === 'files' ? orelleApps.openFiles(arg) : which === 'tools' ? tools.open((arg as ToolsSection) || 'audio') : orelleApps.openMonitor(arg)),
     },
   };
 
+  const clip = new ClipboardHistory(ctx, () => {
+    const fg = tracker.getForeground();
+    const w = fg ? tracker.list().find((x) => x.hwnd === fg) : undefined;
+    return w ? { exe: w.exe, name: dock.nameForWindow(w) } : null;
+  });
   const scripts = new ScriptService(ctx);
   const orelleApps = new AppsController(ctx, new FileService(ctx, files), new MonitorService(ctx));
   // Clicking a notification: a small closed set of actions, never a command line.
@@ -167,6 +175,13 @@ async function main() {
   const widgets = new WidgetsController(ctx, system, weather, screenTime);
   const control = new ControlCenterController(ctx, system, () => widgets.toggleEditing());
   const hotkeys = new Hotkeys();
+  const mission = new MissionControlController(ctx, (hwnd) => {
+    const w = tracker.list().find((x) => x.hwnd === hwnd);
+    return w ? dock.nameForWindow(w) : '';
+  });
+  ctx.actions.toggleMission = () => mission.toggle();
+  const storage = new StorageService(ctx);
+  const tools = new ToolsController(ctx, storage, clip, () => windowsSvc.target());
   const menu = new MenuController(ctx, search, profiles);
   const notificationCenter = new NotificationCenterController(ctx, notifications);
   const topbar = new TopBarController(ctx, {
@@ -183,6 +198,7 @@ async function main() {
     toggleNotifications: () => notificationCenter.toggle(),
     toggleControl: () => control.toggle(),
     toggleLauncher: () => launcher.toggle(),
+    toggleMission: () => mission.toggle(),
   });
   const automations = new AutomationService(ctx, hotkeys, notifications, profiles, windowsSvc);
   // Optional: a lone press of the Windows key opens Orelle's menu or launcher instead of Start.
@@ -198,6 +214,8 @@ async function main() {
   const hotkeyActions: Record<string, { get: (s: Settings) => string | null; run: () => void }> = {
     launcher: { get: (s) => (s.launcher.enabled ? s.launcher.hotkey : null), run: () => launcher.toggle() },
     control: { get: (s) => s.controlCenter.hotkey || null, run: () => control.toggle() },
+    overview: { get: (s) => s.windows.overviewHotkey || null, run: () => mission.toggle() },
+    clipboard: { get: (s) => (s.privacy.clipboardHistory && s.clipboard.hotkey) || null, run: () => tools.open('clipboard') },
   };
   for (const [target, accel] of Object.entries(SNAP_HOTKEYS)) {
     hotkeyActions[`snap:${target}`] = { get: (s) => (s.windows.snapping ? accel : null), run: () => windowsSvc.snap(target as SnapTarget) };
@@ -229,9 +247,11 @@ async function main() {
   control.registerIpc();
   orelleApps.registerIpc();
   menu.registerIpc();
+  mission.registerIpc();
+  tools.registerIpc();
   notificationCenter.registerIpc();
   topbar.registerIpc();
-  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter });
+  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools });
   registerExtrasIpc(ctx, () => settingsUi.window, { extensions, ai, windows: windowsSvc, profiles, automations });
 
   // ---------- First run: build a Dock from installed apps ----------
@@ -326,14 +346,16 @@ async function main() {
     if (next.general.launchAtLogin !== prev.general.launchAtLogin) syncLoginItem(next);
     if (next.general.taskbarMode !== prev.general.taskbarMode) taskbar.apply(next.general.taskbarMode);
     alerts.sync();
-    if (next.launcher.enabled !== prev.launcher.enabled || next.launcher.hotkey !== prev.launcher.hotkey || next.controlCenter.hotkey !== prev.controlCenter.hotkey || next.windows.snapping !== prev.windows.snapping) syncHotkeys(next);
+    if (next.launcher.enabled !== prev.launcher.enabled || next.launcher.hotkey !== prev.launcher.hotkey || next.controlCenter.hotkey !== prev.controlCenter.hotkey || next.windows.snapping !== prev.windows.snapping || next.windows.overviewHotkey !== prev.windows.overviewHotkey || next.clipboard.hotkey !== prev.clipboard.hotkey || next.privacy.clipboardHistory !== prev.privacy.clipboardHistory) syncHotkeys(next);
     if (next.appearance.effects !== prev.appearance.effects) {
       launcher.onEffectsChanged();
       control.onEffectsChanged();
       menu.panel.onEffectsChanged();
+      mission.onEffectsChanged();
       notificationCenter.panel.onEffectsChanged();
       settingsUi.updateTitleBar();
       orelleApps.updateTitleBars();
+      tools.updateTitleBar();
     }
     if (next.privacy.clipboardHistory !== prev.privacy.clipboardHistory) {
       if (next.privacy.clipboardHistory && launcher.window) clip.enable(launcher.window);
@@ -382,6 +404,8 @@ async function main() {
     else if (what === 'control') control.show();
     else if (what === 'launcher') launcher.show();
     else if (what === 'menu') menu.toggle();
+    else if (what === 'mission') mission.toggle();
+    else if (what === 'tools') tools.open((arg as ToolsSection) || 'audio');
     else if (what === 'notifications') notificationCenter.toggle();
     else return false;
     return true;
@@ -426,7 +450,7 @@ async function main() {
     try { taskbar.restore(); } catch { /* exiting */ }
   });
 
-  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai }, shutdown);
+  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage }, shutdown);
 }
 
 function showSplash(firstRun: boolean, lang: 'fr' | 'en'): BrowserWindow {
@@ -482,7 +506,7 @@ function broadcastSettings(ctx: OrelleContext) {
 
 function registerSharedIpc(
   ctx: OrelleContext,
-  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController },
+  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; mission: MissionControlController; tools: ToolsController },
 ) {
   const surfaceOf = (wc: WebContents): SurfaceKind | null => {
     if (c.dock.window?.webContents === wc) return 'dock';
@@ -495,6 +519,8 @@ function registerSharedIpc(
     if (c.topbar.window?.webContents === wc) return 'topbar';
     if (c.menu.panel.window?.webContents === wc) return 'menu';
     if (c.notificationCenter.panel.window?.webContents === wc) return 'notifications';
+    if (c.mission.window?.webContents === wc) return 'mission';
+    if (c.tools.is(wc)) return 'tools';
     return null;
   };
 
@@ -512,7 +538,7 @@ function registerSharedIpc(
   });
 
   // Which surface may change which top-level settings group.
-  const writable: Partial<Record<SurfaceKind, string[] | 'all'>> = { settings: 'all', dock: ['dock'], widgets: ['widgets'], control: ['controlCenter'], files: ['files'], monitor: ['monitor'], notifications: ['notifications'] };
+  const writable: Partial<Record<SurfaceKind, string[] | 'all'>> = { settings: 'all', dock: ['dock'], widgets: ['widgets'], control: ['controlCenter'], files: ['files'], monitor: ['monitor'], notifications: ['notifications'], tools: ['privacy', 'clipboard', 'storage'] };
   ipcMain.handle('orelle:updateSettings', (e, patch: unknown) => {
     const surface = surfaceOf(e.sender);
     const allowed = surface ? writable[surface] : undefined;
@@ -528,7 +554,7 @@ async function runSmoke(
   ctx: OrelleContext,
   c: {
     dock: DockController; launcher: LauncherController; search: SearchService; files: FileIndex; widgets: WidgetsController; control: ControlCenterController; system: SystemService; apps: AppsController;
-    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService;
+    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService;
   },
   shutdown: () => void,
 ) {
@@ -616,6 +642,43 @@ async function runSmoke(
     const on = ctx.settings.get().profiles.active === 'focus';
     c.profiles.deactivate(true);
     check('profile on/off', on && ctx.settings.get().profiles.active === null);
+    c.mission.show();
+    await wait(2000);
+    const live = ctx.tracker.list().filter((w) => !w.minimized).length;
+    check('mission control shows', c.mission.isVisible(), { windows: ctx.tracker.list().length });
+    check('mission control live thumbnails', c.mission.thumbnailCount === live, { thumbnails: c.mission.thumbnailCount, live });
+    await shot('mission', c.mission.window);
+    if (argValue('orelle-capture')) {
+      // DWM thumbnails are composited by Windows, not by Chromium: grab the real screen.
+      const out = path.join(argValue('orelle-capture')!, 'mission-screen.png').replace(/'/g, "''");
+      try {
+        execFileSync('powershell.exe', ['-NoProfile', '-Command', `Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $i=New-Object System.Drawing.Bitmap $b.Width,$b.Height; $g=[System.Drawing.Graphics]::FromImage($i); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $i.Save('${out}')`], { timeout: 15000 });
+      } catch { /* capture is best effort */ }
+    }
+    c.mission.hide();
+    // Utilities: Core Audio enumeration, storage scan and duplicate detection on files made for the test.
+    const devices = audio.listDevices();
+    check('audio devices', devices.some((d) => d.flow === 'output'), devices.map((d) => ({ name: d.name, flow: d.flow, def: d.isDefault, level: d.level })));
+    const sessions = audio.listSessions();
+    check('audio sessions readable', Array.isArray(sessions), { sessions: sessions.length });
+    const dupDir = path.join(ctx.dataDir, 'dup-test');
+    fs.mkdirSync(dupDir, { recursive: true });
+    const blob = Buffer.alloc(200_000, 7);
+    fs.writeFileSync(path.join(dupDir, 'a.bin'), blob);
+    fs.writeFileSync(path.join(dupDir, 'b.bin'), blob);
+    fs.writeFileSync(path.join(dupDir, 'c.bin'), Buffer.concat([blob.subarray(1), Buffer.from([8])]));
+    const scanRes = await c.storage.analyze(dupDir);
+    check('storage scan', scanRes.ok && scanRes.files === 3 && scanRes.total === 600_000, { files: scanRes.files, total: scanRes.total });
+    const dups = await c.storage.duplicates(dupDir, 1000);
+    check('storage duplicates', dups.ok && dups.groups.length === 1 && dups.groups[0].files.length === 2, dups.groups.map((g) => g.files.map((f) => path.basename(f.path))));
+    c.tools.open('audio');
+    await wait(2500);
+    check('utilities window', !!c.tools.window?.isVisible());
+    await shot('tools-audio', c.tools.window);
+    c.tools.open('storage');
+    await wait(1500);
+    await shot('tools-storage', c.tools.window);
+    c.tools.window?.close();
     // AI: off by default; with consent but an unreachable local server, a clean error (no crash, nothing sent elsewhere).
     check('ai off by default', c.search.search('? bonjour').results.every((r) => r.kind !== 'ai'));
     ctx.settings.update({ ai: { provider: 'ollama', consent: true, model: 'smoke', endpoint: 'http://127.0.0.1:9' } });

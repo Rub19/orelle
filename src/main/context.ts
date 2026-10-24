@@ -29,8 +29,10 @@ export interface OrelleContext {
     toggleControlCenter(): void;
     editWidgets(): void;
     /** Orelle's own apps (file browser, activity monitor). */
-    openApp(app: 'files' | 'monitor', arg?: string): void;
+    openApp(app: 'files' | 'monitor' | 'tools', arg?: string): void;
     /** Orelle notification center (set once the service exists). */
+    /** Mission Control (set once the controller exists). */
+    toggleMission?(): void;
     notify?(n: { title: string; body: string; source: string; glyph: string; action?: string }): void;
   };
 }
