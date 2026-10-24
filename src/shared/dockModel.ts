@@ -75,6 +75,7 @@ export function composeDock(input: ComposeInput): ComposedDock {
       running: wins.length > 0,
       active: input.foreground !== null && wins.some((w) => w.hwnd === input.foreground),
       windowCount: wins.length,
+      ...(item.type === 'nova' ? { action: item.action } : {}),
     });
   }
 

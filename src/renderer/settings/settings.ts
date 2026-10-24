@@ -2,17 +2,18 @@
 // and persists, then broadcasts the new settings to every surface (Dock, launcher, this window).
 import { ACCENTS, THEMES } from '../../shared/settings';
 import type { StringKey } from '../../shared/i18n';
-import type { AppInfo, Bootstrap, DeepPartial, DisplayInfo, DockItem, LauncherProviders, Settings } from '../../shared/types';
+import type { AppInfo, Bootstrap, DeepPartial, DisplayInfo, DockItem, LauncherProviders, Settings, WidgetType } from '../../shared/types';
 import { el, nova, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
 
-type Section = 'general' | 'appearance' | 'dock' | 'launcher' | 'privacy' | 'backup' | 'about';
+type Section = 'general' | 'appearance' | 'dock' | 'launcher' | 'widgets' | 'privacy' | 'backup' | 'about';
 const SECTIONS: { id: Section; glyph: string; color: string }[] = [
   { id: 'general', glyph: 'sliders', color: '#8e8e93' },
   { id: 'appearance', glyph: 'palette', color: '#bf5af2' },
   { id: 'dock', glyph: 'dock', color: '#0a84ff' },
   { id: 'launcher', glyph: 'search', color: '#5e5ce6' },
+  { id: 'widgets', glyph: 'grid', color: '#ff375f' },
   { id: 'privacy', glyph: 'shield', color: '#30d158' },
   { id: 'backup', glyph: 'archive', color: '#ff9f0a' },
   { id: 'about', glyph: 'info', color: '#64d2ff' },
@@ -129,6 +130,8 @@ function pageGeneral(): HTMLElement[] {
       ], g.language, (v) => void update({ general: { language: v as Settings['general']['language'] } }))),
       row('settings.launchAtLogin', toggle(g.launchAtLogin, (v) => void update({ general: { launchAtLogin: v } })), 'settings.launchAtLogin.desc'),
       row('settings.tray', toggle(g.showTrayIcon, (v) => void update({ general: { showTrayIcon: v } })), 'settings.tray.desc'),
+      row('settings.general.hideTaskbar', toggle(g.hideTaskbar, (v) => void update({ general: { hideTaskbar: v } })), 'settings.general.hideTaskbar.desc'),
+      row('settings.general.gpu', toggle(g.hardwareAcceleration, (v) => void update({ general: { hardwareAcceleration: v } })), 'settings.general.gpu.desc'),
     ),
   ];
 }
@@ -312,12 +315,15 @@ function pageDock(): HTMLElement[] {
   ];
 }
 
-function hotkeyControl(): HTMLElement {
+type HotkeyName = 'launcher' | 'control';
+const currentHotkey = (name: HotkeyName) => (name === 'launcher' ? settings.launcher.hotkey : settings.controlCenter.hotkey);
+
+function hotkeyControl(name: HotkeyName = 'launcher'): HTMLElement {
   const wrap = el('div', {});
   const btn = el('button', { class: 'hotkey' });
   const msg = el('div', {});
   const show = (accel: string) => btn.replaceChildren(...accel.split('+').map((k) => el('kbd', { text: k === 'Space' ? (document.documentElement.lang === 'fr' ? 'Espace' : 'Space') : k })));
-  show(settings.launcher.hotkey);
+  show(currentHotkey(name));
   let recording = false;
   const stop = () => {
     recording = false;
@@ -328,20 +334,21 @@ function hotkeyControl(): HTMLElement {
   const onKey = async (e: KeyboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.key === 'Escape') { stop(); show(settings.launcher.hotkey); return; }
+    if (e.key === 'Escape') { stop(); show(currentHotkey(name)); return; }
     if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
     const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Super'].filter(Boolean) as string[];
     const key = e.code === 'Space' ? 'Space' : e.key.length === 1 ? e.key.toUpperCase() : e.key;
     const accel = [...mods, key].join('+');
     stop();
-    const res = await nova.settings.setHotkey(accel);
+    const res = await nova.settings.setHotkey(name, accel);
     if (res.ok) {
-      settings.launcher.hotkey = accel;
+      if (name === 'launcher') settings.launcher.hotkey = accel;
+      else settings.controlCenter.hotkey = accel;
       msg.replaceChildren(el('span', { class: 'ok-text', text: '✓' }));
     } else {
       msg.replaceChildren(el('div', { class: 'error-text', text: t(res.error === 'invalid' ? 'settings.launcher.hotkey.invalid' : 'settings.launcher.hotkey.conflict') }));
     }
-    show(settings.launcher.hotkey);
+    show(currentHotkey(name));
   };
   btn.addEventListener('click', () => {
     if (recording) return;
@@ -352,7 +359,7 @@ function hotkeyControl(): HTMLElement {
     nova.settings.recordingHotkey(true);
     window.addEventListener('keydown', onKey, true);
   });
-  btn.addEventListener('blur', () => { if (recording) { stop(); show(settings.launcher.hotkey); } });
+  btn.addEventListener('blur', () => { if (recording) { stop(); show(currentHotkey(name)); } });
   wrap.append(btn, msg);
   return wrap;
 }
@@ -395,6 +402,101 @@ function commandsGroup(): HTMLElement[] {
   ];
 }
 
+function scriptsGroup(): HTMLElement[] {
+  const scripts = settings.launcher.scripts;
+  const list = el('ul', { class: 'items' }, ...scripts.map((sc) => {
+    const kw = el('input', { class: 'input', value: sc.keyword, 'aria-label': t('settings.launcher.commands.keyword') });
+    kw.style.maxWidth = '110px';
+    kw.style.minWidth = '0';
+    kw.addEventListener('change', () => {
+      const k = kw.value.trim().toLowerCase();
+      if (k && !/\s/.test(k)) void update({ launcher: { scripts: scripts.map((x) => (x.id === sc.id ? { ...x, keyword: k } : x)) } });
+    });
+    const consoleToggle = toggle(sc.showConsole, (v) => void update({ launcher: { scripts: scripts.map((x) => (x.id === sc.id ? { ...x, showConsole: v } : x)) } }));
+    consoleToggle.title = t('settings.launcher.scripts.console');
+    return el('li', {},
+      el('div', { class: 'it-ico' }, el('div', { class: 'ph', html: glyph('command') })),
+      el('div', { class: 'it-name' }, el('strong', { text: sc.name }), el('small', { text: `${sc.path} · ${t(sc.approvedHash ? 'settings.launcher.scripts.approved' : 'settings.launcher.scripts.pending')}` })),
+      kw,
+      consoleToggle,
+      button('', () => void update({ launcher: { scripts: scripts.filter((x) => x.id !== sc.id) } }).then(rerender), 'btn icon-only danger', 'close'),
+    );
+  }));
+  const add = button(t('settings.launcher.scripts.add'), async () => {
+    if (await nova.settings.addScript()) setTimeout(rerender, 80);
+  }, 'btn', 'plus');
+  return [
+    el('div', { class: 'group-title', text: t('settings.launcher.scripts') }),
+    el('div', { class: 'group', 'data-search': t('settings.launcher.scripts').toLowerCase() }, list, el('div', { class: 'toolbar' }, add)),
+    el('p', { class: 'note', text: t('settings.launcher.scripts.desc') }),
+  ];
+}
+
+const WIDGET_GLYPH: Record<WidgetType, string> = {
+  clock: 'clock', calendar: 'calendar', weather: 'partly', system: 'cpu', network: 'network', battery: 'battery', media: 'playPause',
+  notes: 'note', todo: 'list', timer: 'timer', recentApps: 'grid', shortcuts: 'link', appUsage: 'chart',
+};
+
+function weatherGroup(): HTMLElement[] {
+  const w = settings.widgets.weather;
+  const input = el('input', { class: 'input', value: w.city, placeholder: t('settings.widgets.weather.city') });
+  const results = el('div', { class: 'picker-list' });
+  const status = el('div', { class: 'error-text' });
+  const doSearch = async () => {
+    status.textContent = '';
+    const found = await nova.settings.geocode(input.value);
+    if (!found || !found.length) {
+      status.textContent = t('settings.widgets.weather.none');
+      results.replaceChildren();
+      return;
+    }
+    results.replaceChildren(...found.map((g) => {
+      const b = el('button', {}, el('span', { html: glyph('partly') }), el('span', { text: `${g.name}${g.country ? `, ${g.country}` : ''}` }));
+      b.addEventListener('click', async () => {
+        await update({ widgets: { weather: { city: g.name, latitude: g.latitude, longitude: g.longitude } } });
+        rerender();
+      });
+      return b;
+    }));
+  };
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') void doSearch(); });
+  return [
+    el('div', { class: 'group-title', text: t('settings.widgets.weather') }),
+    el('div', { class: 'group', 'data-search': `${t('settings.widgets.weather')} ${t('settings.widgets.weather.city')}`.toLowerCase() },
+      el('div', { class: 'form-inline' }, input, button(t('settings.widgets.weather.search'), () => void doSearch(), 'btn primary', 'search')),
+      el('div', { class: 'picker' }, results, status),
+      row('settings.widgets.weather.unit', segmented([{ value: 'c', label: '°C' }, { value: 'f', label: '°F' }], w.unit, (v) => void update({ widgets: { weather: { unit: v } } }))),
+    ),
+    el('p', { class: 'note', text: t('settings.widgets.weather.privacy') }),
+  ];
+}
+
+function pageWidgets(): HTMLElement[] {
+  const wg = settings.widgets;
+  const displayOptions = [{ value: 'primary', label: t('settings.dock.display.primary') }, ...displays.filter((x) => !x.primary).map((x) => ({ value: x.id, label: x.label }))];
+  const list = el('ul', { class: 'items' }, ...wg.items.map((w) => {
+    const eye = toggle(!w.hidden, (v) => void update({ widgets: { items: settings.widgets.items.map((x) => (x.id === w.id ? { ...x, hidden: !v } : x)) } }));
+    return el('li', {},
+      el('div', { class: 'it-ico' }, el('div', { class: 'ph', html: glyph(WIDGET_GLYPH[w.type]) })),
+      el('div', { class: 'it-name' }, el('strong', { text: t(`widgets.type.${w.type}` as StringKey) }), el('small', { text: `${w.w}×${w.h} · ${Math.round(w.opacity * 100)} %` })),
+      eye,
+      button('', () => void update({ widgets: { items: settings.widgets.items.filter((x) => x.id !== w.id) } }).then(rerender), 'btn icon-only danger', 'close'),
+    );
+  }));
+  return [
+    ...group(
+      null,
+      row('settings.widgets.enabled', toggle(wg.enabled, (v) => void update({ widgets: { enabled: v } }))),
+      row('settings.widgets.editMode', button(t('widgets.edit'), () => nova.settings.editWidgets(), 'btn primary', 'pencil'), 'settings.widgets.editMode.desc'),
+      displays.length > 1 ? row('settings.widgets.display', selectBox(displayOptions, wg.display, (v) => void update({ widgets: { display: v } }))) : null,
+    ),
+    el('div', { class: 'group-title', text: t('settings.widgets.list') }),
+    el('div', { class: 'group', 'data-search': t('settings.widgets.list').toLowerCase() }, list),
+    ...weatherGroup(),
+    ...group('settings.control', row('settings.control.hotkey', hotkeyControl('control'), 'settings.launcher.hotkey.desc')),
+  ];
+}
+
 function pageLauncher(): HTMLElement[] {
   const l = settings.launcher;
   const providers = Object.keys(l.providers) as (keyof LauncherProviders)[];
@@ -415,6 +517,7 @@ function pageLauncher(): HTMLElement[] {
       }))),
     ),
     ...commandsGroup(),
+    ...scriptsGroup(),
   ];
 }
 
@@ -491,6 +594,7 @@ const PAGES: Record<Section, () => HTMLElement[]> = {
   appearance: pageAppearance,
   dock: pageDock,
   launcher: pageLauncher,
+  widgets: pageWidgets,
   privacy: pagePrivacy,
   backup: pageBackup,
   about: pageAbout,

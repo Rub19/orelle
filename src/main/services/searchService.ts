@@ -15,6 +15,7 @@ import * as w32 from '../native/win32';
 import { log } from '../logger';
 import type { ClipboardHistory } from './clipboardHistory';
 import type { FileIndex } from './fileIndex';
+import type { ScriptService } from './scriptService';
 import { launchApp, openPath, openUrl, revealPath, safeLaunch } from './launchService';
 
 type SystemAction = 'lock' | 'sleep' | 'restart' | 'shutdown' | 'signout' | 'recycle';
@@ -32,6 +33,8 @@ const NOVA_ACTIONS: { id: string; key: StringKey; keywords: string; glyph: strin
   { id: 'settings', key: 'dock.settings', keywords: 'nova preferences parametres settings reglages', glyph: 'settings' },
   { id: 'toggleDock', key: 'tray.toggleDock', keywords: 'nova dock afficher masquer show hide', glyph: 'dock' },
   { id: 'reindex', key: 'settings.about.reindex', keywords: 'nova reindexer reindex applications', glyph: 'refresh' },
+  { id: 'control', key: 'control.title', keywords: 'nova centre controle control center volume luminosite brightness wifi', glyph: 'sliders' },
+  { id: 'widgets', key: 'widgets.edit', keywords: 'nova widgets bureau desktop modifier edit', glyph: 'grid' },
 ];
 
 const URL_RE = /^(https?:\/\/)?(localhost(:\d+)?|[\w-]+(\.[\w-]+)*\.[a-z]{2,})(:\d+)?(\/\S*)?$/i;
@@ -42,6 +45,7 @@ export class SearchService {
     private readonly ctx: NovaContext,
     private readonly files: FileIndex,
     private readonly clip: ClipboardHistory,
+    private readonly scripts: ScriptService,
   ) {}
 
   private get t() {
@@ -96,6 +100,11 @@ export class SearchService {
         } else {
           add({ id: `cmd:${c.id}:`, kind: 'command', title: c.name, subtitle: `${c.keyword} …`, glyph: 'command', score: Math.max(fuzzyScore(q, c.name), fuzzyScore(q, c.keyword)) * 0.8, action: this.t('launcher.run') });
         }
+      }
+      // Allowed scripts, by keyword or name.
+      for (const sc of s.scripts) {
+        const score = sc.keyword === kw.toLowerCase() ? 1.6 : Math.max(fuzzyScore(q, sc.name), fuzzyScore(q, sc.keyword)) * 0.85;
+        add({ id: `script:${sc.id}`, kind: 'command', title: sc.name, subtitle: `${sc.keyword} · ${sc.path}`, glyph: 'command', score, action: this.t('launcher.run'), altAction: this.t('launcher.reveal') });
       }
     }
 
@@ -325,6 +334,13 @@ export class SearchService {
         if (c.kind === 'url') return safeLaunch(() => openUrl(c.target.replace('{query}', encodeURIComponent(arg.join(':')))), c.target);
         return safeLaunch(() => openPath(c.target), c.target);
       }
+      case 'script': {
+        const sc = this.ctx.settings.get().launcher.scripts.find((x) => x.id === rest);
+        if (!sc) return false;
+        if (mode === 'alt') { revealPath(sc.path); return true; }
+        record(sc.name);
+        return this.scripts.run(sc);
+      }
       case 'clip': {
         const item = this.clip.list()[Number(rest)];
         if (item) await clipboard.writeText(item.text);
@@ -337,6 +353,8 @@ export class SearchService {
         if (rest === 'settings') this.ctx.actions.openSettings();
         else if (rest === 'toggleDock') this.ctx.actions.toggleDock();
         else if (rest === 'reindex') void this.ctx.apps.refresh();
+        else if (rest === 'control') this.ctx.actions.toggleControlCenter();
+        else if (rest === 'widgets') this.ctx.actions.editWidgets();
         return true;
       default:
         return false;

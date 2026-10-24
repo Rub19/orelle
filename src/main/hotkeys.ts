@@ -1,4 +1,5 @@
-// Global shortcut management (RegisterHotKey under the hood). Reports conflicts instead of failing silently.
+// Global shortcuts (RegisterHotKey under the hood), one per named action. Conflicts are reported
+// instead of failing silently, and a failed change keeps the previous working shortcut.
 import { globalShortcut } from 'electron';
 import { log } from './logger';
 
@@ -12,40 +13,64 @@ export function isValidAccelerator(accel: string): boolean {
   return mods.every((m) => MODIFIER.test(m)) && !MODIFIER.test(key);
 }
 
+type Result = { ok: boolean; error?: 'invalid' | 'conflict' };
+
 export class Hotkeys {
-  private current: string | null = null;
+  private bindings = new Map<string, { accel: string; handler: () => void }>();
+  private suspended = false;
 
-  constructor(private readonly onLauncher: () => void) {}
-
-  apply(accel: string): { ok: boolean; error?: 'invalid' | 'conflict' } {
+  /** Registers (or re-registers) the shortcut of action `name`. */
+  set(name: string, accel: string, handler: () => void): Result {
     if (!isValidAccelerator(accel)) return { ok: false, error: 'invalid' };
-    const previous = this.current;
-    globalShortcut.unregisterAll();
+    const previous = this.bindings.get(name);
+    if (previous?.accel === accel && globalShortcut.isRegistered(accel)) return { ok: true };
+    if ([...this.bindings].some(([n, b]) => n !== name && b.accel.toLowerCase() === accel.toLowerCase())) return { ok: false, error: 'conflict' };
+    if (previous) globalShortcut.unregister(previous.accel);
     let ok = false;
     try {
-      ok = globalShortcut.register(accel, this.onLauncher);
+      ok = globalShortcut.register(accel, handler);
     } catch (err) {
       log.warn('hotkeys', `Cannot register ${accel}`, err);
     }
     if (ok) {
-      this.current = accel;
-      log.info('hotkeys', `Launcher shortcut: ${accel}`);
+      this.bindings.set(name, { accel, handler });
+      log.info('hotkeys', `${name}: ${accel}`);
       return { ok: true };
     }
-    log.warn('hotkeys', `Shortcut ${accel} is taken by another application`);
+    log.warn('hotkeys', `${accel} (${name}) is taken by another application`);
     if (previous) {
-      try { globalShortcut.register(previous, this.onLauncher); } catch { /* ignore */ }
+      try { globalShortcut.register(previous.accel, previous.handler); } catch { /* ignore */ }
     }
     return { ok: false, error: 'conflict' };
   }
 
-  disable() {
-    globalShortcut.unregisterAll();
-    this.current = null;
+  remove(name: string) {
+    const b = this.bindings.get(name);
+    if (b) globalShortcut.unregister(b.accel);
+    this.bindings.delete(name);
   }
 
-  /** After sleep/resume or session unlock, registrations can be lost: re-apply. */
+  /** While the user records a new shortcut in Preferences, none may fire. */
+  suspend(on: boolean) {
+    if (on === this.suspended) return;
+    this.suspended = on;
+    if (on) globalShortcut.unregisterAll();
+    else this.refresh();
+  }
+
+  disableAll() {
+    globalShortcut.unregisterAll();
+    this.bindings.clear();
+  }
+
+  /** After sleep/resume or session unlock, registrations can be lost: re-apply all. */
   refresh() {
-    if (this.current) this.apply(this.current);
+    if (this.suspended) return;
+    globalShortcut.unregisterAll();
+    for (const [name, b] of this.bindings) {
+      try {
+        if (!globalShortcut.register(b.accel, b.handler)) log.warn('hotkeys', `Lost ${b.accel} (${name})`);
+      } catch { /* ignore */ }
+    }
   }
 }

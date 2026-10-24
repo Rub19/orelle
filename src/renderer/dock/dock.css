@@ -103,6 +103,8 @@ body {
 .art .glyph { width: 52%; height: 52%; stroke-width: 1.8; }
 .art.nova { background: linear-gradient(145deg, #7c5cff, #1646d6); }
 .art.nova .glyph { fill: #fff; stroke: none; }
+.art.control { background: linear-gradient(145deg, #636366, #2c2c2e); }
+.art.control .glyph { stroke-width: 2.1; }
 .art.url { background: linear-gradient(145deg, #3aa0ff, #1b5fd6); }
 .art.folder { background: linear-gradient(145deg, #5ac8fa, #1e88e5); }
 .art.file { background: linear-gradient(145deg, #a1a1aa, #6b6b73); }

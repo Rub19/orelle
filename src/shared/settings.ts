@@ -1,7 +1,26 @@
 // Default settings, migrations and normalization. Pure functions: unit tested.
-import type { CustomCommand, DockItem, Settings, ThemeId } from './types';
+import type { AllowedScript, CustomCommand, DockItem, Settings, ThemeId, WidgetInstance, WidgetType } from './types';
 
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
+
+export const WIDGET_TYPES: WidgetType[] = ['clock', 'calendar', 'weather', 'system', 'network', 'battery', 'media', 'notes', 'todo', 'timer', 'recentApps', 'shortcuts', 'appUsage'];
+
+/** Default size (DIP) of each widget type. */
+export const WIDGET_SIZES: Record<WidgetType, { w: number; h: number }> = {
+  clock: { w: 260, h: 132 },
+  calendar: { w: 260, h: 250 },
+  weather: { w: 260, h: 150 },
+  system: { w: 260, h: 176 },
+  network: { w: 260, h: 120 },
+  battery: { w: 200, h: 110 },
+  media: { w: 260, h: 110 },
+  notes: { w: 260, h: 220 },
+  todo: { w: 260, h: 240 },
+  timer: { w: 260, h: 150 },
+  recentApps: { w: 280, h: 120 },
+  shortcuts: { w: 280, h: 120 },
+  appUsage: { w: 280, h: 210 },
+};
 
 export const THEMES: ThemeId[] = ['system', 'dark', 'light', 'midnight', 'graphite', 'aurora'];
 export const ACCENTS = ['#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#64d2ff', '#8e8e93'];
@@ -9,7 +28,7 @@ export const ACCENTS = ['#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '
 export function defaultSettings(): Settings {
   return {
     version: SETTINGS_VERSION,
-    general: { language: 'auto', launchAtLogin: false, showTrayIcon: true },
+    general: { language: 'auto', launchAtLogin: false, showTrayIcon: true, hideTaskbar: false, hardwareAcceleration: true },
     appearance: { theme: 'dark', accent: '#0a84ff', glassOpacity: 0.72, effects: 'full' },
     dock: {
       enabled: true,
@@ -52,8 +71,18 @@ export function defaultSettings(): Settings {
         { id: 'cmd-gh', keyword: 'gh', name: 'GitHub', kind: 'url', target: 'https://github.com/search?q={query}' },
         { id: 'cmd-yt', keyword: 'yt', name: 'YouTube', kind: 'url', target: 'https://www.youtube.com/results?search_query={query}' },
       ],
+      scripts: [],
     },
     privacy: { searchHistory: true, clipboardHistory: false },
+    widgets: {
+      enabled: true,
+      display: 'primary',
+      // Seeded on first run with a clock and a system monitor (see main/windows/widgetsController.ts).
+      items: [],
+      seeded: false,
+      weather: { city: '', latitude: null, longitude: null, unit: 'c' },
+    },
+    controlCenter: { hotkey: 'Ctrl+Alt+C' },
   };
 }
 
@@ -70,6 +99,20 @@ const MIGRATIONS: Record<number, (s: Json) => Json> = {
       delete appearance.transparency;
     }
     return { ...s, appearance, version: 2 };
+  },
+  // v3 introduced the control center: give existing Docks its button right after the launcher.
+  2: (s) => {
+    const dock = isObj(s.dock) ? { ...s.dock } : {};
+    if (Array.isArray(dock.items) && dock.items.length && !dock.items.some((i) => isObj(i) && i.action === 'control')) {
+      const items = [...dock.items];
+      const at = items.findIndex((i) => isObj(i) && i.action === 'launcher');
+      // Only Docks that still have NOVA's own launcher button get the new one next to it.
+      if (at !== -1) {
+        items.splice(at + 1, 0, { id: 'nova-control', type: 'nova', name: 'Control', action: 'control' });
+        dock.items = items;
+      }
+    }
+    return { ...s, dock, version: 3 };
   },
 };
 
@@ -114,7 +157,7 @@ export function sanitizeDockItem(raw: unknown): DockItem | null {
       if (typeof raw.url !== 'string' || !/^https?:\/\//i.test(raw.url)) return null;
       return { id, type: 'url', name: name || raw.url, url: raw.url.slice(0, 2048) };
     case 'nova':
-      if (raw.action !== 'launcher' && raw.action !== 'settings') return null;
+      if (raw.action !== 'launcher' && raw.action !== 'settings' && raw.action !== 'control') return null;
       return { id, type: 'nova', name: name || 'NOVA', action: raw.action };
     default:
       return null;
@@ -131,6 +174,47 @@ function sanitizeCommand(raw: unknown): CustomCommand | null {
   return { id: str(raw.id, `cmd-${keyword}`, 64), keyword, name: str(raw.name, keyword, 120), kind, target };
 }
 
+function sanitizeScript(raw: unknown): AllowedScript | null {
+  if (!isObj(raw)) return null;
+  const path = str(raw.path, '', 1024);
+  const keyword = str(raw.keyword, '', 32).trim().toLowerCase();
+  if (!/^[a-z]:\\.+\.(ps1|bat|cmd)$/i.test(path) || !keyword || /\s/.test(keyword)) return null;
+  return {
+    id: str(raw.id, `script-${keyword}`, 64),
+    name: str(raw.name, keyword, 120),
+    keyword,
+    path,
+    approvedHash: typeof raw.approvedHash === 'string' && /^[a-f0-9]{64}$/.test(raw.approvedHash) ? raw.approvedHash : null,
+    showConsole: bool(raw.showConsole, false),
+  };
+}
+
+export function sanitizeWidget(raw: unknown): WidgetInstance | null {
+  if (!isObj(raw) || typeof raw.id !== 'string' || !raw.id) return null;
+  if (typeof raw.type !== 'string' || !(WIDGET_TYPES as string[]).includes(raw.type)) return null;
+  const type = raw.type as WidgetType;
+  const size = WIDGET_SIZES[type];
+  let config: Record<string, unknown> = {};
+  if (isObj(raw.config)) {
+    // Config is user content (notes, todos…): keep it JSON-sized and plain.
+    try {
+      const text = JSON.stringify(raw.config);
+      if (text.length <= 100_000) config = JSON.parse(text);
+    } catch { config = {}; }
+  }
+  return {
+    id: raw.id.slice(0, 64),
+    type,
+    x: Math.round(clamp(raw.x, -4000, 16000, 40)),
+    y: Math.round(clamp(raw.y, -4000, 16000, 40)),
+    w: Math.round(clamp(raw.w, 140, 900, size.w)),
+    h: Math.round(clamp(raw.h, 80, 900, size.h)),
+    opacity: clamp(raw.opacity, 0.3, 1, 1),
+    hidden: bool(raw.hidden, false),
+    config,
+  };
+}
+
 /** Migrates then coerces any input into a complete, valid Settings object. Never throws. */
 export function normalizeSettings(raw: unknown): Settings {
   const d = defaultSettings();
@@ -141,6 +225,15 @@ export function normalizeSettings(raw: unknown): Settings {
   const l = isObj(s.launcher) ? s.launcher : {};
   const p = isObj(s.privacy) ? s.privacy : {};
   const lp = isObj(l.providers) ? l.providers : {};
+  const wg = isObj(s.widgets) ? s.widgets : {};
+  const wth = isObj(wg.weather) ? wg.weather : {};
+  const cc = isObj(s.controlCenter) ? s.controlCenter : {};
+  const seenWidgets = new Set<string>();
+  const widgets = (Array.isArray(wg.items) ? wg.items : [])
+    .map(sanitizeWidget)
+    .filter((w): w is WidgetInstance => !!w && !seenWidgets.has(w.id) && !!seenWidgets.add(w.id))
+    .slice(0, 40);
+  const coord = (v: unknown, lim: number) => (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= lim ? v : null);
 
   const seen = new Set<string>();
   const items = (Array.isArray(k.items) ? k.items : d.dock.items)
@@ -157,6 +250,8 @@ export function normalizeSettings(raw: unknown): Settings {
       language: oneOf(g.language, ['auto', 'fr', 'en'] as const, d.general.language),
       launchAtLogin: bool(g.launchAtLogin, d.general.launchAtLogin),
       showTrayIcon: bool(g.showTrayIcon, d.general.showTrayIcon),
+      hideTaskbar: bool(g.hideTaskbar, d.general.hideTaskbar),
+      hardwareAcceleration: bool(g.hardwareAcceleration, d.general.hardwareAcceleration),
     },
     appearance: {
       theme: oneOf(a.theme, THEMES, d.appearance.theme),
@@ -192,11 +287,25 @@ export function normalizeSettings(raw: unknown): Settings {
       customCommands: Array.isArray(l.customCommands)
         ? l.customCommands.map(sanitizeCommand).filter((c): c is CustomCommand => !!c)
         : d.launcher.customCommands,
+      scripts: Array.isArray(l.scripts) ? l.scripts.map(sanitizeScript).filter((x): x is AllowedScript => !!x).slice(0, 50) : [],
     },
     privacy: {
       searchHistory: bool(p.searchHistory, d.privacy.searchHistory),
       clipboardHistory: bool(p.clipboardHistory, d.privacy.clipboardHistory),
     },
+    widgets: {
+      enabled: bool(wg.enabled, d.widgets.enabled),
+      display: str(wg.display, d.widgets.display, 64),
+      items: widgets,
+      seeded: bool(wg.seeded, false),
+      weather: {
+        city: str(wth.city, '', 120),
+        latitude: coord(wth.latitude, 90),
+        longitude: coord(wth.longitude, 180),
+        unit: oneOf(wth.unit, ['c', 'f'] as const, 'c'),
+      },
+    },
+    controlCenter: { hotkey: str(cc.hotkey, d.controlCenter.hotkey, 64) },
   };
 }
 

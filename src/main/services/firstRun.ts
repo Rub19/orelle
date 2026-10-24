@@ -21,7 +21,10 @@ const CANDIDATES: { ids: RegExp; names: RegExp }[] = [
 ];
 
 export function buildDefaultDock(index: AppIndex): DockItem[] {
-  const items: DockItem[] = [{ id: 'nova-launcher', type: 'nova', name: 'Launcher', action: 'launcher' }];
+  const items: DockItem[] = [
+    { id: 'nova-launcher', type: 'nova', name: 'Launcher', action: 'launcher' },
+    { id: 'nova-control', type: 'nova', name: app.getLocale().startsWith('fr') ? 'Centre de contrôle' : 'Control Center', action: 'control' },
+  ];
   const used = new Set<string>();
   for (const c of CANDIDATES) {
     const found = index.all().find((a) => !used.has(a.key) && (c.ids.test(a.appId) || c.names.test(a.name)));

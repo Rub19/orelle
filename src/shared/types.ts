@@ -12,7 +12,46 @@ export type DockItem =
   | { id: string; type: 'nova'; name: string; action: NovaAction }
   | { id: string; type: 'separator' };
 
-export type NovaAction = 'launcher' | 'settings';
+export type NovaAction = 'launcher' | 'settings' | 'control';
+
+export interface AllowedScript {
+  id: string;
+  name: string;
+  keyword: string;
+  path: string;
+  /** SHA-256 of the file content the user approved; any change requires a new confirmation. */
+  approvedHash: string | null;
+  showConsole: boolean;
+}
+
+export type WidgetType =
+  | 'clock'
+  | 'calendar'
+  | 'weather'
+  | 'system'
+  | 'network'
+  | 'battery'
+  | 'media'
+  | 'notes'
+  | 'todo'
+  | 'timer'
+  | 'recentApps'
+  | 'shortcuts'
+  | 'appUsage';
+
+export interface WidgetInstance {
+  id: string;
+  type: WidgetType;
+  /** Position/size in DIP, relative to the widget display's work area. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  opacity: number;
+  hidden: boolean;
+  /** Per-type options and content (clock style, note text, todo items, shortcuts…). */
+  config: Record<string, unknown>;
+}
 
 export interface CustomCommand {
   id: string;
@@ -42,6 +81,10 @@ export interface Settings {
     language: Language;
     launchAtLogin: boolean;
     showTrayIcon: boolean;
+    /** Turns on Windows' own taskbar auto-hide while NOVA runs; the previous state is restored on exit. */
+    hideTaskbar: boolean;
+    /** GPU compositing; off saves ~100 MB of memory at the cost of smoother animations (applies after restart). */
+    hardwareAcceleration: boolean;
   };
   appearance: {
     theme: ThemeId;
@@ -77,11 +120,54 @@ export interface Settings {
     providers: LauncherProviders;
     favorites: string[];
     customCommands: CustomCommand[];
+    scripts: AllowedScript[];
   };
   privacy: {
     searchHistory: boolean;
     clipboardHistory: boolean;
   };
+  widgets: {
+    enabled: boolean;
+    display: string;
+    items: WidgetInstance[];
+    /** Default widgets are placed once; removing them all afterwards is respected. */
+    seeded: boolean;
+    weather: { city: string; latitude: number | null; longitude: number | null; unit: 'c' | 'f' };
+  };
+  controlCenter: {
+    hotkey: string;
+  };
+}
+
+// ---------- Live data for widgets / control center ----------
+
+export interface SystemStats {
+  cpu: number;
+  memUsed: number;
+  memTotal: number;
+  disks: { mount: string; used: number; total: number }[];
+  netDown: number;
+  netUp: number;
+  battery: { percent: number; charging: boolean; present: boolean; minutesLeft: number | null } | null;
+  uptime: number;
+}
+
+export interface ControlState {
+  volume: { level: number; muted: boolean; device: string } | null;
+  brightness: number | null;
+  wifi: { connected: boolean; ssid: string | null; signal: number | null } | null;
+  battery: SystemStats['battery'];
+}
+
+export interface WeatherData {
+  city: string;
+  temperature: number;
+  code: number;
+  high: number;
+  low: number;
+  unit: 'c' | 'f';
+  updatedAt: number;
+  daily: { date: string; code: number; high: number; low: number }[];
 }
 
 export type DeepPartial<T> = T extends (infer U)[] ? U[] : T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
@@ -98,6 +184,8 @@ export interface DockEntry {
   running: boolean;
   active: boolean;
   windowCount: number;
+  /** For NOVA's own buttons: which built-in action (drives the artwork). */
+  action?: NovaAction;
 }
 
 export interface DockState {
@@ -179,7 +267,7 @@ export interface AppInfo {
   icon: string | null;
 }
 
-export type SurfaceKind = 'dock' | 'launcher' | 'settings';
+export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control';
 
 export interface Bootstrap {
   surface: SurfaceKind;

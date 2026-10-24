@@ -1,9 +1,12 @@
 // Preferences window (Mica, native caption buttons) and every settings-related IPC endpoint.
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, nativeTheme, screen, shell, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, screen, shell, type IpcMainInvokeEvent } from 'electron';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 import type { DisplayInfo } from '../../shared/types';
 import type { NovaContext } from '../context';
 import { buildDefaultDock } from '../services/firstRun';
+import type { WeatherService } from '../services/weatherService';
 import { log } from '../logger';
 
 export class SettingsController {
@@ -11,7 +14,8 @@ export class SettingsController {
 
   constructor(
     private readonly ctx: NovaContext,
-    private readonly hotkeys: { apply(accel: string): { ok: boolean; error?: string } },
+    private readonly hotkeys: { set(name: string, accel: string): { ok: boolean; error?: string }; suspend(on: boolean): void },
+    private readonly weather: WeatherService,
   ) {}
 
   get window() {
@@ -82,18 +86,50 @@ export class SettingsController {
       }));
     });
 
-    ipcMain.handle('settings:setHotkey', (e, accel: unknown) => {
-      if (!fromSettings(e) || typeof accel !== 'string') return { ok: false, error: 'invalid' };
-      const res = this.hotkeys.apply(accel);
-      if (res.ok) this.ctx.settings.update({ launcher: { hotkey: accel } });
+    ipcMain.handle('settings:setHotkey', (e, name: unknown, accel: unknown) => {
+      if (!fromSettings(e) || typeof accel !== 'string' || (name !== 'launcher' && name !== 'control')) return { ok: false, error: 'invalid' };
+      this.hotkeys.suspend(false);
+      const res = this.hotkeys.set(name, accel);
+      if (res.ok) this.ctx.settings.update(name === 'launcher' ? { launcher: { hotkey: accel } } : { controlCenter: { hotkey: accel } });
       return res;
     });
 
-    // Suspends the global shortcut while the user records a new one, so the old one does not fire.
+    // Suspends every global shortcut while the user records a new one, so the old one does not fire.
     ipcMain.on('settings:recordingHotkey', (e, on: unknown) => {
-      if (!this.win || e.sender !== this.win.webContents) return;
-      if (on) globalShortcut.unregisterAll();
-      else this.hotkeys.apply(this.ctx.settings.get().launcher.hotkey);
+      if (this.win && e.sender === this.win.webContents) this.hotkeys.suspend(!!on);
+    });
+
+    ipcMain.handle('settings:geocode', async (e, q: unknown) => {
+      if (!fromSettings(e) || typeof q !== 'string' || q.trim().length < 2) return [];
+      try {
+        return await this.weather.geocode(q.trim(), this.ctx.language);
+      } catch (err) {
+        log.warn('settings', 'geocoding failed', err);
+        return null;
+      }
+    });
+
+    // Allowed scripts are only ever added through this file picker.
+    ipcMain.handle('settings:addScript', async (e) => {
+      if (!fromSettings(e)) return null;
+      const res = await dialog.showOpenDialog(this.win!, { properties: ['openFile'], filters: [{ name: 'Scripts', extensions: ['ps1', 'bat', 'cmd'] }] });
+      const p = res.filePaths[0];
+      if (res.canceled || !p) return null;
+      const base = path.basename(p, path.extname(p));
+      const keyword = base.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24) || 'script';
+      const script = { id: `script-${randomUUID().slice(0, 8)}`, name: base, keyword, path: p, approvedHash: null, showConsole: false };
+      this.ctx.settings.update({ launcher: { scripts: [...this.ctx.settings.get().launcher.scripts, script] } });
+      return script;
+    });
+
+    ipcMain.handle('settings:pickPath', async (e, kind: unknown) => {
+      if (!fromSettings(e)) return null;
+      const res = await dialog.showOpenDialog(this.win!, { properties: [kind === 'folder' ? 'openDirectory' : 'openFile'] });
+      return res.canceled ? null : res.filePaths[0] ?? null;
+    });
+
+    ipcMain.on('settings:editWidgets', (e) => {
+      if (this.win && e.sender === this.win.webContents) this.ctx.actions.editWidgets();
     });
 
     ipcMain.handle('settings:export', async (e) => {
@@ -119,7 +155,6 @@ export class SettingsController {
         const raw = JSON.parse(await fs.promises.readFile(res.filePaths[0], 'utf8'));
         if (raw?.format !== 'nova-profile' || typeof raw.settings !== 'object') throw new Error('not a NOVA profile');
         this.ctx.settings.replace(raw.settings);
-        this.hotkeys.apply(this.ctx.settings.get().launcher.hotkey);
         log.info('settings', 'Profile imported');
         return { ok: true };
       } catch (err) {
@@ -139,9 +174,8 @@ export class SettingsController {
         noLink: true,
       });
       if (confirm.response !== 0) return { ok: false, canceled: true };
-      const next = this.ctx.settings.replace({});
+      this.ctx.settings.replace({});
       this.ctx.settings.update({ dock: { items: buildDefaultDock(this.ctx.apps) } });
-      this.hotkeys.apply(next.launcher.hotkey);
       return { ok: true };
     });
 

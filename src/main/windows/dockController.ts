@@ -254,8 +254,10 @@ export class DockController {
   private compose() {
     const s = this.ctx.settings.get();
     const recents = this.ctx.usage.recent('app:', 12).map((r) => ({ key: r.id, name: r.title, ...(r.ref ?? {}) }));
+    // NOVA's own buttons are always labelled in the current language.
+    const novaLabel = { launcher: this.ctx.t('dock.launcher'), control: this.ctx.t('control.title'), settings: this.ctx.t('dock.settings') };
     const composed = composeDock({
-      items: s.dock.items,
+      items: s.dock.items.map((i) => (i.type === 'nova' ? { ...i, name: novaLabel[i.action] } : i)),
       windows: this.ctx.tracker.list(),
       foreground: this.ctx.tracker.getForeground(),
       showRunning: s.dock.showRunning,
@@ -343,6 +345,7 @@ export class DockController {
     const item = this.findItem(key);
     if (item?.type === 'nova') {
       if (item.action === 'launcher') this.ctx.actions.toggleLauncher();
+      else if (item.action === 'control') this.ctx.actions.toggleControlCenter();
       else this.ctx.actions.openSettings();
       return;
     }

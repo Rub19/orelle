@@ -27,6 +27,8 @@ export class NovaTray {
     const t = this.ctx.t;
     return Menu.buildFromTemplate([
       { label: t('tray.launcher'), click: () => this.ctx.actions.toggleLauncher() },
+      { label: t('tray.control'), click: () => this.ctx.actions.toggleControlCenter() },
+      { label: t('tray.widgets'), click: () => this.ctx.actions.editWidgets() },
       { label: t('tray.toggleDock'), click: () => this.ctx.actions.toggleDock() },
       { label: t('tray.settings'), click: () => this.ctx.actions.openSettings() },
       { type: 'separator' },

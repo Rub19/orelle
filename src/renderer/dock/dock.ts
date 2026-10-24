@@ -37,6 +37,8 @@ function artFor(e: DockEntry): HTMLElement {
 }
 
 function fallbackArt(e: DockEntry): HTMLElement {
+  if (e.kind === 'nova' && e.action === 'control') return el('div', { class: 'art control', html: glyph('sliders') });
+  if (e.kind === 'nova' && e.action === 'settings') return el('div', { class: 'art control', html: glyph('settings') });
   if (e.kind === 'nova') return el('div', { class: 'art nova', html: glyph('sparkle') });
   if (e.kind === 'url') return el('div', { class: 'art url', html: glyph('globe') });
   if (e.kind === 'folder') return el('div', { class: 'art folder', html: glyph('folder') });

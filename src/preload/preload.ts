@@ -1,7 +1,9 @@
 // The only bridge between renderers and the main process. Exposes a narrow, typed API;
 // the main process additionally checks which window each call comes from.
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
-import type { Bootstrap, DisplayInfo, AppInfo, DockLayout, DockState, ResultPreview, SearchResponse, Settings } from '../shared/types';
+import type {
+  AllowedScript, AppInfo, Bootstrap, ControlState, DisplayInfo, DockLayout, DockState, ResultPreview, SearchResponse, Settings, SystemStats, WeatherData,
+} from '../shared/types';
 
 type Off = () => void;
 const on = <T extends unknown[]>(channel: string, cb: (...args: T) => void): Off => {
@@ -45,7 +47,11 @@ const api = {
     initialSection: (): string | null => process.argv.find((a) => a.startsWith('--nova-section='))?.split('=')[1] ?? null,
     apps: (): Promise<AppInfo[]> => ipcRenderer.invoke('settings:apps'),
     displays: (): Promise<DisplayInfo[]> => ipcRenderer.invoke('settings:displays'),
-    setHotkey: (accel: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('settings:setHotkey', accel),
+    setHotkey: (name: 'launcher' | 'control', accel: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('settings:setHotkey', name, accel),
+    geocode: (q: string): Promise<{ name: string; country: string; latitude: number; longitude: number }[] | null> => ipcRenderer.invoke('settings:geocode', q),
+    addScript: (): Promise<AllowedScript | null> => ipcRenderer.invoke('settings:addScript'),
+    pickPath: (kind: 'file' | 'folder'): Promise<string | null> => ipcRenderer.invoke('settings:pickPath', kind),
+    editWidgets: () => ipcRenderer.send('settings:editWidgets'),
     recordingHotkey: (on: boolean) => ipcRenderer.send('settings:recordingHotkey', on),
     exportProfile: (): Promise<{ ok: boolean; canceled?: boolean; error?: string }> => ipcRenderer.invoke('settings:export'),
     importProfile: (): Promise<{ ok: boolean; canceled?: boolean; error?: string }> => ipcRenderer.invoke('settings:import'),
@@ -55,6 +61,33 @@ const api = {
     openFolder: (which: 'logs' | 'data') => ipcRenderer.send('settings:openFolder', which),
     pickFolder: (): Promise<string | null> => ipcRenderer.invoke('settings:pickFolder'),
     openWinSettings: (uri: string) => ipcRenderer.send('settings:openWinSettings', uri),
+  },
+
+  widgets: {
+    onEdit: (cb: (on: boolean) => void) => on('widgets:edit', cb),
+    onStats: (cb: (s: SystemStats) => void) => on('widgets:stats', cb),
+    setInteractive: (v: boolean) => ipcRenderer.send('widgets:interactive', v),
+    setEditing: (v: boolean) => ipcRenderer.send('widgets:edit', v),
+    subscribeStats: (v: boolean) => ipcRenderer.send('widgets:subscribeStats', v),
+    weather: (force = false): Promise<WeatherData | null> => ipcRenderer.invoke('widgets:weather', force),
+    recentApps: (): Promise<{ id: string; name: string; icon: string | null }[]> => ipcRenderer.invoke('widgets:recentApps'),
+    launchRecent: (id: string): Promise<boolean> => ipcRenderer.invoke('widgets:launchRecent', id),
+    screenTime: (): Promise<{ key: string; name: string; ms: number }[]> => ipcRenderer.invoke('widgets:screenTime'),
+    media: (key: 'playPause' | 'next' | 'previous') => ipcRenderer.send('widgets:media', key),
+    open: (target: string): Promise<boolean> => ipcRenderer.invoke('widgets:open', target),
+    shortcutIcon: (target: string): Promise<string | null> => ipcRenderer.invoke('widgets:shortcutIcon', target),
+    openSystem: (what: 'clock' | 'calendar' | 'system' | 'network' | 'battery') => ipcRenderer.send('widgets:openSystem', what),
+  },
+
+  control: {
+    onState: (cb: (s: ControlState) => void) => on('control:state', cb),
+    setVolume: (v: number): Promise<boolean> => ipcRenderer.invoke('control:setVolume', v),
+    setMuted: (v: boolean): Promise<boolean> => ipcRenderer.invoke('control:setMuted', v),
+    setBrightness: (v: number) => ipcRenderer.send('control:setBrightness', v),
+    media: (key: 'playPause' | 'next' | 'previous') => ipcRenderer.send('control:media', key),
+    openSettings: (uri: string) => ipcRenderer.send('control:openSettings', uri),
+    action: (a: 'toggleTheme' | 'toggleDock' | 'toggleTaskbar' | 'editWidgets' | 'lock' | 'preferences' | 'launcher') => ipcRenderer.send('control:action', a),
+    hide: () => ipcRenderer.send('control:hide'),
   },
 };
 

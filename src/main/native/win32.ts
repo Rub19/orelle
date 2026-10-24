@@ -95,6 +95,21 @@ function bind() {
     GetValueProto: koffi.proto('long __stdcall NovaPropStoreGetValue(void *self, NOVA_PROPERTYKEY *key, void *pv)'),
     ReleaseProto: koffi.proto('uint32_t __stdcall NovaRelease(void *self)'),
     SetSuspendState: powrprof.func('bool __stdcall SetSuspendState(bool hibernate, bool force, bool wakeupEventsDisabled)'),
+    SYSTEM_POWER_STATUS: koffi.struct('NOVA_SYSTEM_POWER_STATUS', {
+      ACLineStatus: 'uint8_t', BatteryFlag: 'uint8_t', BatteryLifePercent: 'uint8_t', SystemStatusFlag: 'uint8_t',
+      BatteryLifeTime: 'uint32_t', BatteryFullLifeTime: 'uint32_t',
+    }),
+    GetSystemPowerStatus: kernel32.func('bool __stdcall GetSystemPowerStatus(_Out_ NOVA_SYSTEM_POWER_STATUS *s)'),
+    FindWindowW: user32.func('intptr_t __stdcall FindWindowW(const char16_t *cls, const char16_t *title)'),
+    SetWindowPos: user32.func('bool __stdcall SetWindowPos(intptr_t hwnd, intptr_t after, int x, int y, int cx, int cy, uint32_t flags)'),
+    DwmGetWindowAttributeRect: dwmapi.func('long __stdcall DwmGetWindowAttribute(intptr_t hwnd, uint32_t attr, _Out_ NOVA_RECT *value, uint32_t size)'),
+    IsZoomed: user32.func('bool __stdcall IsZoomed(intptr_t hwnd)'),
+    SetWindowLongPtrW: user32.func('intptr_t __stdcall SetWindowLongPtrW(intptr_t hwnd, int index, intptr_t value)'),
+    CoInitializeEx: koffi.load('ole32.dll').func('long __stdcall CoInitializeEx(void *reserved, uint32_t flags)'),
+    CoCreateInstance: koffi.load('ole32.dll').func(
+      'long __stdcall CoCreateInstance(const uint8_t *clsid, void *outer, uint32_t ctx, const uint8_t *iid, _Out_ void **ppv)',
+    ),
+    CoTaskMemFree: koffi.load('ole32.dll').func('void __stdcall CoTaskMemFree(void *p)'),
   };
 }
 
@@ -151,7 +166,7 @@ export function getProcessInfo(pid: number): { exe: string; aumid: string | null
   }
 }
 
-function guidBytes(guid: string): number[] {
+export function guidBytes(guid: string): number[] {
   const h = guid.replace(/[{}-]/g, '');
   const le = (s: string) => s.match(/../g)!.reverse().map((b) => parseInt(b, 16));
   return [...le(h.slice(0, 8)), ...le(h.slice(8, 12)), ...le(h.slice(12, 16)), ...h.slice(16).match(/../g)!.map((b) => parseInt(b, 16))];
@@ -349,4 +364,160 @@ export function appBarSetPos(hwnd: HWND, edge: number, rc: Rect, thickness: numb
 export function appBarRemove(hwnd: HWND) {
   if (!api) return;
   api.SHAppBarMessage(1 /* ABM_REMOVE */, appBarData(hwnd));
+}
+
+// ---------- Power ----------
+
+export function getPowerStatus(): { percent: number; charging: boolean; present: boolean; minutesLeft: number | null } | null {
+  if (!api) return null;
+  const s = {} as { ACLineStatus: number; BatteryFlag: number; BatteryLifePercent: number; BatteryLifeTime: number };
+  if (!api.GetSystemPowerStatus(s)) return null;
+  // BatteryFlag 128 = no system battery; 255 = unknown.
+  const present = s.BatteryFlag !== 128 && s.BatteryFlag !== 255 && s.BatteryLifePercent !== 255;
+  return {
+    percent: present ? s.BatteryLifePercent : 100,
+    charging: s.ACLineStatus === 1,
+    present,
+    minutesLeft: s.BatteryLifeTime === 0xffffffff ? null : Math.round(s.BatteryLifeTime / 60),
+  };
+}
+
+// ---------- Taskbar auto-hide (the same switch as Windows Settings > Taskbar) ----------
+
+const ABS_AUTOHIDE = 0x1;
+const ABS_ALWAYSONTOP = 0x2;
+
+function trayWindow(): number {
+  return api ? Number(api.FindWindowW('Shell_TrayWnd', null)) : 0;
+}
+
+/** Returns true when the taskbar is currently set to auto-hide. */
+export function getTaskbarAutoHide(): boolean | null {
+  if (!api) return null;
+  const d = appBarData(trayWindow());
+  return (Number(api.SHAppBarMessage(4 /* ABM_GETSTATE */, d)) & ABS_AUTOHIDE) !== 0;
+}
+
+export function setTaskbarAutoHide(on: boolean): boolean {
+  if (!api) return false;
+  const hwnd = trayWindow();
+  if (!hwnd) return false;
+  const d = appBarData(hwnd);
+  d.lParam = on ? ABS_AUTOHIDE : ABS_ALWAYSONTOP;
+  api.SHAppBarMessage(10 /* ABM_SETSTATE */, d);
+  return getTaskbarAutoHide() === on;
+}
+
+// ---------- Media keys ----------
+
+const MEDIA_VK = { playPause: 0xb3, next: 0xb0, previous: 0xb1, volumeMute: 0xad } as const;
+const KEYEVENTF_EXTENDEDKEY = 0x1;
+
+/** Sends a hardware media key: works with every player that honours media keys (Spotify, browsers, Groove…). */
+export function sendMediaKey(key: keyof typeof MEDIA_VK) {
+  if (!api) return;
+  const vk = MEDIA_VK[key];
+  api.keybd_event(vk, 0, KEYEVENTF_EXTENDEDKEY, 0);
+  api.keybd_event(vk, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
+}
+
+// ---------- Window placement ----------
+
+const HWND_BOTTOM = 1;
+const SWP_NOSIZE = 0x1;
+const SWP_NOMOVE = 0x2;
+const SWP_NOZORDER = 0x4;
+const SWP_NOACTIVATE = 0x10;
+const SWP_FRAMECHANGED = 0x20;
+const DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+const SW_SHOWNORMAL = 1;
+
+/**
+ * Makes `hwnd` owned by the desktop window (Progman). Owned windows stay above their owner, so the
+ * window lives just over the wallpaper, under every app — and "Show desktop" (Win+D) keeps it visible.
+ */
+export function attachToDesktop(hwnd: HWND): boolean {
+  if (!api) return false;
+  const progman = Number(api.FindWindowW('Progman', null));
+  if (!progman) return false;
+  api.SetWindowLongPtrW(hwnd, -8 /* GWLP_HWNDPARENT */, progman);
+  return true;
+}
+
+export function sendToBottom(hwnd: HWND) {
+  api?.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+}
+
+export const isZoomed = (hwnd: HWND) => !!api?.IsZoomed(hwnd);
+
+/** Visible frame (without the invisible resize borders Windows 10/11 add around windows). */
+export function getVisibleRect(hwnd: HWND): Rect | null {
+  if (!api) return null;
+  const r: Rect = { left: 0, top: 0, right: 0, bottom: 0 };
+  if (api.DwmGetWindowAttributeRect(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, r, 16) === 0) return r;
+  return getWindowRect(hwnd);
+}
+
+/** Moves a window so that its *visible* frame matches `target` (physical pixels). */
+export function placeWindow(hwnd: HWND, target: Rect): boolean {
+  if (!api || !api.IsWindow(hwnd)) return false;
+  if (api.IsIconic(hwnd) || api.IsZoomed(hwnd)) api.ShowWindow(hwnd, SW_SHOWNORMAL);
+  const outer = getWindowRect(hwnd);
+  const visible = getVisibleRect(hwnd);
+  // Compensate the invisible borders measured on this very window.
+  const dl = outer && visible ? visible.left - outer.left : 0;
+  const dt = outer && visible ? visible.top - outer.top : 0;
+  const dr = outer && visible ? outer.right - visible.right : 0;
+  const db = outer && visible ? outer.bottom - visible.bottom : 0;
+  return !!api.SetWindowPos(
+    hwnd, 0,
+    target.left - dl, target.top - dt,
+    target.right - target.left + dl + dr, target.bottom - target.top + dt + db,
+    SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+  );
+}
+
+export function maximizeWindow(hwnd: HWND) {
+  api?.ShowWindow(hwnd, 3 /* SW_MAXIMIZE */);
+}
+
+export function getMonitorWorkArea(hwnd: HWND): Rect | null {
+  if (!api) return null;
+  const mon = api.MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+  if (!mon) return null;
+  const info = { cbSize: api.koffi.sizeof(api.MONITORINFO), rcMonitor: {}, rcWork: {}, dwFlags: 0 } as unknown as { rcWork: Rect };
+  return api.GetMonitorInfoW(mon, info) ? info.rcWork : null;
+}
+
+// ---------- Minimal COM helpers ----------
+
+let comReady = false;
+export function ensureCom() {
+  if (!api || comReady) return;
+  api.CoInitializeEx(null, 0x2 /* COINIT_APARTMENTTHREADED */); // S_FALSE / RPC_E_CHANGED_MODE are fine
+  comReady = true;
+}
+
+export function coCreate(clsid: string, iid: string): unknown | null {
+  if (!api) return null;
+  ensureCom();
+  const out: unknown[] = [null];
+  const hr = api.CoCreateInstance(guidBytes(clsid), null, 0x17 /* CLSCTX_ALL */, guidBytes(iid), out);
+  return hr === 0 ? out[0] : null;
+}
+
+/** Calls vtable method `index` of a COM interface pointer with the given prototype. */
+export function comCall(obj: unknown, index: number, proto: unknown, ...args: unknown[]): number {
+  const k = api!.koffi;
+  const vtbl = k.decode(obj, 'void *');
+  const fn = k.decode(vtbl, index * k.sizeof('void *'), 'void *');
+  return k.call(fn, proto as never, obj, ...args) as number;
+}
+
+export function comRelease(obj: unknown) {
+  if (obj && api) comCall(obj, 2, api.ReleaseProto);
+}
+
+export function koffiApi() {
+  return api;
 }
