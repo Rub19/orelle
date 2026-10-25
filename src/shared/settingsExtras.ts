@@ -1,6 +1,6 @@
 // Defaults and normalization for the v5 settings groups: top bar, windows, profiles,
 // notifications, extensions, automations and AI. Pure functions, unit tested.
-import type { ActivityProfile, Automation, AutomationAction, AutomationTrigger, SavedLayout, Settings, ThemeId, TopBarItemId } from './types';
+import type { ActivityProfile, Automation, AutomationAction, AutomationCondition, AutomationTrigger, SavedLayout, Settings, ThemeId, TopBarItemId } from './types';
 
 type Json = Record<string, unknown>;
 const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -40,7 +40,7 @@ export function defaultExtras(): Extras {
     storage: { exclusions: [] },
     windows: { snapping: true, overviewHotkey: 'Ctrl+Alt+O', layouts: [] },
     profiles: { active: null, list: defaultProfiles() },
-    notifications: { enabled: true, history: true, focus: false },
+    notifications: { enabled: true, history: true, focus: false, quiet: { enabled: false, from: '22:00', to: '07:00' } },
     extensions: { enabled: {} },
     automations: [],
     ai: { provider: 'none', model: '', endpoint: '', consent: false },
@@ -98,6 +98,10 @@ function normTrigger(raw: unknown): AutomationTrigger | null {
   if (raw.kind === 'appLaunched' && typeof raw.app === 'string' && raw.app.trim()) return { kind: 'appLaunched', app: raw.app.trim().toLowerCase().slice(0, 260) };
   if (raw.kind === 'startup') return { kind: 'startup' };
   if (raw.kind === 'hotkey' && typeof raw.accel === 'string' && raw.accel.includes('+')) return { kind: 'hotkey', accel: raw.accel.slice(0, 64) };
+  if (raw.kind === 'batteryBelow') return { kind: 'batteryBelow', percent: Math.round(num(raw.percent, 5, 95, 20)) };
+  if (raw.kind === 'powerSource') return { kind: 'powerSource', source: raw.source === 'battery' ? 'battery' : 'ac' };
+  if (raw.kind === 'displayChanged') return { kind: 'displayChanged' };
+  if (raw.kind === 'profileOn' && typeof raw.id === 'string') return { kind: 'profileOn', id: raw.id.slice(0, 64) };
   return null;
 }
 
@@ -114,12 +118,25 @@ function normAction(raw: unknown): AutomationAction | null {
   }
 }
 
-function normAutomation(raw: unknown): Automation | null {
+function normCondition(raw: unknown): AutomationCondition | null {
+  if (!isObj(raw)) return null;
+  if (raw.kind === 'between' && typeof raw.from === 'string' && typeof raw.to === 'string' && TIME_RE.test(raw.from) && TIME_RE.test(raw.to)) return { kind: 'between', from: raw.from, to: raw.to };
+  if (raw.kind === 'weekdays' && Array.isArray(raw.days)) {
+    const days = [...new Set(raw.days.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6))];
+    return days.length ? { kind: 'weekdays', days } : null;
+  }
+  if (raw.kind === 'onBattery') return { kind: 'onBattery', value: bool(raw.value, true) };
+  if (raw.kind === 'profileActive') return { kind: 'profileActive', id: typeof raw.id === 'string' ? raw.id.slice(0, 64) : null };
+  return null;
+}
+
+export function normAutomation(raw: unknown): Automation | null {
   if (!isObj(raw) || typeof raw.id !== 'string') return null;
   const trigger = normTrigger(raw.trigger);
   const actions = (Array.isArray(raw.actions) ? raw.actions : []).map(normAction).filter((a): a is AutomationAction => !!a).slice(0, 10);
   if (!trigger || !actions.length) return null;
-  return { id: raw.id.slice(0, 64), name: str(raw.name, 'Automation', 80), enabled: bool(raw.enabled, true), trigger, actions };
+  const conditions = (Array.isArray(raw.conditions) ? raw.conditions : []).map(normCondition).filter((c): c is AutomationCondition => !!c).slice(0, 6);
+  return { id: raw.id.slice(0, 64), name: str(raw.name, 'Automation', 80), enabled: bool(raw.enabled, true), trigger, conditions, actions };
 }
 
 export function normalizeExtras(s: Json): Extras {
@@ -175,6 +192,11 @@ export function normalizeExtras(s: Json): Extras {
       enabled: bool(no.enabled, d.notifications.enabled),
       history: bool(no.history, d.notifications.history),
       focus: bool(no.focus, d.notifications.focus),
+      quiet: (() => {
+        const q = isObj(no.quiet) ? no.quiet : {};
+        const t = (v: unknown, def: string) => (typeof v === 'string' && TIME_RE.test(v) ? v : def);
+        return { enabled: bool(q.enabled, false), from: t(q.from, '22:00'), to: t(q.to, '07:00') };
+      })(),
     },
     extensions: { enabled },
     automations: (Array.isArray(s.automations) ? s.automations : []).map(normAutomation).filter((a): a is Automation => !!a).slice(0, 50),

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { DisplayInfo } from '../../shared/types';
 import type { OrelleContext } from '../context';
-import { buildDefaultDock } from '../services/firstRun';
+import { buildDefaultDock, syncDockWithTaskbar } from '../services/firstRun';
 import type { WeatherService } from '../services/weatherService';
 import { log } from '../logger';
 
@@ -179,8 +179,17 @@ export class SettingsController {
       });
       if (confirm.response !== 0) return { ok: false, canceled: true };
       this.ctx.settings.replace({});
-      this.ctx.settings.update({ dock: { items: buildDefaultDock(this.ctx.apps) } });
+      this.ctx.settings.update({ dock: { items: await buildDefaultDock(this.ctx.apps, this.ctx.icons.cacheDir, this.ctx.tracker) } });
       return { ok: true };
+    });
+
+    // Replaces the Dock's apps with the Windows taskbar pins (same apps, same order).
+    ipcMain.handle('settings:syncDockTaskbar', async (e) => {
+      if (!fromSettings(e)) return { ok: false };
+      const items = await syncDockWithTaskbar(this.ctx.settings.get().dock.items, this.ctx.apps, this.ctx.icons.cacheDir, this.ctx.tracker);
+      if (!items) return { ok: false, count: 0 };
+      this.ctx.settings.update({ dock: { items } });
+      return { ok: true, count: items.filter((i) => i.type === 'app').length };
     });
 
     ipcMain.handle('settings:clearHistory', (e) => {

@@ -130,7 +130,11 @@ function button(label: string, onClick: () => void, cls = 'btn', glyphName?: str
 
 function pageGeneral(): HTMLElement[] {
   const g = settings.general;
+  const safe = boot.capabilities.safeMode
+    ? el('div', { class: 'group safe-banner' }, el('div', { class: 'label' }, el('strong', { text: t('safe.title') }), el('small', { text: t('safe.detail') })), button(t('safe.restart'), () => orelle.settings.restartNormal(), 'btn primary'))
+    : null;
   return [
+    ...(safe ? [safe] : []),
     ...group(
       null,
       row('settings.language', selectBox([
@@ -247,6 +251,12 @@ function dockItemsGroup(): HTMLElement[] {
       const add = (['files', 'monitor'] as const).filter((a) => !have.has(a)).map((a) => ({ id: `orelle-${a}`, type: 'orelle' as const, name: a, action: a }));
       if (add.length) { await update({ dock: { items: [...settings.dock.items, ...add] } }); rerender(); }
     }, 'btn', 'grid'),
+    button(t('settings.dock.syncTaskbar'), async () => {
+      if (!confirm(t('settings.dock.syncTaskbar.confirm'))) return;
+      const r = await orelle.settings.syncDockTaskbar();
+      if (!r.ok) alert(t('settings.dock.syncTaskbar.none'));
+      rerender();
+    }, 'btn', 'taskbar'),
     button(t('settings.dock.addSeparator'), () => void update({ dock: { items: [...settings.dock.items, { id: crypto.randomUUID(), type: 'separator' }] } }).then(rerender), 'btn', 'separator'),
   );
   const parts: HTMLElement[] = [list, toolbar];

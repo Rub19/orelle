@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
+import { inWindow } from '../../shared/timeWindow';
 import type { OrelleNotification } from '../../shared/types';
 import type { OrelleContext } from '../context';
 import { log } from '../logger';
@@ -33,7 +34,14 @@ export class NotificationService extends EventEmitter {
   }
 
   get focus() {
-    return this.ctx.settings.get().notifications.focus || this.profileFocus;
+    const n = this.ctx.settings.get().notifications;
+    return n.focus || this.profileFocus || this.quietNow;
+  }
+
+  /** Inside the user's quiet hours. */
+  get quietNow() {
+    const q = this.ctx.settings.get().notifications.quiet;
+    return q.enabled && inWindow(new Date(), q.from, q.to);
   }
 
   list() {

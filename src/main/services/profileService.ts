@@ -19,6 +19,12 @@ interface Snapshot { theme: ThemeId; taskbarMode: TaskbarMode; widgets: boolean;
 export class ProfileService implements SearchPlugin {
   readonly prefix = 'profile';
   private file: string;
+  private listeners: ((id: string) => void)[] = [];
+
+  /** Called after a profile has been turned on (automations use it as a trigger). */
+  onActivated(fn: (id: string) => void) {
+    this.listeners.push(fn);
+  }
 
   constructor(
     private readonly ctx: OrelleContext,
@@ -77,6 +83,7 @@ export class ProfileService implements SearchPlugin {
       try { await launchApp({ appId: a.appId, path: a.path }); } catch (err) { log.warn('profiles', `Cannot launch ${a.name}`, err); }
     }
     if (p.layoutId) void this.windows.restore(p.layoutId, true);
+    for (const fn of this.listeners) fn(p.id);
     return true;
   }
 

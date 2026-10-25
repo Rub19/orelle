@@ -97,7 +97,18 @@ export type AutomationTrigger =
   | { kind: 'time'; at: string; days: number[] }
   | { kind: 'appLaunched'; app: string }
   | { kind: 'startup' }
-  | { kind: 'hotkey'; accel: string };
+  | { kind: 'hotkey'; accel: string }
+  | { kind: 'batteryBelow'; percent: number }
+  | { kind: 'powerSource'; source: 'ac' | 'battery' }
+  | { kind: 'displayChanged' }
+  | { kind: 'profileOn'; id: string };
+
+/** Extra checks evaluated when a trigger fires; all must pass. */
+export type AutomationCondition =
+  | { kind: 'between'; from: string; to: string }
+  | { kind: 'weekdays'; days: number[] }
+  | { kind: 'onBattery'; value: boolean }
+  | { kind: 'profileActive'; id: string | null };
 
 export type AutomationAction =
   | { kind: 'profile'; id: string }
@@ -112,6 +123,7 @@ export interface Automation {
   name: string;
   enabled: boolean;
   trigger: AutomationTrigger;
+  conditions: AutomationCondition[];
   actions: AutomationAction[];
 }
 
@@ -219,6 +231,8 @@ export interface Settings {
     history: boolean;
     /** Focus mode: Orelle shows no toasts (they still reach the history). */
     focus: boolean;
+    /** Daily quiet hours: focus mode turns itself on inside this window. */
+    quiet: { enabled: boolean; from: string; to: string };
   };
   extensions: {
     /** id → enabled. Extensions are declarative JSON manifests; no third-party code is executed. */
@@ -456,4 +470,6 @@ export interface Capabilities {
   windowTracking: boolean;
   appBar: boolean;
   acrylic: boolean;
+  /** Started in safe mode (after repeated crashes or --orelle-safe-mode). */
+  safeMode: boolean;
 }

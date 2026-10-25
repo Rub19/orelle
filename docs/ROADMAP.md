@@ -72,6 +72,15 @@ Légende : ✅ implémenté et vérifié sur Windows · 🟡 partiel · ⬜ à f
 - ✅ Installateur NSIS par utilisateur (`npm run dist`), sans droits administrateur ; désinstallation propre (arrêt, barre des tâches, démarrage auto)
 - ⬜ Signature de code, mises à jour automatiques, CI
 
+## v0.4 ✅
+- ✅ Dock initial identique à la barre des tâches Windows (UI Automation + raccourcis épinglés), bouton « Reprendre la barre des tâches »
+- ✅ Mission Control : miniatures DWM en direct, recherche, regroupement, clavier
+- ✅ Utilitaires : Centre audio (périphériques, applications, niveaux), Stockage (usage, gros fichiers, doublons, nettoyage), Presse-papiers (images, épingles chiffrées, exclusions, collage)
+- ✅ Theme Studio : préréglages avec aperçu, arrondis, planning clair/sombre, fond d’écran réversible, fichiers de thème
+- ✅ Automatisations : conditions, nouveaux déclencheurs, plusieurs actions, historique, import/export ; heures calmes ; mode sans échec
+- 🟡 Bureaux virtuels : aucune API publique pour les piloter (Mission Control couvre le bureau courant)
+- 🟡 Périphérique audio par défaut : réglage Windows (aucune API publique)
+
 ## À faire ⬜
-- Capture d’écran, gestionnaire audio détaillé, gestionnaire d’applications (désinstallation via `ms-settings:appsfeatures`)
-- Vue d’ensemble des fenêtres, espaces de travail
+- Menu contextuel du bureau Orelle, dossiers dans le Dock, capteurs de température (non exposés sans pilote), marketplace de thèmes/extensions
+- Capture d’écran, diagnostics réseau

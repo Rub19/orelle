@@ -1,8 +1,11 @@
 // Preferences IPC for extensions, AI, window layouts, profiles and automations. Only the
 // preferences window may call these.
-import { dialog, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { app, dialog, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import fs from 'node:fs';
+import path from 'node:path';
+import { normAutomation } from '../shared/settingsExtras';
 import { exportTheme, currentLook, lookPatch, parseTheme } from '../shared/themeModel';
+import type { Automation } from '../shared/types';
 import type { OrelleContext } from './context';
 import type { AiService } from './services/aiService';
 import type { AutomationService } from './services/automationService';
@@ -102,5 +105,39 @@ export function registerExtrasIpc(
     if (!from(e) || typeof id !== 'string') return;
     const a = ctx.settings.get().automations.find((x) => x.id === id);
     if (a) void s.automations.run(a);
+  });
+  ipcMain.on('settings:restartNormal', (e) => {
+    if (!from(e)) return;
+    try { fs.writeFileSync(path.join(ctx.dataDir, 'run-state.json'), JSON.stringify({ unclean: 0 })); } catch { /* ignore */ }
+    app.relaunch({ args: process.argv.slice(1).filter((a) => a !== '--orelle-safe-mode') });
+    app.quit();
+  });
+  ipcMain.handle('settings:automationHistory', (e) => (from(e) ? s.automations.getHistory() : []));
+  ipcMain.on('settings:clearAutomationHistory', (e) => { if (from(e)) s.automations.clearHistory(); });
+  ipcMain.handle('settings:exportAutomations', async (e) => {
+    const win = settingsWindow();
+    if (!from(e) || !win) return { ok: false };
+    const r = await dialog.showSaveDialog(win, { defaultPath: 'automatisations.orelle.json', filters: [{ name: 'Orelle automations', extensions: ['json'] }] });
+    if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+    fs.writeFileSync(r.filePath, JSON.stringify({ format: 'orelle-automations', version: 1, automations: ctx.settings.get().automations }, null, 2));
+    return { ok: true };
+  });
+  ipcMain.handle('settings:importAutomations', async (e) => {
+    const win = settingsWindow();
+    if (!from(e) || !win) return { ok: false };
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Orelle automations', extensions: ['json'] }] });
+    if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true };
+    try {
+      if (fs.statSync(r.filePaths[0]).size > 512 * 1024) return { ok: false, error: 'file too large' };
+      const raw = JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8'));
+      if (raw?.format !== 'orelle-automations' || !Array.isArray(raw.automations)) return { ok: false, error: 'not an Orelle automations file' };
+      // Imported rules are validated like stored ones, get fresh ids and start disabled.
+      const imported = (raw.automations as unknown[]).map(normAutomation).filter((a): a is Automation => !!a)
+        .map((a) => ({ ...a, id: `auto-${Math.random().toString(36).slice(2, 10)}`, enabled: false }));
+      ctx.settings.update({ automations: [...ctx.settings.get().automations, ...imported].slice(0, 50) });
+      return { ok: true, count: imported.length };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'invalid JSON' };
+    }
   });
 }

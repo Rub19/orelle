@@ -12,14 +12,14 @@ npm install
 npm start
 ```
 
-Au premier lancement, Orelle indexe vos applications, construit un Dock à partir de celles qui sont installées, place deux widgets et ouvre les Préférences. Ensuite, Orelle reste en arrière-plan, avec une icône dans la zone de notification.
+Au premier lancement, Orelle indexe vos applications, construit un Dock identique à votre barre des tâches Windows (mêmes applications épinglées, même ordre), place deux widgets et ouvre les Préférences. Ensuite, Orelle reste en arrière-plan, avec une icône dans la zone de notification.
 
 | Script | Rôle |
 |---|---|
 | `npm start` | Compile puis lance Orelle |
 | `npm run dev` | Idem, avec journaux détaillés dans la console |
 | `npm test` | Tests unitaires (Vitest) |
-| `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie 30 intégrations réelles (Win32, Core Audio, PDH, AppBar, Dock, barre supérieure, menu, notifications, launcher, extensions, profils, Fichiers, Moniteur…) |
+| `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie 39 intégrations réelles (Win32, Core Audio, PDH, AppBar, miniatures DWM, Dock, barre supérieure, menu, notifications, launcher, extensions, profils, stockage, Fichiers, Moniteur…) |
 | `npm run check` | Typecheck + tests + smoke test |
 | `npm run dist` | Construit l’installateur Windows par utilisateur (`release/Orelle Setup <version>.exe`, sans droits administrateur) |
 | `npm run brand` | Régénère toutes les ressources graphiques depuis `resources/brand/*.svg` |
@@ -44,16 +44,19 @@ Options de ligne de commande :
 | **Widgets** | bureau (visibles avec Win+D) | 13 widgets, mode édition, opacité, persistance |
 | **Fichiers** | Dock, launcher, centre de contrôle | Onglets, favoris, 3 vues, aperçu, tri, regroupement, filtres, recherche par nom et par contenu, Corbeille, archives `.zip` |
 | **Moniteur d’activité** | launcher, centre de contrôle, Fichiers | CPU, RAM, GPU, disque, réseau avec historique ; processus ; démarrage réversible ; services ; rapport de diagnostic |
+| **Mission Control** | `Ctrl+Alt+O`, barre supérieure, menu, launcher | Toutes les fenêtres avec aperçus en direct (DWM), recherche, regroupement par app, clavier, fermeture polie |
+| **Utilitaires** | launcher (« audio », « stockage », « presse-papiers »), `Ctrl+Alt+V` | Centre audio (volume et sourdine par périphérique et par application, niveaux en direct) ; Stockage (espace par dossier, gros fichiers, doublons SHA-256, nettoyage confirmé vers la Corbeille) ; Presse-papiers (texte et images, recherche, épingles chiffrées, collage dans la fenêtre précédente) |
+| **Theme Studio** | Préférences | Préréglages (Minimal, Professionnel, Gaming, Créatif, inspiration macOS) avec aperçu avant application, arrondis, clair/sombre selon l’heure, fond d’écran, import/export de thèmes |
 | **Fenêtres** | `Ctrl+Alt+flèches`, menu de l’app, launcher | Moitiés, quarts, tiers, agrandir, centrer ; dispositions enregistrées et restaurées (lance les apps manquantes) |
 | **Profils** | barre, menu, launcher, automatisations | Gaming, Développement, Streaming, Productivité (modifiables) : thème, barre des tâches, widgets, concentration, alertes, apps à lancer, disposition ; tout est rétabli à la désactivation |
 | **Extensions** | launcher | Manifestes JSON déclaratifs (pages web, dossiers, texte) ; aucun code tiers exécuté ; permissions affichées ; deux extensions fournies |
-| **Automatisations** | Préférences | Heure, lancement d’une app, démarrage, raccourci → profil, disposition, thème, concentration, notification, ouverture |
+| **Automatisations** | Préférences | Déclencheurs (heure, app lancée, démarrage, raccourci, batterie faible, secteur/batterie, écran branché, profil activé), conditions (plage horaire, jours, alimentation, profil), plusieurs actions, historique d’exécution, import/export |
 | **Assistant IA** | launcher : `?` + question | Facultatif, désactivé par défaut : Claude (Anthropic), OpenAI ou Ollama local ; votre clé, chiffrée ; consentement explicite |
 | **Préférences** | Dock, zone de notification | Tous les réglages, thèmes, raccourcis, export et import de profil |
 
 ### Raccourcis
 
-**Fenêtres** : `Ctrl+Alt+←/→/↑/↓` moitiés · `Ctrl+Alt+U/I/J/K` quarts · `Ctrl+Alt+D/F/G` tiers · `Ctrl+Alt+Entrée` agrandir · `Ctrl+Alt+Home` centrer.
+**Fenêtres** : `Ctrl+Alt+←/→/↑/↓` moitiés · `Ctrl+Alt+U/I/J/K` quarts · `Ctrl+Alt+D/F/G` tiers · `Ctrl+Alt+Entrée` agrandir · `Ctrl+Alt+Home` centrer · `Ctrl+Alt+O` Mission Control.
 
 **Touche Windows** (option, Préférences › Général) : un appui seul ouvre le menu Orelle ou le launcher ; `Win+lettre` reste inchangé et le vrai menu Démarrer reste accessible depuis le menu Orelle.
 
@@ -75,6 +78,10 @@ Options de ligne de commande :
   - démarrage automatique : clé Run de votre compte ;
   - barre des tâches Windows (normale, masquage auto, masquée) : API AppBar et visibilité de la fenêtre, rien dans le registre ; l’état d’origine est restauré à la fermeture, après un plantage au lancement suivant, et par le désinstalleur ;
   - applis au démarrage : même indicateur que Windows, avec un journal des changements pour tout annuler.
+- Presse-papiers : historique en mémoire uniquement (désactivé par défaut) ; les copies marquées privées par les gestionnaires de mots de passe et celles des applications exclues ne sont jamais enregistrées ; seuls les éléments épinglés sont écrits sur le disque, chiffrés (DPAPI).
+- Stockage : jamais de suppression automatique ; dossiers Windows, programmes et racines du profil protégés ; Corbeille par défaut.
+- Fond d’écran : appliqué par l’API Windows documentée ; l’original est mémorisé et rétabli à la demande.
+- Mode sans échec : après deux arrêts anormaux de suite (ou `--orelle-safe-mode`), Orelle démarre sans masquer la barre des tâches, sans crochet clavier, sans automatisations ni extensions.
 - Suppression de fichiers : Corbeille par défaut. La suppression définitive demande une confirmation explicite.
 - Arrêt de processus : confirmation obligatoire, et refus pour les processus essentiels de Windows.
 - Scripts : uniquement ceux que vous ajoutez, avec confirmation à la première exécution et après chaque modification (SHA-256).

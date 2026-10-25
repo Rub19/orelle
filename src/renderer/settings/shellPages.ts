@@ -4,7 +4,7 @@ import type { ExtensionInfoDto } from '../../preload/preload';
 import type { StringKey } from '../../shared/i18n';
 import { THEMES } from '../../shared/settings';
 import { THEME_PRESETS, currentLook, lookPatch, type ThemeLook } from '../../shared/themeModel';
-import type { ActivityProfile, AppInfo, Automation, AutomationAction, AutomationTrigger, DeepPartial, DisplayInfo, Settings } from '../../shared/types';
+import type { ActivityProfile, AppInfo, Automation, AutomationAction, AutomationCondition, AutomationTrigger, DeepPartial, DisplayInfo, Settings } from '../../shared/types';
 import { el, orelle, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 
@@ -166,6 +166,12 @@ export function pageProfiles(k: Kit): HTMLElement[] {
 
 // ---------- Notifications ----------
 
+function quietTime(value: string, onChange: (v: string) => void) {
+  const i = el('input', { class: 'input time', type: 'time', value });
+  i.addEventListener('change', () => /^\d\d:\d\d$/.test(i.value) && onChange(i.value));
+  return i;
+}
+
 export function pageNotifications(k: Kit): HTMLElement[] {
   const n = k.settings().notifications;
   return [
@@ -173,6 +179,11 @@ export function pageNotifications(k: Kit): HTMLElement[] {
       k.row('settings.notifications.enabled', k.toggle(n.enabled, (v) => void k.update({ notifications: { enabled: v } })), 'settings.notifications.enabled.desc'),
       k.row('settings.notifications.history', k.toggle(n.history, (v) => void k.update({ notifications: { history: v } })), 'settings.notifications.history.desc'),
       k.row('notifications.focus', k.toggle(n.focus, (v) => void k.update({ notifications: { focus: v } })), 'settings.notifications.focus.desc'),
+      k.row('settings.notifications.quiet', k.toggle(n.quiet.enabled, (v) => void k.update({ notifications: { quiet: { enabled: v } } })), 'settings.notifications.quiet.desc'),
+      k.row('settings.notifications.quietHours', el('div', { class: 'form-inline' },
+        quietTime(n.quiet.from, (v) => void k.update({ notifications: { quiet: { from: v } } })),
+        el('span', { class: 'lbl', text: '→' }),
+        quietTime(n.quiet.to, (v) => void k.update({ notifications: { quiet: { to: v } } })))),
       k.row('settings.notifications.windows', k.button(t('control.open'), () => orelle.settings.openWinSettings('ms-settings:notifications'), 'btn', 'external'), 'settings.notifications.windows.desc'),
     ),
     note('settings.notifications.note'),
@@ -232,8 +243,25 @@ function describeTrigger(tr: AutomationTrigger) {
     case 'appLaunched': return t('settings.auto.trigger.appAt', { app: tr.app });
     case 'startup': return t('settings.auto.trigger.startup');
     case 'hotkey': return t('settings.auto.trigger.hotkeyAt', { accel: tr.accel });
+    case 'batteryBelow': return t('settings.auto.trigger.batteryAt', { n: tr.percent });
+    case 'powerSource': return tr.source === 'ac' ? t('settings.auto.trigger.toAc') : t('settings.auto.trigger.toBattery');
+    case 'displayChanged': return t('settings.auto.trigger.displayChanged');
+    case 'profileOn': return t('settings.auto.trigger.profileAt', { name: k0?.profiles.list.find((p) => p.id === tr.id)?.name ?? '?' });
   }
 }
+
+let k0: Settings | null = null;
+
+function describeCondition(s: Settings, c: AutomationCondition) {
+  switch (c.kind) {
+    case 'between': return t('settings.auto.cond.betweenX', { from: c.from, to: c.to });
+    case 'weekdays': return c.days.map((d) => t(DAY_KEYS[d])).join(' ');
+    case 'onBattery': return c.value ? t('settings.auto.cond.onBattery') : t('settings.auto.cond.onAc');
+    case 'profileActive': return c.id ? t('settings.auto.cond.profileX', { name: s.profiles.list.find((p) => p.id === c.id)?.name ?? '?' }) : t('settings.auto.cond.noProfile');
+  }
+}
+
+let autoHistory: Awaited<ReturnType<typeof orelle.settings.automationHistory>> | null = null;
 
 function describeAction(s: Settings, a: AutomationAction) {
   switch (a.kind) {
@@ -248,11 +276,13 @@ function describeAction(s: Settings, a: AutomationAction) {
 
 export function pageAutomations(k: Kit): HTMLElement[] {
   const s = k.settings();
+  k0 = s;
   const rules = s.automations;
+  if (!autoHistory) void orelle.settings.automationHistory().then((h) => { autoHistory = h; k.rerender(); });
   const list = el('ul', { class: 'items' }, ...rules.map((a) => el('li', {},
     el('div', { class: 'it-ico' }, el('div', { class: 'ph', html: glyph('bolt') })),
-    el('div', { class: 'it-name' }, el('strong', { text: a.name }), el('small', { text: `${describeTrigger(a.trigger)} → ${a.actions.map((x) => describeAction(s, x)).join(', ')}` })),
-    k.button(t('settings.auto.runNow'), () => orelle.settings.runAutomation(a.id), 'btn'),
+    el('div', { class: 'it-name' }, el('strong', { text: a.name }), el('small', { text: `${describeTrigger(a.trigger)}${a.conditions.length ? ` · ${t('settings.auto.if')} ${a.conditions.map((c) => describeCondition(s, c)).join(', ')}` : ''} → ${a.actions.map((x) => describeAction(s, x)).join(', ')}` })),
+    k.button(t('settings.auto.runNow'), () => { orelle.settings.runAutomation(a.id); setTimeout(() => { autoHistory = null; k.rerender(); }, 1200); }, 'btn'),
     k.toggle(a.enabled, (v) => void k.update({ automations: rules.map((x) => (x.id === a.id ? { ...x, enabled: v } : x)) })),
     k.button('', () => void k.update({ automations: rules.filter((x) => x.id !== a.id) }).then(k.rerender), 'btn icon-only danger', 'close'),
   )));
@@ -269,12 +299,17 @@ export function pageAutomations(k: Kit): HTMLElement[] {
   const days = new Set([1, 2, 3, 4, 5]);
   const app = input('', 'steam.exe');
   const accel = input('', 'Ctrl+Alt+P');
+  const percent = input('20', '%', 'number');
+  percent.style.width = '80px';
+  percent.style.minWidth = '0';
+  const powerSel = k.selectBox([{ value: 'battery', label: t('settings.auto.trigger.toBattery') }, { value: 'ac', label: t('settings.auto.trigger.toAc') }], 'battery', () => {});
+  const profileTrigSel = k.selectBox(s.profiles.list.map((p) => ({ value: p.id, label: p.name })), s.profiles.list[0]?.id ?? '', () => {});
   const daysEl = el('div', { class: 'chips' }, ...[1, 2, 3, 4, 5, 6, 0].map((d) => {
     const b = el('button', { class: `chip toggle${days.has(d) ? ' on' : ''}`, text: t(DAY_KEYS[d]) });
     b.addEventListener('click', () => { if (days.has(d)) days.delete(d); else days.add(d); b.classList.toggle('on', days.has(d)); });
     return b;
   }));
-  const renderTrigger = () => triggerField.replaceChildren(...(trigger === 'time' ? [time, daysEl] : trigger === 'appLaunched' ? [app] : trigger === 'hotkey' ? [accel] : []));
+  const renderTrigger = () => triggerField.replaceChildren(...(trigger === 'time' ? [time, daysEl] : trigger === 'appLaunched' ? [app] : trigger === 'hotkey' ? [accel] : trigger === 'batteryBelow' ? [percent, el('span', { class: 'lbl', text: '%' })] : trigger === 'powerSource' ? [powerSel] : trigger === 'profileOn' ? [profileTrigSel] : []));
   const profileSel = k.selectBox(s.profiles.list.map((p) => ({ value: p.id, label: p.name })), s.profiles.list[0]?.id ?? '', () => {});
   const layoutSel = k.selectBox(s.windows.layouts.map((l) => ({ value: l.id, label: l.name })), s.windows.layouts[0]?.id ?? '', () => {});
   const themeSel = k.selectBox(THEMES.map((th) => ({ value: th, label: t(`settings.theme.${th}` as StringKey) })), 'dark', () => {});
@@ -284,9 +319,65 @@ export function pageAutomations(k: Kit): HTMLElement[] {
   const renderAction = () => actionField.replaceChildren(({ profile: profileSel, layout: layoutSel, theme: themeSel, focus: focusSel, notify: text, open: target } as Record<string, HTMLElement>)[action]);
   renderTrigger();
   renderAction();
-  const triggerSel = k.selectBox((['time', 'appLaunched', 'startup', 'hotkey'] as const).map((v) => ({ value: v, label: t(`settings.auto.trigger.${v}`) })), trigger, (v) => { trigger = v as typeof trigger; renderTrigger(); });
+  const triggerSel = k.selectBox((['time', 'appLaunched', 'startup', 'hotkey', 'batteryBelow', 'powerSource', 'displayChanged', 'profileOn'] as const).map((v) => ({ value: v, label: t(`settings.auto.trigger.${v}`) })), trigger, (v) => { trigger = v as typeof trigger; renderTrigger(); });
   const actionSel = k.selectBox((['profile', 'layout', 'theme', 'focus', 'notify', 'open'] as const).map((v) => ({ value: v, label: t(`settings.auto.action.${v}`) })), action, (v) => { action = v as typeof action; renderAction(); });
   const value = (node: HTMLElement) => (node.querySelector('select') ?? node as HTMLSelectElement).value;
+  // ----- Conditions (optional) -----
+  const condBetween = { on: false, from: input('08:00', 'HH:MM', 'time'), to: input('18:00', 'HH:MM', 'time') };
+  const condDays = new Set<number>();
+  const condPower = k.selectBox([{ value: '', label: t('settings.auto.cond.anyPower') }, { value: 'battery', label: t('settings.auto.cond.onBattery') }, { value: 'ac', label: t('settings.auto.cond.onAc') }], '', () => {});
+  const condProfile = k.selectBox([{ value: '*', label: t('settings.auto.cond.anyProfile') }, { value: '', label: t('settings.auto.cond.noProfile') }, ...s.profiles.list.map((p) => ({ value: p.id, label: t('settings.auto.cond.profileX', { name: p.name }) }))], '*', () => {});
+  const betweenToggle = k.toggle(false, (v) => { condBetween.on = v; });
+  const condDaysEl = el('div', { class: 'chips' }, ...[1, 2, 3, 4, 5, 6, 0].map((d) => {
+    const b = el('button', { class: 'chip toggle', text: t(DAY_KEYS[d]) });
+    b.addEventListener('click', () => { if (condDays.has(d)) condDays.delete(d); else condDays.add(d); b.classList.toggle('on', condDays.has(d)); });
+    return b;
+  }));
+  const conditions = (): AutomationCondition[] | string => {
+    const out: AutomationCondition[] = [];
+    if (condBetween.on) {
+      if (!/^\d\d:\d\d$/.test(condBetween.from.value) || !/^\d\d:\d\d$/.test(condBetween.to.value)) return t('settings.auto.error.time');
+      out.push({ kind: 'between', from: condBetween.from.value, to: condBetween.to.value });
+    }
+    if (condDays.size) out.push({ kind: 'weekdays', days: [...condDays] });
+    const pw = value(condPower);
+    if (pw) out.push({ kind: 'onBattery', value: pw === 'battery' });
+    const pr = value(condProfile);
+    if (pr !== '*') out.push({ kind: 'profileActive', id: pr || null });
+    return out;
+  };
+
+  // ----- Actions: several per rule, run in order -----
+  const pending: AutomationAction[] = [];
+  const pendingEl = el('div', { class: 'chips' });
+  const buildAction = (): AutomationAction | string => {
+    let ac: AutomationAction;
+    if (action === 'profile') ac = { kind: 'profile', id: value(profileSel) };
+    else if (action === 'layout') ac = { kind: 'layout', id: value(layoutSel) };
+    else if (action === 'theme') ac = { kind: 'theme', theme: value(themeSel) as Settings['appearance']['theme'] };
+    else if (action === 'focus') ac = { kind: 'focus', on: value(focusSel) === 'on' };
+    else if (action === 'notify') ac = { kind: 'notify', text: text.value.trim() };
+    else ac = { kind: 'open', target: target.value.trim() };
+    if ((ac.kind === 'profile' || ac.kind === 'layout') && !ac.id) return t('settings.auto.error.missing');
+    if (ac.kind === 'notify' && !ac.text) return t('settings.auto.error.missing');
+    if (ac.kind === 'open' && !/^https?:\/\//i.test(ac.target) && !/^[a-z]:\\/i.test(ac.target)) return t('settings.auto.error.open');
+    return ac;
+  };
+  const renderPending = () => pendingEl.replaceChildren(...pending.map((a, i) => {
+    const chip = el('span', { class: 'chip' }, `${i + 1}. ${describeAction(s, a)}`);
+    const x = el('button', { class: 'chip-x', html: glyph('close') });
+    x.addEventListener('click', () => { pending.splice(i, 1); renderPending(); });
+    chip.append(x);
+    return chip;
+  }));
+  const addAction = k.button(t('settings.auto.addAction'), () => {
+    const ac = buildAction();
+    if (typeof ac === 'string') { err.textContent = ac; return; }
+    err.textContent = '';
+    pending.push(ac);
+    renderPending();
+  }, 'btn', 'plus');
+
   const add = k.button(t('settings.auto.add'), async () => {
     err.textContent = '';
     let tr: AutomationTrigger;
@@ -299,18 +390,22 @@ export function pageAutomations(k: Kit): HTMLElement[] {
     } else if (trigger === 'hotkey') {
       if (!accel.value.includes('+')) { err.textContent = t('settings.auto.error.hotkey'); return; }
       tr = { kind: 'hotkey', accel: accel.value.trim() };
+    } else if (trigger === 'batteryBelow') tr = { kind: 'batteryBelow', percent: Math.max(5, Math.min(95, Number(percent.value) || 20)) };
+    else if (trigger === 'powerSource') tr = { kind: 'powerSource', source: value(powerSel) === 'ac' ? 'ac' : 'battery' };
+    else if (trigger === 'displayChanged') tr = { kind: 'displayChanged' };
+    else if (trigger === 'profileOn') {
+      if (!value(profileTrigSel)) { err.textContent = t('settings.auto.error.missing'); return; }
+      tr = { kind: 'profileOn', id: value(profileTrigSel) };
     } else tr = { kind: 'startup' };
-    let ac: AutomationAction;
-    if (action === 'profile') ac = { kind: 'profile', id: value(profileSel) };
-    else if (action === 'layout') ac = { kind: 'layout', id: value(layoutSel) };
-    else if (action === 'theme') ac = { kind: 'theme', theme: value(themeSel) as Settings['appearance']['theme'] };
-    else if (action === 'focus') ac = { kind: 'focus', on: value(focusSel) === 'on' };
-    else if (action === 'notify') ac = { kind: 'notify', text: text.value.trim() };
-    else ac = { kind: 'open', target: target.value.trim() };
-    if ((ac.kind === 'profile' || ac.kind === 'layout') && !ac.id) { err.textContent = t('settings.auto.error.missing'); return; }
-    if (ac.kind === 'notify' && !ac.text) { err.textContent = t('settings.auto.error.missing'); return; }
-    if (ac.kind === 'open' && !/^https?:\/\//i.test(ac.target) && !/^[a-z]:\\/i.test(ac.target)) { err.textContent = t('settings.auto.error.open'); return; }
-    const rule: Automation = { id: uid('auto'), name: name.value.trim() || t('settings.auto.untitled'), enabled: true, trigger: tr, actions: [ac] };
+    const conds = conditions();
+    if (typeof conds === 'string') { err.textContent = conds; return; }
+    let actions = [...pending];
+    if (!actions.length) {
+      const ac = buildAction();
+      if (typeof ac === 'string') { err.textContent = ac; return; }
+      actions = [ac];
+    }
+    const rule: Automation = { id: uid('auto'), name: name.value.trim() || t('settings.auto.untitled'), enabled: true, trigger: tr, conditions: conds, actions: actions.slice(0, 10) };
     await k.update({ automations: [...rules, rule] });
     k.rerender();
   }, 'btn primary', 'plus');
@@ -321,9 +416,26 @@ export function pageAutomations(k: Kit): HTMLElement[] {
     el('div', { class: 'group auto-form', 'data-search': t('settings.auto.new').toLowerCase() },
       el('div', { class: 'form-inline' }, name),
       el('div', { class: 'form-inline' }, el('span', { class: 'lbl', text: t('settings.auto.when') }), triggerSel), triggerField,
+      el('div', { class: 'form-inline' }, el('span', { class: 'lbl', text: t('settings.auto.if') }), el('span', { class: 'hint-text', text: t('settings.auto.conditionsHint') })),
+      el('div', { class: 'form-inline' }, betweenToggle, el('span', { class: 'lbl wide', text: t('settings.auto.cond.between') }), condBetween.from, condBetween.to),
+      el('div', { class: 'form-inline' }, el('span', { class: 'lbl wide', text: t('settings.auto.cond.days') }), condDaysEl),
+      el('div', { class: 'form-inline' }, condPower, condProfile),
       el('div', { class: 'form-inline' }, el('span', { class: 'lbl', text: t('settings.auto.then') }), actionSel), actionField,
+      el('div', { class: 'form-inline' }, addAction, pendingEl),
       el('div', { class: 'toolbar' }, add), err),
     note('settings.auto.note'),
+    el('div', { class: 'group-title', text: t('settings.auto.history') }),
+    el('div', { class: 'group', 'data-search': t('settings.auto.history').toLowerCase() },
+      el('ul', { class: 'items' }, ...(autoHistory ?? []).slice(0, 30).map((r) => el('li', {},
+        el('div', { class: 'it-ico' }, el('div', { class: `ph run-${r.status}`, html: glyph(r.status === 'ok' ? 'check' : r.status === 'skipped' ? 'minus' : 'close') })),
+        el('div', { class: 'it-name' }, el('strong', { text: r.name }), el('small', { text: `${new Date(r.at).toLocaleString()} · ${t(`settings.auto.cause.${r.cause}` as StringKey)} · ${t(`settings.auto.status.${r.status}` as StringKey)}${r.detail ? ` — ${r.detail}` : ''}` })),
+      ))),
+      autoHistory && !autoHistory.length ? el('p', { class: 'empty-text', text: t('settings.auto.noHistory') }) : null,
+      el('div', { class: 'toolbar' },
+        k.button(t('settings.auto.refresh'), () => { autoHistory = null; k.rerender(); }, 'btn', 'refresh'),
+        k.button(t('settings.auto.clearHistory'), () => { orelle.settings.clearAutomationHistory(); autoHistory = []; k.rerender(); }, 'btn'),
+        k.button(t('settings.auto.export'), () => void orelle.settings.exportAutomations(), 'btn', 'download'),
+        k.button(t('settings.auto.import'), async () => { const r = await orelle.settings.importAutomations(); if (r.error) alert(r.error); k.rerender(); }, 'btn', 'folder'))),
   ];
 }
 

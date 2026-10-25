@@ -6,11 +6,14 @@
            and writes a JSON array to stdout. Icons are extracted into -CacheDir.
     icons  Reads a JSON array of filesystem paths / shell parsing names from stdin and
            extracts their icons into -CacheDir. Writes { path: iconFile } JSON to stdout.
+    taskbar  Reads the Windows taskbar as the user sees it: its buttons in visual order through
+           UI Automation (AppUserModelID + accessible name), plus the pinned shortcuts in
+           %APPDATA%\Microsoft\Internet Explorer\Quick Launch\User Pinned. Read-only.
 
   This script never writes outside -CacheDir and never modifies the system.
 #>
 param(
-  [Parameter(Mandatory = $true)][ValidateSet('apps', 'icons')][string]$Mode,
+  [Parameter(Mandatory = $true)][ValidateSet('apps', 'icons', 'taskbar')][string]$Mode,
   [Parameter(Mandatory = $true)][string]$CacheDir,
   [int]$Size = 128,
   # apps mode: skip icon extraction (icons are then requested lazily with -Mode icons).
@@ -85,6 +88,39 @@ function Get-IconFile([string]$parsingName) {
   if (Test-Path -LiteralPath $file) { return $file }
   if ([OrelleIcons]::Save($parsingName, $file, $Size)) { return $file }
   return $null
+}
+
+if ($Mode -eq 'taskbar') {
+  $buttons = New-Object System.Collections.Generic.List[object]
+  try {
+    Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+    $A = [System.Windows.Automation.AutomationElement]
+    $tray = $A::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children,
+      (New-Object System.Windows.Automation.PropertyCondition($A::ClassNameProperty, 'Shell_TrayWnd')))
+    if ($tray) {
+      $found = $tray.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
+      foreach ($e in $found) {
+        $c = $e.Current
+        if ($c.AutomationId -notlike 'Appid:*') { continue }
+        $buttons.Add([ordered]@{ id = $c.AutomationId.Substring(6).Trim(); name = $c.Name; x = $c.BoundingRectangle.X; y = $c.BoundingRectangle.Y })
+      }
+    }
+  } catch {}
+  $links = New-Object System.Collections.Generic.List[object]
+  $root = Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned'
+  if (Test-Path -LiteralPath $root) {
+    $shell = New-Object -ComObject Shell.Application
+    $wsh = New-Object -ComObject WScript.Shell
+    foreach ($f in Get-ChildItem -LiteralPath $root -Recurse -Filter *.lnk -ErrorAction SilentlyContinue) {
+      if ($f.FullName -notmatch '\\(TaskBar|ImplicitAppShortcuts)\\') { continue }
+      $aumid = $null; $target = $null
+      try { $aumid = $shell.NameSpace($f.DirectoryName).ParseName($f.Name).ExtendedProperty('System.AppUserModel.ID') } catch {}
+      try { $target = $wsh.CreateShortcut($f.FullName).TargetPath } catch {}
+      $links.Add([ordered]@{ file = $f.FullName; name = $f.BaseName; aumid = $aumid; target = $target })
+    }
+  }
+  ConvertTo-Json -InputObject ([ordered]@{ buttons = $buttons.ToArray(); links = $links.ToArray() }) -Compress -Depth 3
+  exit 0
 }
 
 if ($Mode -eq 'apps') {

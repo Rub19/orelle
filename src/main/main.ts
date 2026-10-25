@@ -104,6 +104,13 @@ async function main() {
   log.init(logDir);
   log.info('app', `Orelle ${app.getVersion()} starting (Electron ${process.versions.electron}, ${process.platform} ${process.getSystemVersion()})`);
 
+  // Crash guard: two unclean exits in a row → safe mode (nothing that changes Windows' behaviour).
+  const runState = path.join(dataDir, 'run-state.json');
+  let unclean = 0;
+  try { unclean = Number(JSON.parse(fs.readFileSync(runState, 'utf8')).unclean) || 0; } catch { /* first run */ }
+  const SAFE = !SMOKE && (process.argv.includes('--orelle-safe-mode') || unclean >= 2);
+  if (!SMOKE) try { fs.writeFileSync(runState, JSON.stringify({ unclean: unclean + 1 })); } catch { /* read-only profile */ }
+  if (SAFE) log.warn('app', `Safe mode (${unclean} unclean exit(s) in a row)`);
   const settings = new SettingsService(dataDir);
   // Startup screen (skipped for the silent sign-in start and for tests).
   const splashShownAt = Date.now();
@@ -129,7 +136,7 @@ async function main() {
     icons,
     apps,
     tracker,
-    capabilities: { win32: w32.win32Available(), windowTracking: false, appBar: w32.win32Available(), acrylic: Number(process.getSystemVersion().split('.')[2] ?? 0) >= 22621 },
+    capabilities: { win32: w32.win32Available(), windowTracking: false, appBar: w32.win32Available(), acrylic: Number(process.getSystemVersion().split('.')[2] ?? 0) >= 22621, safeMode: SAFE },
     t: createTranslator(language()),
     language: language(),
     preload: path.join(distDir, 'preload.js'),
@@ -168,7 +175,7 @@ async function main() {
   const windowsSvc = new WindowService(ctx);
   const profiles = new ProfileService(ctx, notifications, alerts, windowsSvc);
   const extensions = new ExtensionService(ctx, path.join(distDir, 'extensions'));
-  extensions.load();
+  if (!SAFE) extensions.load();
   const ai = new AiService(ctx);
   for (const plugin of [extensions, profiles, windowsSvc, ai]) search.register(plugin);
   const dock = new DockController(ctx);
@@ -259,8 +266,8 @@ async function main() {
   // ---------- First run: build a Dock from installed apps ----------
   if (settings.firstRun || settings.get().dock.items.length === 0) {
     if (!apps.ready) await apps.refresh();
-    settings.update({ dock: { items: buildDefaultDock(apps) } });
-    log.info('app', 'First run: default Dock created');
+    settings.update({ dock: { items: await buildDefaultDock(apps, icons.cacheDir, tracker) } });
+    log.info('app', 'First run: Dock built from the Windows taskbar pins');
   } else {
     void apps.refresh();
   }
@@ -268,7 +275,7 @@ async function main() {
   tracker.start();
   ctx.capabilities.windowTracking = tracker.available;
   // Crash recovery first (restores a taskbar left auto-hidden), then the user's choice.
-  taskbar.apply(settings.get().general.taskbarMode);
+  taskbar.apply(SAFE ? 'normal' : settings.get().general.taskbarMode);
   profiles.start();
   topbar.start();
   dock.start();
@@ -279,9 +286,13 @@ async function main() {
   syncLoginItem(settings.get());
   syncHotkeys(settings.get());
   alerts.sync();
-  automations.start();
+  if (!SAFE) automations.start();
   themeSvc.start();
-  syncWinKey(settings.get());
+  if (!SAFE) syncWinKey(settings.get());
+  if (SAFE) {
+    notifications.notify({ title: ctx.t('safe.title'), body: ctx.t('safe.body'), source: 'orelle', glyph: 'shield', action: 'settings:general' });
+    setTimeout(() => settingsUi.open('general'), 1500);
+  }
   if (settings.get().privacy.clipboardHistory && launcher.window) clip.enable(launcher.window);
   // Close the splash once the Dock is painted (never sooner than its short intro animation).
   if (splash) {
@@ -345,10 +356,10 @@ async function main() {
     profiles.onSettingsChanged(next);
     automations.onSettingsChanged(next, prev);
     themeSvc.onSettingsChanged(next, prev);
-    if (next.general.winKey !== prev.general.winKey) syncWinKey(next);
+    if (next.general.winKey !== prev.general.winKey && !SAFE) syncWinKey(next);
     tray.sync();
     if (next.general.launchAtLogin !== prev.general.launchAtLogin) syncLoginItem(next);
-    if (next.general.taskbarMode !== prev.general.taskbarMode) taskbar.apply(next.general.taskbarMode);
+    if (next.general.taskbarMode !== prev.general.taskbarMode && !SAFE) taskbar.apply(next.general.taskbarMode);
     alerts.sync();
     if (next.launcher.enabled !== prev.launcher.enabled || next.launcher.hotkey !== prev.launcher.hotkey || next.controlCenter.hotkey !== prev.controlCenter.hotkey || next.windows.snapping !== prev.windows.snapping || next.windows.overviewHotkey !== prev.windows.overviewHotkey || next.clipboard.hotkey !== prev.clipboard.hotkey || next.privacy.clipboardHistory !== prev.privacy.clipboardHistory) syncHotkeys(next);
     if (next.appearance.effects !== prev.appearance.effects) {
@@ -380,6 +391,7 @@ async function main() {
     if (displayTimer) clearTimeout(displayTimer);
     displayTimer = setTimeout(() => {
       topbar.onDisplaysChanged();
+      automations.onDisplaysChanged();
       dock.onDisplaysChanged();
       widgets.layout();
     }, 300);
@@ -440,6 +452,7 @@ async function main() {
     widgets.destroy();
     tray.destroy();
     settings.flush();
+    if (!SMOKE) try { fs.writeFileSync(runState, JSON.stringify({ unclean: 0 })); } catch { /* exiting */ }
     usage.flush();
     screenTime.flush();
     notifications.flush();
