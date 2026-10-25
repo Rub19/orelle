@@ -19,8 +19,9 @@ Au premier lancement, Orelle indexe vos applications, construit un Dock identiqu
 | `npm start` | Compile puis lance Orelle |
 | `npm run dev` | Idem, avec journaux détaillés dans la console |
 | `npm test` | Tests unitaires (Vitest) |
-| `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie 39 intégrations réelles (Win32, Core Audio, PDH, AppBar, miniatures DWM, Dock, barre supérieure, menu, notifications, launcher, extensions, profils, stockage, Fichiers, Moniteur…) |
+| `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie 43 intégrations réelles (Win32, Core Audio, PDH, AppBar, miniatures DWM, Dock, barre supérieure, menu, notifications, launcher, extensions, profils, stockage, Fichiers, Moniteur…) |
 | `npm run check` | Typecheck + tests + smoke test |
+| `npm run measure` | Démarre Orelle dans un profil isolé et mesure le démarrage, la mémoire par fenêtre et la réouverture (`--orelle-idle=<s>`) |
 | `npm run dist` | Construit l’installateur Windows par utilisateur (`release/Orelle Setup <version>.exe`, sans droits administrateur) |
 | `npm run brand` | Régénère toutes les ressources graphiques depuis `resources/brand/*.svg` |
 
@@ -45,7 +46,8 @@ Options de ligne de commande :
 | **Fichiers** | Dock, launcher, centre de contrôle | Onglets, favoris, 3 vues, aperçu, tri, regroupement, filtres, recherche par nom et par contenu, Corbeille, archives `.zip` |
 | **Moniteur d’activité** | launcher, centre de contrôle, Fichiers | CPU, RAM, GPU, disque, réseau avec historique ; processus ; démarrage réversible ; services ; rapport de diagnostic |
 | **Mission Control** | `Ctrl+Alt+O`, barre supérieure, menu, launcher | Toutes les fenêtres avec aperçus en direct (DWM), recherche, regroupement par app, clavier, fermeture polie |
-| **Utilitaires** | launcher (« audio », « stockage », « presse-papiers »), `Ctrl+Alt+V` | Centre audio (volume et sourdine par périphérique et par application, niveaux en direct) ; Stockage (espace par dossier, gros fichiers, doublons SHA-256, nettoyage confirmé vers la Corbeille) ; Presse-papiers (texte et images, recherche, épingles chiffrées, collage dans la fenêtre précédente) |
+| **Utilitaires** | launcher (« audio », « stockage », « presse-papiers »), `Ctrl+Alt+V` | Centre audio (volume et sourdine par périphérique et par application, niveaux en direct) ; Stockage (espace par dossier, gros fichiers, doublons SHA-256, nettoyage confirmé vers la Corbeille) ; Presse-papiers (texte et images, recherche, épingles chiffrées, collage dans la fenêtre précédente) ; Réseau (passerelle, DNS, Internet, latence) |
+| **Capture d’écran** | `Ctrl+Alt+S`, menu, launcher | Zone, fenêtre ou écran entier ; enregistrée et copiée |
 | **Theme Studio** | Préférences | Préréglages (Minimal, Professionnel, Gaming, Créatif, inspiration macOS) avec aperçu avant application, arrondis, clair/sombre selon l’heure, fond d’écran, import/export de thèmes |
 | **Fenêtres** | `Ctrl+Alt+flèches`, menu de l’app, launcher | Moitiés, quarts, tiers, agrandir, centrer ; dispositions enregistrées et restaurées (lance les apps manquantes) |
 | **Profils** | barre, menu, launcher, automatisations | Gaming, Développement, Streaming, Productivité (modifiables) : thème, barre des tâches, widgets, concentration, alertes, apps à lancer, disposition ; tout est rétabli à la désactivation |
@@ -69,6 +71,17 @@ Options de ligne de commande :
 - `Ctrl+F` : filtrer (`Entrée` cherche récursivement, `Alt+Entrée` cherche aussi dans le contenu) · `Ctrl+L` : saisir un chemin.
 - `Alt+←/→/↑` : précédent, suivant, dossier parent · `F5` : actualiser · taper des lettres sélectionne l’élément correspondant.
 
+## Performances
+
+Orelle choisit tout seul le profil **Léger** sur les PC modestes (8 Go de RAM ou moins, ou 4 threads ou moins) ; on peut le forcer dans Préférences › Général. Mesures (`npm run measure`) :
+
+| Profil | Mémoire privée | RAM réelle après 50 s en arrière-plan | Réouverture du lanceur |
+|---|---|---|---|
+| Standard | 341 Mo | vidée après 2 min | instantanée |
+| Léger | 253 Mo | 71 Mo | 22 ms |
+
+Les fenêtres fermées restent chargées mais leur mémoire est rendue à Windows : elles rouvrent instantanément (touche Windows, raccourcis), et le menu est préparé dès l’appui sur la touche Windows.
+
 ## Sécurité et confidentialité
 
 - Aucun droit administrateur, aucune donnée envoyée à un service externe, sauf la météo (Open-Meteo, coordonnées de la ville choisie), les recherches web que vous validez et, si vous l’activez avec votre consentement explicite, les questions posées à l’assistant IA (rien d’autre que la question).
@@ -81,6 +94,8 @@ Options de ligne de commande :
 - Presse-papiers : historique en mémoire uniquement (désactivé par défaut) ; les copies marquées privées par les gestionnaires de mots de passe et celles des applications exclues ne sont jamais enregistrées ; seuls les éléments épinglés sont écrits sur le disque, chiffrés (DPAPI).
 - Stockage : jamais de suppression automatique ; dossiers Windows, programmes et racines du profil protégés ; Corbeille par défaut.
 - Fond d’écran : appliqué par l’API Windows documentée ; l’original est mémorisé et rétabli à la demande.
+- Mises à jour : vérification seulement (GitHub Releases, désactivable) ; rien n’est téléchargé ni installé automatiquement.
+- Rapport de diagnostic : créé localement à votre demande, chemins personnels masqués, jamais envoyé.
 - Mode sans échec : après deux arrêts anormaux de suite (ou `--orelle-safe-mode`), Orelle démarre sans masquer la barre des tâches, sans crochet clavier, sans automatisations ni extensions.
 - Suppression de fichiers : Corbeille par défaut. La suppression définitive demande une confirmation explicite.
 - Arrêt de processus : confirmation obligatoire, et refus pour les processus essentiels de Windows.

@@ -95,6 +95,20 @@ Mesures `npm run measure` (2ᵉ lancement, profil isolé, PC 16 Go / 12 threads,
 - ✅ Touche Windows : le menu est préparé dès l’appui, avant le relâchement
 - ✅ Horloge mise à jour à la minute (et non chaque seconde) quand les secondes sont masquées
 
+## v0.5 — Finition « pro » ✅
+- ✅ Assistant de premier lancement (langue, barre des tâches, touche Windows, style, Dock repris de la barre des tâches, démarrage auto) ; rien ne modifie Windows avant la fin
+- ✅ Vérification des mises à jour (GitHub Releases, 1×/jour, désactivable, aucun téléchargement automatique) — affiche « indisponible » tant que le dépôt est privé ou sans version publiée
+- ✅ Rapport de diagnostic local (environnement, réglages sans secrets, mémoire, journaux ; chemins personnels masqués), rien n’est envoyé
+- ✅ Auto-réparation : une fenêtre figée 10 s est relancée
+- ✅ Accessibilité : taille du texte 90–150 %, focus clavier toujours visible, thèmes de contraste Windows, noms accessibles des boutons à icône
+- ✅ Capture d’écran (`Ctrl+Alt+S`) : zone, fenêtre ou écran entier, enregistrée dans Images\Captures d’écran et copiée
+- ✅ Diagnostic réseau (Utilitaires) : interfaces, passerelle, DNS, sonde Internet de Windows, latence, verdict en clair
+- ✅ Installateur : 112,7 Mo (au lieu de 121,3), 327 Mo installé (au lieu de 374) — langues de Chromium limitées au français et à l’anglais, compression maximale
+- ✅ CI GitHub Actions (Windows) : typecheck, 75 tests, build ; le smoke test (43 vérifications) se lance en local (`npm run smoke`, bureau interactif requis)
+
 ## À faire ⬜
-- Menu contextuel du bureau Orelle, dossiers dans le Dock, capteurs de température (non exposés sans pilote), marketplace de thèmes/extensions
-- Capture d’écran, diagnostics réseau
+- **Signature de code** de l’installateur (supprime l’avertissement SmartScreen) : nécessite un certificat de signature, à acheter par le propriétaire du projet
+- **Mises à jour installées automatiquement** (electron-updater) : nécessite des versions publiées et un dépôt public (ou un serveur de mises à jour)
+- Fusion barre supérieure + Dock dans un seul processus (≈ −30 Mo) : demande de remplacer deux fenêtres AppBar par une seule
+- Menu contextuel du bureau Orelle (pas d’API sans crochet souris global), dossiers « piles » dans le Dock, capteurs de température (non exposés sans pilote), marketplace de thèmes/extensions
+- Bureaux virtuels (aucune API publique pour les piloter)
