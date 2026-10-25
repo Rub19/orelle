@@ -22,7 +22,7 @@ Au premier lancement, Orelle indexe vos applications, construit un Dock identiqu
 | `npm run smoke` | Lance Orelle dans un profil temporaire et vérifie 43 intégrations réelles (Win32, Core Audio, PDH, AppBar, miniatures DWM, Dock, barre supérieure, menu, notifications, launcher, extensions, profils, stockage, Fichiers, Moniteur…) |
 | `npm run check` | Typecheck + tests + smoke test |
 | `npm run measure` | Démarre Orelle dans un profil isolé et mesure le démarrage, la mémoire par fenêtre et la réouverture (`--orelle-idle=<s>`) |
-| `npm run dist` | Construit l’installateur Windows par utilisateur (`release/Orelle Setup <version>.exe`, sans droits administrateur) |
+| `npm run dist` | Construit l’installateur Windows par utilisateur (`release/Orelle-Setup-<version>.exe`, sans droits administrateur) |
 | `npm run brand` | Régénère toutes les ressources graphiques depuis `resources/brand/*.svg` |
 
 Options de ligne de commande :
@@ -109,9 +109,11 @@ Les fenêtres fermées restent chargées mais leur mémoire est rendue à Window
 
 ## Publier une version
 
-1. Augmenter `version` dans `package.json`, puis `npm run dist`.
-2. Créer une release GitHub `vX.Y.Z` sur ce dépôt avec trois fichiers de `release/` : l’installateur renommé `Orelle-Setup-X.Y.Z.exe` (nom attendu par `latest.yml`), son `.blockmap` et `latest.yml`. (`npm run release` le fait automatiquement avec un jeton `GH_TOKEN`.)
-3. Les Orelle installés la voient à leur prochaine vérification quotidienne (Préférences › À propos › Vérifier maintenant).
+1. Augmenter `version` dans `package.json` et `package-lock.json`.
+2. Committer puis pousser un tag correspondant, par exemple `v0.7.1`.
+3. GitHub Actions vérifie le code, construit `Orelle-Setup-X.Y.Z.exe`, son `.blockmap` et `latest.yml`, puis crée automatiquement la release GitHub avec ces trois assets. Les fichiers « Source code » sont ajoutés automatiquement par GitHub.
+
+Le script local `npm run release` reste disponible avec `GH_TOKEN` si une publication manuelle est nécessaire. Les Orelle installés voient la nouvelle version à leur prochaine vérification quotidienne ou depuis Préférences › Mises à jour › Vérifier maintenant.
 
 ## Installation et désinstallation
 

@@ -1,7 +1,7 @@
 {
   "name": "orelle",
   "productName": "Orelle",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Orelle — premium desktop experience layer for Windows 11 (Dock, top bar, launcher, widgets, control center, files, activity monitor, profiles).",
   "main": "dist/main.js",
   "private": true,
@@ -18,7 +18,8 @@
     "check": "npm run typecheck && npm test && npm run smoke",
     "dist": "node scripts/build.mjs && electron-builder --win nsis --x64 --publish never",
     "measure": "node scripts/build.mjs && electron . --orelle-measure",
-    "release": "node scripts/build.mjs && electron-builder --win nsis --x64 --publish always"
+    "release": "node scripts/build.mjs && electron-builder --win nsis --x64 --publish always",
+    "verify-release": "node scripts/verify-release.mjs"
   },
   "dependencies": {
     "electron-updater": "6.8.10",
@@ -42,6 +43,7 @@
   "build": {
     "appId": "com.orelle.desktop",
     "productName": "Orelle",
+    "artifactName": "Orelle-Setup-${version}.${ext}",
     "copyright": "© 2026 Orelle",
     "directories": {
       "output": "release",

@@ -1,0 +1,68 @@
+# Publish a complete Windows release whenever a matching vX.Y.Z tag is pushed.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag and package version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag $env:GITHUB_REF_NAME does not match package version $version"
+          }
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build installer and update metadata
+        run: npm run dist
+
+      - name: Verify release assets
+        shell: pwsh
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: npm run verify-release
+
+      - name: Create GitHub release and upload installer assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $assets = @(
+            "release/Orelle-Setup-$version.exe",
+            "release/Orelle-Setup-$version.exe.blockmap",
+            "release/latest.yml"
+          )
+          gh release create $env:RELEASE_TAG --repo $env:REPOSITORY --title "Orelle $version" --generate-notes --latest
+          gh release upload $env:RELEASE_TAG $assets --repo $env:REPOSITORY --clobber
