@@ -138,7 +138,7 @@ const api = {
   trayArea: {
     onState: (cb: (s: TrayAreaState) => void) => on('trayarea:state', cb),
     peek: () => ipcRenderer.send('trayarea:peek'),
-    action: (a: 'network' | 'volume' | 'battery' | 'update' | 'notifications' | 'clock') => ipcRenderer.send('trayarea:action', a),
+    action: (a: 'network' | 'microphone' | 'keyboard' | 'display' | 'volume' | 'battery' | 'update' | 'focus' | 'notifications' | 'clock') => ipcRenderer.send('trayarea:action', a),
   },
 
   tools: {

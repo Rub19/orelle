@@ -11,7 +11,7 @@ import type { NotificationService } from '../services/notificationService';
 import type { UpdateService } from '../services/updateService';
 import { lockNavigation, openSurfaceWindow, whenReady } from './sharedHost';
 
-const WIDTH = 292;
+const WIDTH = 420;
 const HEIGHT = 38;
 const GAP = 8;
 const PEEK_SECONDS = 10;
@@ -135,10 +135,15 @@ export class TrayAreaController {
   private state(): TrayAreaState {
     const updateState = this.d.updates.status.state;
     const volume = audio.getVolume();
+    const microphone = audio.getMicrophone();
     return {
       wifi: this.wifi,
       volume: volume ? { level: volume.level, muted: volume.muted } : null,
       battery: this.stats,
+      microphone: microphone ? { level: microphone.level, muted: microphone.muted } : null,
+      keyboard: this.ctx.language === 'fr' ? 'FRA' : 'ENG',
+      displayCount: screen.getAllDisplays().length,
+      focus: this.d.notifications.focus,
       unread: this.d.notifications.unread(),
       windowsUpdatePending: this.windowsUpdatePending,
       orelleUpdateAvailable: updateState === 'available' || updateState === 'ready',
@@ -196,8 +201,18 @@ export class TrayAreaController {
     ipcMain.on('trayarea:action', (e, action: unknown) => {
       if (!from(e)) return;
       if (action === 'network') void shell.openExternal('ms-settings:network-status');
+      else if (action === 'microphone') {
+        const mic = audio.getMicrophone();
+        if (mic) { audio.setMicrophoneMuted(!mic.muted); this.pushState(); }
+      }
+      else if (action === 'keyboard') void shell.openExternal('ms-settings:regionlanguage');
+      else if (action === 'display') void shell.openExternal('ms-settings:display');
       else if (action === 'volume') this.ctx.actions.toggleControlCenter();
       else if (action === 'battery') void shell.openExternal('ms-settings:batterysaver');
+      else if (action === 'focus') {
+        this.ctx.settings.update({ notifications: { focus: !this.d.notifications.focus } });
+        this.pushState();
+      }
       else if (action === 'notifications' || action === 'clock') this.d.toggleNotifications();
       else if (action === 'update') {
         if (this.windowsUpdatePending) void shell.openExternal('ms-settings:windowsupdate');

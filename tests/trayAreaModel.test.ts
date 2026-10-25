@@ -12,7 +12,9 @@ const base: TrayAreaState = {
 
 describe('tray area model', () => {
   it('keeps the Windows-like status order and hides unavailable hardware', () => {
-    expect(trayAreaItems({ ...base, volume: null, battery: { ...base.battery!, present: false } })).toEqual(['network', 'notifications', 'clock', 'peek']);
+    expect(trayAreaItems({ ...base, volume: null, battery: { ...base.battery!, present: false } })).toEqual([
+      'peek', 'microphone', 'keyboard', 'display', 'network', 'focus', 'notifications', 'clock',
+    ]);
   });
 
   it('adds one update affordance for either Windows or Orelle updates', () => {
