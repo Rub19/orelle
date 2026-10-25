@@ -1,5 +1,5 @@
 // Orelle main process: wires services and surfaces, owns the application lifecycle.
-import { app, BrowserWindow, ipcMain, nativeTheme, powerMonitor, screen, shell, type IpcMainInvokeEvent, type WebContents } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, nativeTheme, powerMonitor, screen, shell, type IpcMainInvokeEvent, type WebContents } from 'electron';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -53,7 +53,9 @@ import { ThemeService } from './services/themeService';
 import { MemoryTrimmer } from './services/memoryTrimmer';
 import { WelcomeController } from './windows/welcomeController';
 import { UpdateService } from './services/updateService';
+import { CaptureController } from './windows/captureController';
 import { buildDiagnostics } from './services/diagnostics';
+import { diagnose } from './services/networkService';
 import { panelTiming } from './windows/panelWindow';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
@@ -190,6 +192,7 @@ async function main() {
     else if (kind === 'files') orelleApps.openFiles(arg || undefined);
     else if (kind === 'settings') settingsUi.open(arg || undefined);
     else if (kind === 'url' && /^https:\/\//i.test(arg)) void shell.openExternal(arg);
+    else if (kind === 'reveal' && path.isAbsolute(arg)) shell.showItemInFolder(arg);
   };
   const notifications = new NotificationService(ctx, runNotificationAction);
   ctx.actions.notify = (n) => void notifications.notify(n);
@@ -214,6 +217,8 @@ async function main() {
   const storage = new StorageService(ctx);
   const themeSvc = new ThemeService(ctx);
   const updates = new UpdateService(ctx, notifications);
+  const capture = new CaptureController(ctx, (file) => notifications.notify({ title: ctx.t('capture.saved'), body: path.basename(file), source: 'capture', glyph: 'image', action: `reveal:${file}` }));
+  ctx.actions.capture = () => void capture.start();
   const tools = new ToolsController(ctx, storage, clip, () => windowsSvc.target());
   // First run: nothing that changes Windows' behaviour until the guided setup is finished.
   let onboarding = settings.firstRun && !SMOKE && !MEASURE && !settings.get().general.onboarded;
@@ -266,6 +271,7 @@ async function main() {
     control: { get: (s) => s.controlCenter.hotkey || null, run: () => control.toggle() },
     overview: { get: (s) => s.windows.overviewHotkey || null, run: () => mission.toggle() },
     clipboard: { get: (s) => (s.privacy.clipboardHistory && s.clipboard.hotkey) || null, run: () => tools.open('clipboard') },
+    capture: { get: (s) => s.capture.hotkey || null, run: () => void capture.start() },
   };
   for (const [target, accel] of Object.entries(SNAP_HOTKEYS)) {
     hotkeyActions[`snap:${target}`] = { get: (s) => (s.windows.snapping ? accel : null), run: () => windowsSvc.snap(target as SnapTarget) };
@@ -300,9 +306,10 @@ async function main() {
   mission.registerIpc();
   tools.registerIpc();
   welcome.registerIpc();
+  capture.registerIpc();
   notificationCenter.registerIpc();
   topbar.registerIpc();
-  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools, welcome });
+  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools, welcome, capture });
   registerExtrasIpc(ctx, () => settingsUi.window, { extensions, ai, windows: windowsSvc, profiles, automations, updates });
 
   // ---------- First run: build a Dock from installed apps ----------
@@ -342,6 +349,15 @@ async function main() {
   alerts.sync();
   if (!SAFE) automations.start();
   if (!SMOKE && !MEASURE) updates.schedule();
+  // Text size: Orelle's resizable app windows (Preferences, Files, Monitor, Utilities) follow
+  // Appearance › Text size; fixed-size panels keep their layout.
+  const applyZoom = (w: BrowserWindow) => {
+    if (!w.isDestroyed() && w.isResizable()) w.webContents.setZoomFactor(settings.get().appearance.textScale);
+  };
+  app.on('browser-window-created', (_e, w) => w.webContents.on('did-finish-load', () => applyZoom(w)));
+  settings.on('change', (next: Settings, prev: Settings) => {
+    if (next.appearance.textScale !== prev.appearance.textScale) BrowserWindow.getAllWindows().forEach(applyZoom);
+  });
   // Self-healing: a page frozen for 10 s is restarted (its controller recreates or reloads it).
   app.on('web-contents-created', (_e, wc) => {
     let frozen: NodeJS.Timeout | null = null;
@@ -433,7 +449,7 @@ async function main() {
     if (next.general.launchAtLogin !== prev.general.launchAtLogin) syncLoginItem(next);
     if (next.general.taskbarMode !== prev.general.taskbarMode && !SAFE && !onboarding) taskbar.apply(next.general.taskbarMode);
     alerts.sync();
-    if (next.launcher.enabled !== prev.launcher.enabled || next.launcher.hotkey !== prev.launcher.hotkey || next.controlCenter.hotkey !== prev.controlCenter.hotkey || next.windows.snapping !== prev.windows.snapping || next.windows.overviewHotkey !== prev.windows.overviewHotkey || next.clipboard.hotkey !== prev.clipboard.hotkey || next.privacy.clipboardHistory !== prev.privacy.clipboardHistory) syncHotkeys(next);
+    if (next.launcher.enabled !== prev.launcher.enabled || next.launcher.hotkey !== prev.launcher.hotkey || next.controlCenter.hotkey !== prev.controlCenter.hotkey || next.windows.snapping !== prev.windows.snapping || next.windows.overviewHotkey !== prev.windows.overviewHotkey || next.clipboard.hotkey !== prev.clipboard.hotkey || next.capture.hotkey !== prev.capture.hotkey || next.privacy.clipboardHistory !== prev.privacy.clipboardHistory) syncHotkeys(next);
     if (next.appearance.effects !== prev.appearance.effects) {
       launcher.onEffectsChanged();
       control.onEffectsChanged();
@@ -550,7 +566,7 @@ async function main() {
     launcher.hide();
     return ms;
   });
-  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage, welcome, updates }, shutdown);
+  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage, welcome, updates, capture }, shutdown);
 }
 
 function showSplash(firstRun: boolean, lang: 'fr' | 'en'): BrowserWindow {
@@ -606,7 +622,7 @@ function broadcastSettings(ctx: OrelleContext) {
 
 function registerSharedIpc(
   ctx: OrelleContext,
-  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; mission: MissionControlController; tools: ToolsController; welcome: WelcomeController },
+  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; mission: MissionControlController; tools: ToolsController; welcome: WelcomeController; capture: CaptureController },
 ) {
   const surfaceOf = (wc: WebContents): SurfaceKind | null => {
     if (c.dock.window?.webContents === wc) return 'dock';
@@ -622,6 +638,7 @@ function registerSharedIpc(
     if (c.mission.window?.webContents === wc) return 'mission';
     if (c.tools.is(wc)) return 'tools';
     if (c.welcome.is(wc)) return 'welcome';
+    if (c.capture.window?.webContents === wc) return 'capture';
     return null;
   };
 
@@ -684,7 +701,7 @@ async function runSmoke(
   ctx: OrelleContext,
   c: {
     dock: DockController; launcher: LauncherController; search: SearchService; files: FileIndex; widgets: WidgetsController; control: ControlCenterController; system: SystemService; apps: AppsController;
-    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService; welcome: WelcomeController; updates: UpdateService;
+    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService; welcome: WelcomeController; updates: UpdateService; capture: CaptureController;
   },
   shutdown: () => void,
 ) {
@@ -828,6 +845,27 @@ async function runSmoke(
     check('ai error path', aiRes.state === 'error', aiRes);
     const upd = await c.updates.check(true);
     check('update check answers', ['unavailable', 'current', 'available'].includes(upd.state), upd);
+    // Screenshot: capture the screen, then a 200×120 area as if the user had dragged it.
+    ctx.settings.update({ capture: { folder: path.join(ctx.dataDir, 'shots'), copy: false } });
+    fs.mkdirSync(path.join(ctx.dataDir, 'shots'), { recursive: true });
+    ctx.settings.update({ capture: { folder: path.join(ctx.dataDir, 'shots') } });
+    await c.capture.start();
+    await wait(800);
+    await shot('capture', c.capture.window);
+    ipcMain.emit('capture:done', { sender: c.capture.window?.webContents }, { x: 10, y: 10, w: 200, h: 120 });
+    await wait(800);
+    const shots = fs.readdirSync(path.join(ctx.dataDir, 'shots')).filter((f) => f.endsWith('.png'));
+    const size = shots[0] ? nativeImage.createFromPath(path.join(ctx.dataDir, 'shots', shots[0])).getSize() : null;
+    const sf = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).scaleFactor;
+    check('screenshot saved and cropped', !!size && size.width === Math.round(200 * sf) && size.height === Math.round(120 * sf), { shots: shots.length, size });
+    const netRes = await diagnose();
+    check('network diagnostics', netRes.probes.length === 4 && netRes.adapters.length > 0, netRes.probes.map((p) => `${p.id}:${p.ok ? 'ok' : 'fail'}:${p.ms ?? '-'}`));
+    if (argValue('orelle-capture')) {
+      c.tools.open('network');
+      await wait(6000);
+      await shot('tools-network', c.tools.window);
+      c.tools.window?.close();
+    }
     const diag = buildDiagnostics(ctx);
     check('diagnostics report', diag.includes('"capabilities"') && !diag.includes(os.homedir()), { chars: diag.length });
     const capDir = argValue('orelle-capture');

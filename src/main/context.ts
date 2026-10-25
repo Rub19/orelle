@@ -33,6 +33,8 @@ export interface OrelleContext {
     /** Orelle notification center (set once the service exists). */
     /** Mission Control (set once the controller exists). */
     toggleMission?(): void;
+    /** Screenshot tool. */
+    capture?(): void;
     notify?(n: { title: string; body: string; source: string; glyph: string; action?: string }): void;
   };
 }

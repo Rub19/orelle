@@ -216,6 +216,12 @@ export interface Settings {
     /** Opens the clipboard manager ('' = none). */
     hotkey: string;
   };
+  capture: {
+    /** '' = Pictures\\Screenshots. */
+    folder: string;
+    copy: boolean;
+    hotkey: string;
+  };
   storage: {
     /** Folders the Storage Manager never offers to delete from. */
     exclusions: string[];
@@ -261,6 +267,8 @@ export interface Settings {
     effects: EffectsLevel;
     /** Corner rounding of every Orelle surface. */
     radius: 'compact' | 'standard' | 'round';
+    /** Text and controls size in Orelle's app windows (1 = 100 %). */
+    textScale: number;
     /** Switches between light and dark at fixed times (overrides `theme` while enabled). */
     schedule: { enabled: boolean; lightAt: string; darkAt: string };
     /** Desktop wallpaper set by Orelle ('' = leave Windows' wallpaper alone). */
@@ -460,7 +468,7 @@ export interface AppInfo {
   icon: string | null;
 }
 
-export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications' | 'mission' | 'tools' | 'welcome';
+export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications' | 'mission' | 'tools' | 'welcome' | 'capture';
 
 export interface Bootstrap {
   surface: SurfaceKind;

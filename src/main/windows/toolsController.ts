@@ -9,8 +9,9 @@ import * as w32 from '../native/win32';
 import type { ClipboardHistory } from '../services/clipboardHistory';
 import type { StorageService } from '../services/storageService';
 import { log } from '../logger';
+import { diagnose } from '../services/networkService';
 
-export type ToolsSection = 'audio' | 'storage' | 'clipboard';
+export type ToolsSection = 'audio' | 'storage' | 'clipboard' | 'network';
 
 export class ToolsController {
   private win: BrowserWindow | null = null;
@@ -146,6 +147,10 @@ export class ToolsController {
     });
     ipcMain.on('tools:reveal', (e, p: unknown) => { if (from(e) && abs(p)) shell.showItemInFolder(p); });
     ipcMain.on('tools:openFolder', (e, p: unknown) => { if (from(e) && abs(p)) this.ctx.actions.openApp('files', p); });
+
+    // ---------- Network ----------
+    ipcMain.handle('tools:network', (e) => (from(e) ? diagnose() : null));
+    ipcMain.on('tools:networkSettings', (e) => { if (from(e)) void shell.openExternal('ms-settings:network-status'); });
 
     // ---------- Clipboard ----------
     ipcMain.handle('tools:clipList', (e) => (from(e) ? { enabled: this.clip.enabled, items: this.clip.list() } : null));

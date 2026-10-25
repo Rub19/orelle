@@ -13,7 +13,7 @@ const THEMES: ThemeId[] = ['system', 'dark', 'light', 'midnight', 'graphite', 'a
 export const TOP_BAR_ITEMS: TopBarItemId[] = ['media', 'cpu', 'network', 'volume', 'battery', 'notifications', 'search', 'overview', 'control', 'taskbar', 'clock'];
 const DEFAULT_HIDDEN: TopBarItemId[] = ['media', 'cpu'];
 
-export type Extras = Pick<Settings, 'topBar' | 'clipboard' | 'storage' | 'windows' | 'profiles' | 'notifications' | 'extensions' | 'automations' | 'ai'>;
+export type Extras = Pick<Settings, 'topBar' | 'capture' | 'clipboard' | 'storage' | 'windows' | 'profiles' | 'notifications' | 'extensions' | 'automations' | 'ai'>;
 
 export function defaultProfiles(lang: 'fr' | 'en' = 'fr'): ActivityProfile[] {
   const fr = lang === 'fr';
@@ -38,6 +38,7 @@ export function defaultExtras(): Extras {
     },
     clipboard: { maxItems: 100, images: true, excludedApps: ['keepass.exe', 'keepassxc.exe', '1password.exe', 'bitwarden.exe', 'dashlane.exe'], hotkey: 'Ctrl+Alt+V' },
     storage: { exclusions: [] },
+    capture: { folder: '', copy: true, hotkey: 'Ctrl+Alt+S' },
     windows: { snapping: true, overviewHotkey: 'Ctrl+Alt+O', layouts: [] },
     profiles: { active: null, list: defaultProfiles() },
     notifications: { enabled: true, history: true, focus: false, quiet: { enabled: false, from: '22:00', to: '07:00' } },
@@ -179,6 +180,14 @@ export function normalizeExtras(s: Json): Extras {
       hotkey: typeof cb.hotkey === 'string' && (cb.hotkey === '' || /^[\w+]{3,40}$/.test(cb.hotkey)) ? cb.hotkey : d.clipboard.hotkey,
     },
     storage: { exclusions: strList(st.exclusions, 50, /^[a-z]:\\/i) ?? [] },
+    capture: (() => {
+      const c = isObj(s.capture) ? s.capture : {};
+      return {
+        folder: typeof c.folder === 'string' && /^[a-z]:\\/i.test(c.folder) && c.folder.length < 500 ? c.folder : '',
+        copy: bool(c.copy, true),
+        hotkey: typeof c.hotkey === 'string' && (c.hotkey === '' || /^[\w+]{3,40}$/.test(c.hotkey)) ? c.hotkey : 'Ctrl+Alt+S',
+      };
+    })(),
     windows: {
       snapping: bool(wi.snapping, d.windows.snapping),
       overviewHotkey: typeof wi.overviewHotkey === 'string' && (wi.overviewHotkey === '' || /^[\w+]{3,40}$/.test(wi.overviewHotkey)) ? wi.overviewHotkey : d.windows.overviewHotkey,

@@ -151,6 +151,14 @@ const api = {
     clipPin: (id: string, on: boolean) => ipcRenderer.send('tools:clipPin', id, on),
     clipRemove: (id: string) => ipcRenderer.send('tools:clipRemove', id),
     clipClear: (all: boolean) => ipcRenderer.send('tools:clipClear', all),
+    network: (): Promise<{ adapters: { name: string; ipv4: string[]; ipv6: string[]; mac: string; gateway: string | null; dns: string[] }[]; probes: { id: string; ok: boolean; ms: number | null; detail: string }[] } | null> => ipcRenderer.invoke('tools:network'),
+    openNetworkSettings: () => ipcRenderer.send('tools:networkSettings'),
+  },
+
+  capture: {
+    onFrame: (cb: (f: { image: string; windows: { x: number; y: number; w: number; h: number; title: string }[] }) => void) => on('capture:frame', cb),
+    done: (rect: { x: number; y: number; w: number; h: number } | null) => ipcRenderer.send('capture:done', rect),
+    cancel: () => ipcRenderer.send('capture:cancel'),
   },
 
   welcome: {
@@ -172,7 +180,7 @@ const api = {
     launch: (appId: string): Promise<boolean> => ipcRenderer.invoke('menu:launch', appId),
     pin: (appId: string) => ipcRenderer.send('menu:pin', appId),
     profile: (id: string) => ipcRenderer.send('menu:profile', id),
-    action: (a: 'lock' | 'sleep' | 'restart' | 'shutdown' | 'signout' | 'settings' | 'files' | 'monitor' | 'launcher' | 'windowsStart' | 'mission') => ipcRenderer.send('menu:action', a),
+    action: (a: 'lock' | 'sleep' | 'restart' | 'shutdown' | 'signout' | 'settings' | 'files' | 'monitor' | 'launcher' | 'windowsStart' | 'mission' | 'capture') => ipcRenderer.send('menu:action', a),
     hide: () => ipcRenderer.send('menu:hide'),
   },
 

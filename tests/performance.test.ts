@@ -31,3 +31,12 @@ describe('version comparison', async () => {
     expect(compareVersions('1.10.0', '1.9.3')).toBe(1);
   });
 });
+
+describe('network diagnostics', async () => {
+  const { parsePing } = await import('../src/main/services/networkService');
+  it('reads ping times in French and English output', () => {
+    expect(parsePing('Réponse de 1.1.1.1 : octets=32 temps=12 ms TTL=57\nRéponse de 1.1.1.1 : octets=32 temps=14 ms TTL=57')).toBe(13);
+    expect(parsePing('Reply from 192.168.1.1: bytes=32 time<1ms TTL=64')).toBe(1);
+    expect(parsePing('Délai d’attente de la demande dépassé.')).toBeNull();
+  });
+});

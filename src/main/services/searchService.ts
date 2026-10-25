@@ -37,6 +37,8 @@ const ORELLE_ACTIONS: { id: string; key: StringKey; keywords: string; glyph: str
   { id: 'widgets', key: 'widgets.edit', keywords: 'orelle widgets bureau desktop modifier edit', glyph: 'grid' },
   { id: 'files', key: 'files.title', keywords: 'orelle fichiers files explorateur explorer finder dossiers folders', glyph: 'folder' },
   { id: 'mission', key: 'mission.title', keywords: 'orelle mission control apercu fenetres overview windows expose', glyph: 'grid' },
+  { id: 'capture', key: 'capture.title', keywords: 'orelle capture ecran screenshot screen shot snip copie', glyph: 'image' },
+  { id: 'network', key: 'tools.network', keywords: 'orelle reseau network diagnostic internet wifi ping dns ip', glyph: 'network' },
   { id: 'audio', key: 'tools.audio', keywords: 'orelle audio son volume sound mixer melangeur peripherique device micro', glyph: 'volume' },
   { id: 'storage', key: 'tools.storage', keywords: 'orelle stockage storage disque espace disk space doublons duplicates nettoyage cleanup', glyph: 'drive' },
   { id: 'clipboardManager', key: 'tools.clipboard', keywords: 'orelle presse-papiers clipboard historique history', glyph: 'clipboard' },
@@ -388,7 +390,8 @@ export class SearchService {
         else if (rest === 'control') this.ctx.actions.toggleControlCenter();
         else if (rest === 'widgets') this.ctx.actions.editWidgets();
         else if (rest === 'files' || rest === 'monitor') this.ctx.actions.openApp(rest);
-        else if (rest === 'audio' || rest === 'storage') this.ctx.actions.openApp('tools', rest);
+        else if (rest === 'audio' || rest === 'storage' || rest === 'network') this.ctx.actions.openApp('tools', rest);
+        else if (rest === 'capture') setTimeout(() => this.ctx.actions.capture?.(), 250);
         else if (rest === 'clipboardManager') this.ctx.actions.openApp('tools', 'clipboard');
         else if (rest === 'mission') setTimeout(() => this.ctx.actions.toggleMission?.(), 150);
         return true;

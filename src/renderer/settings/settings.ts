@@ -118,8 +118,15 @@ function slider(min: number, max: number, step: number, value: number, format: (
   return el('div', { class: 'slider' }, input, out);
 }
 
+// Icon-only buttons get an accessible name from their glyph.
+const ICON_LABELS: Record<string, StringKey> = { close: 'a11y.remove', chevronDown: 'a11y.move', check: 'a11y.confirm', plus: 'a11y.add' };
+
 function button(label: string, onClick: () => void, cls = 'btn', glyphName?: string): HTMLButtonElement {
   const b = el('button', { class: cls });
+  if (!label && glyphName && ICON_LABELS[glyphName]) {
+    b.setAttribute('aria-label', t(ICON_LABELS[glyphName]));
+    b.title = t(ICON_LABELS[glyphName]);
+  }
   if (glyphName) b.insertAdjacentHTML('beforeend', glyph(glyphName));
   b.append(label);
   b.addEventListener('click', onClick);
@@ -208,6 +215,13 @@ function pageAppearance(): HTMLElement[] {
       null,
       row('settings.accent', swatches),
       row('settings.glass', slider(0.35, 1, 0.01, a.glassOpacity, (v) => `${Math.round(v * 100)} %`, (v) => void update({ appearance: { glassOpacity: v } })), 'settings.glass.desc'),
+      row('settings.textScale', segmented([
+        { value: '0.9', label: '90 %' },
+        { value: '1', label: '100 %' },
+        { value: '1.1', label: '110 %' },
+        { value: '1.25', label: '125 %' },
+        { value: '1.5', label: '150 %' },
+      ], String(a.textScale), (v) => void update({ appearance: { textScale: Number(v) } })), 'settings.textScale.desc'),
       row('settings.effects', segmented([
         { value: 'full', label: t('settings.effects.full') },
         { value: 'reduced', label: t('settings.effects.reduced') },

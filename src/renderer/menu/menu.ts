@@ -106,6 +106,7 @@ function renderFooter() {
       power('folder', t('files.title'), 'files'),
       power('settings', t('dock.settings'), 'settings'),
       power('grid', t('mission.title'), 'mission'),
+      power('image', t('capture.title'), 'capture'),
       power('window', t('menu.windowsStart'), 'windowsStart'),
       el('span', { class: 'sep' }),
       power('lock', t('system.lock'), 'lock'),

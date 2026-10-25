@@ -94,6 +94,7 @@ export class MenuController {
       else if (action === 'files' || action === 'monitor') this.ctx.actions.openApp(action);
       else if (action === 'launcher') this.ctx.actions.toggleLauncher();
       else if (action === 'mission') this.ctx.actions.toggleMission?.();
+      else if (action === 'capture') setTimeout(() => this.ctx.actions.capture?.(), 250);
       // The real Start menu stays one click away.
       else if (action === 'windowsStart') setTimeout(() => w32.openStartMenu(), 150);
     });

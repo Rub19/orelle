@@ -254,3 +254,18 @@ textarea {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* ---------- Accessibility ---------- */
+/* Keyboard focus is always visible, on every surface. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Windows contrast themes: system colours, opaque surfaces, no glass. */
+@media (forced-colors: active) {
+  :root {
+    --glass-opacity: 1;
+    --aurora: none;
+    --noise: none;
+  }
+  * { box-shadow: none !important; text-shadow: none !important; }
+  button, [role='button'], .switch, input, select { border: 1px solid ButtonText !important; }
+  :focus-visible { outline: 3px solid Highlight; }
+}

@@ -67,7 +67,7 @@ export function defaultSettings(): Settings {
   return {
     version: SETTINGS_VERSION,
     general: { language: 'auto', launchAtLogin: false, showTrayIcon: true, taskbarMode: 'hidden', winKey: 'menu', hardwareAcceleration: true, performance: 'auto', onboarded: false, checkUpdates: true },
-    appearance: { theme: 'dark', accent: '#f2b33d', glassOpacity: 0.72, effects: 'full', radius: 'standard', schedule: { enabled: false, lightAt: '07:30', darkAt: '19:30' }, wallpaper: '' },
+    appearance: { theme: 'dark', accent: '#f2b33d', glassOpacity: 0.72, effects: 'full', radius: 'standard', textScale: 1, schedule: { enabled: false, lightAt: '07:30', darkAt: '19:30' }, wallpaper: '' },
     dock: {
       enabled: true,
       position: 'bottom',
@@ -326,6 +326,7 @@ export function normalizeSettings(raw: unknown): Settings {
       glassOpacity: clamp(a.glassOpacity, 0.35, 1, d.appearance.glassOpacity),
       effects: oneOf(a.effects, ['full', 'reduced', 'off'] as const, d.appearance.effects),
       radius: oneOf(a.radius, ['compact', 'standard', 'round'] as const, d.appearance.radius),
+      textScale: [0.9, 1, 1.1, 1.25, 1.5].includes(a.textScale as number) ? (a.textScale as number) : d.appearance.textScale,
       schedule: (() => {
         const sc = isObj(a.schedule) ? a.schedule : {};
         const hhmm = (v: unknown, def: string) => (typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : def);

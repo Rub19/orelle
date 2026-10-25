@@ -15,11 +15,12 @@ const head = document.getElementById('head')!;
 const page = document.getElementById('page')!;
 const toastsEl = document.getElementById('toasts')!;
 
-type Section = 'audio' | 'storage' | 'clipboard';
+type Section = 'audio' | 'storage' | 'clipboard' | 'network';
 const SECTIONS: { id: Section; glyph: string }[] = [
   { id: 'audio', glyph: 'volume' },
   { id: 'storage', glyph: 'drive' },
   { id: 'clipboard', glyph: 'clipboard' },
+  { id: 'network', glyph: 'network' },
 ];
 
 let settings: Settings;
@@ -78,6 +79,7 @@ function go(s: Section) {
   page.replaceChildren();
   if (s === 'audio') void audioPage();
   else if (s === 'storage') void storagePage();
+  else if (s === 'network') void networkPage();
   else void clipboardPage();
 }
 
@@ -365,6 +367,36 @@ function renderClipList(items: ClipItemDto[], list: HTMLElement) {
 }
 
 api.onClipChanged(() => { if (section === 'clipboard') void clipboardPage(); });
+
+// ---------- Network ----------
+
+async function networkPage() {
+  page.replaceChildren(el('p', { class: 'intro', text: t('tools.net.intro') }), el('div', { class: 'card pad progress' }, el('div', { class: 'spinner' }), el('div', { class: 'prog-text' }, el('strong', { text: t('tools.net.running') }))));
+  const r = await api.network();
+  if (!r || section !== 'network') return;
+  const steps = r.probes.map((p) => el('div', { class: `probe ${p.ok ? 'ok' : 'bad'}` },
+    el('span', { class: 'p-ico', html: glyph(p.ok ? 'check' : 'close') }),
+    el('div', { class: 'p-txt' }, el('strong', { text: t(`tools.net.${p.id}` as StringKey) }), el('small', { text: p.detail })),
+    el('span', { class: 'p-ms', text: p.ms !== null ? `${p.ms} ms` : '—' })));
+  // Some routers ignore ping: with Internet reachable, a silent router is not the problem.
+  const internetOk = r.probes.some((p) => p.id === 'internet' && p.ok);
+  const firstBad = r.probes.find((p) => !p.ok && !(internetOk && (p.id === 'gateway' || p.id === 'latency')));
+  const verdict = el('div', { class: `card pad verdict ${firstBad ? 'bad' : 'ok'}` }, el('strong', { text: firstBad ? t(`tools.net.fail.${firstBad.id}` as StringKey) : t('tools.net.allGood') }));
+  const adapters = r.adapters.map((a) => el('div', { class: 'card pad' },
+    el('div', { class: 'card-head' }, el('h2', { text: a.name })),
+    el('dl', { class: 'kv' },
+      el('dt', { text: 'IPv4' }), el('dd', { text: a.ipv4.join(', ') || '—' }),
+      el('dt', { text: 'IPv6' }), el('dd', { text: a.ipv6.join(', ') || '—' }),
+      el('dt', { text: t('tools.net.gatewayAddr') }), el('dd', { text: a.gateway ?? '—' }),
+      el('dt', { text: 'DNS' }), el('dd', { text: a.dns.join(', ') || '—' }),
+      el('dt', { text: 'MAC' }), el('dd', { text: a.mac || '—' }))));
+  page.replaceChildren(
+    el('p', { class: 'intro', text: t('tools.net.intro') }),
+    verdict,
+    el('div', { class: 'card pad' }, el('div', { class: 'card-head' }, el('h2', { text: t('tools.net.checks') }), button(t('tools.net.again'), () => void networkPage(), 'btn small', 'refresh'), button(t('tools.net.settings'), () => api.openNetworkSettings(), 'btn small', 'external')), ...steps),
+    ...adapters,
+  );
+}
 
 // ---------- Start ----------
 
