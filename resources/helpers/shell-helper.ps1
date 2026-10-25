@@ -13,7 +13,7 @@
   This script never writes outside -CacheDir and never modifies the system.
 #>
 param(
-  [Parameter(Mandatory = $true)][ValidateSet('apps', 'icons', 'taskbar')][string]$Mode,
+  [Parameter(Mandatory = $true)][ValidateSet('apps', 'icons', 'taskbar', 'desktopicons')][string]$Mode,
   [Parameter(Mandatory = $true)][string]$CacheDir,
   [int]$Size = 128,
   # apps mode: skip icon extraction (icons are then requested lazily with -Mode icons).
@@ -88,6 +88,30 @@ function Get-IconFile([string]$parsingName) {
   if (Test-Path -LiteralPath $file) { return $file }
   if ([OrelleIcons]::Save($parsingName, $file, $Size)) { return $file }
   return $null
+}
+
+if ($Mode -eq 'desktopicons') {
+  # The desktop's list view (under Progman, or a WorkerW on some builds) and its icons' rectangles.
+  Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+  $A = [System.Windows.Automation.AutomationElement]
+  $listView = 0
+  $icons = New-Object System.Collections.Generic.List[object]
+  foreach ($cls in @('Progman', 'WorkerW')) {
+    $tops = $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, (New-Object System.Windows.Automation.PropertyCondition($A::ClassNameProperty, $cls)))
+    foreach ($top in $tops) {
+      $lv = $top.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition($A::ClassNameProperty, 'SysListView32')))
+      if (-not $lv) { continue }
+      $listView = $lv.Current.NativeWindowHandle
+      foreach ($it in $lv.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+        $r = $it.Current.BoundingRectangle
+        if ($r.Width -gt 0) { $icons.Add([ordered]@{ l = [int]$r.Left; t = [int]$r.Top; r = [int]$r.Right; b = [int]$r.Bottom }) }
+      }
+      break
+    }
+    if ($listView) { break }
+  }
+  ConvertTo-Json -InputObject ([ordered]@{ listView = $listView; icons = $icons.ToArray() }) -Compress -Depth 3
+  exit 0
 }
 
 if ($Mode -eq 'taskbar') {

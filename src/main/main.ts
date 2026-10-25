@@ -57,6 +57,7 @@ import { CaptureController } from './windows/captureController';
 import { StackController } from './windows/stackController';
 import { DesktopService } from './services/desktopService';
 import { SensorService } from './services/sensorService';
+import { DesktopMenuService } from './services/desktopMenuService';
 import { buildDiagnostics } from './services/diagnostics';
 import { diagnose } from './services/networkService';
 import { panelTiming } from './windows/panelWindow';
@@ -224,6 +225,7 @@ async function main() {
   const capture = new CaptureController(ctx, (file) => notifications.notify({ title: ctx.t('capture.saved'), body: path.basename(file), source: 'capture', glyph: 'image', action: `reveal:${file}` }));
   ctx.actions.capture = () => void capture.start();
   const stack = new StackController(ctx);
+  const desktopMenu = new DesktopMenuService(ctx, { editWidgets: () => widgets.toggleEditing(), mission: () => mission.toggle(), capture: () => void capture.start() });
   ctx.actions.openStack = (folder, anchor) => stack.open(folder, anchor);
   const tools = new ToolsController(ctx, storage, clip, () => windowsSvc.target());
   // First run: nothing that changes Windows' behaviour until the guided setup is finished.
@@ -385,6 +387,7 @@ async function main() {
   });
   themeSvc.start();
   if (!SAFE && !MEASURE && !onboarding) syncWinKey(settings.get());
+  if (!SAFE && !SMOKE && !MEASURE) desktopMenu.sync();
   if (SAFE) {
     notifications.notify({ title: ctx.t('safe.title'), body: ctx.t('safe.body'), source: 'orelle', glyph: 'shield', action: 'settings:general' });
     setTimeout(() => settingsUi.open('general'), 1500);
@@ -454,6 +457,7 @@ async function main() {
     automations.onSettingsChanged(next, prev);
     themeSvc.onSettingsChanged(next, prev);
     if (next.general.winKey !== prev.general.winKey && !SAFE && !onboarding) syncWinKey(next);
+    if (next.general.desktopMenu !== prev.general.desktopMenu && !SAFE) desktopMenu.sync();
     tray.sync();
     if (next.general.launchAtLogin !== prev.general.launchAtLogin) syncLoginItem(next);
     if (next.general.taskbarMode !== prev.general.taskbarMode && !SAFE && !onboarding) taskbar.apply(next.general.taskbarMode);
@@ -537,6 +541,7 @@ async function main() {
     if (shutDown) return;
     shutDown = true;
     winKey.stop();
+    desktopMenu.stop();
     trimmer.stop();
     automations.stop();
     themeSvc.stop();
@@ -796,6 +801,13 @@ async function runSmoke(
     c.notifications.profileFocus = false;
     const exts = c.extensions.list();
     check('builtin extensions loaded', exts.filter((x) => x.builtin && x.enabled && !x.error).length >= 2, exts.map((x) => ({ id: x.id, error: x.error })));
+    // Install / remove a user extension (manifest only, disabled until enabled).
+    const extSrc = path.join(ctx.dataDir, 'ext-test.json');
+    fs.writeFileSync(extSrc, JSON.stringify({ id: 'smoke.test', name: 'Smoke', commands: [{ id: 'a', title: 'Smoke page', keyword: 'smk', url: 'https://example.org/?q={query}' }] }));
+    const inst = c.extensions.install(extSrc);
+    const installed = c.extensions.list().find((x) => x.id === 'smoke.test');
+    const removed = c.extensions.remove('smoke.test');
+    check('extension install / remove', inst.ok && !!installed && !installed.enabled && removed && !c.extensions.list().some((x) => x.id === 'smoke.test'), inst);
     const ext = c.search.search('wiki Lyon');
     check('extension command search', ext.results.some((r) => r.id === 'ext:orelle.web-search/wikipedia:Lyon'), ext.results.slice(0, 3).map((r) => r.id));
     const layout = c.windows.capture('smoke');

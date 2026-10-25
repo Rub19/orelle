@@ -214,6 +214,7 @@ export function pageExtensions(k: Kit): HTMLElement[] {
       el('div', { class: 'ext-head' },
         el('div', { class: 'it-ico' }, el('div', { class: 'ph', html: glyph('sparkle') })),
         el('div', { class: 'it-name' }, el('strong', { text: x.name }), el('small', { text: [x.version && `v${x.version}`, x.author, x.builtin ? t('settings.extensions.builtin') : t('settings.extensions.user')].filter(Boolean).join(' · ') })),
+        x.builtin ? null : k.button('', async () => { if (await orelle.settings.removeExtension(x.id)) { extCache = null; k.rerender(); } }, 'btn icon-only danger', 'close'),
         sw,
       ),
       x.description ? el('p', { class: 'ext-desc', text: x.description }) : null,
@@ -226,6 +227,10 @@ export function pageExtensions(k: Kit): HTMLElement[] {
     note('settings.extensions.intro'),
     ...(extCache && !extCache.length ? [el('div', { class: 'group' }, el('p', { class: 'empty-text', text: t('settings.extensions.none') }))] : cards),
     el('div', { class: 'toolbar' },
+      k.button(t('settings.extensions.install'), async () => {
+        const r = await orelle.settings.installExtension();
+        if (r.ok) { extCache = null; k.rerender(); } else if (r.error) alert(t('settings.extensions.invalid', { error: r.error }));
+      }, 'btn primary', 'plus'),
       k.button(t('settings.extensions.folder'), () => orelle.settings.openExtensionsFolder(), 'btn', 'folder'),
       k.button(t('settings.extensions.reload'), () => void orelle.settings.extensions(true).then((l) => { extCache = l; k.rerender(); }), 'btn', 'refresh'),
     ),

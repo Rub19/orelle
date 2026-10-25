@@ -10,7 +10,7 @@ export function helperPath(): string {
     : path.join(app.getAppPath(), 'resources', 'helpers', 'shell-helper.ps1');
 }
 
-export function runShellHelper(mode: 'apps' | 'icons' | 'taskbar', cacheDir: string, stdin?: string, timeoutMs = 180_000, extraArgs: string[] = []): Promise<string> {
+export function runShellHelper(mode: 'apps' | 'icons' | 'taskbar' | 'desktopicons', cacheDir: string, stdin?: string, timeoutMs = 180_000, extraArgs: string[] = []): Promise<string> {
   return new Promise((resolve, reject) => {
     const ps = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     const child = spawn(

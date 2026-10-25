@@ -93,6 +93,8 @@ const api = {
     openWinSettings: (uri: string) => ipcRenderer.send('settings:openWinSettings', uri),
     extensions: (reload = false): Promise<ExtensionInfoDto[]> => ipcRenderer.invoke('settings:extensions', reload),
     openExtensionsFolder: () => ipcRenderer.send('settings:openExtensionsFolder'),
+    installExtension: (): Promise<{ ok: boolean; canceled?: boolean; error?: string; id?: string; replaced?: boolean }> => ipcRenderer.invoke('settings:installExtension'),
+    removeExtension: (id: string): Promise<boolean> => ipcRenderer.invoke('settings:removeExtension', id),
     aiStatus: (): Promise<{ hasKey: boolean; encryption: boolean }> => ipcRenderer.invoke('settings:aiStatus'),
     aiSetKey: (key: string): Promise<boolean> => ipcRenderer.invoke('settings:aiSetKey', key),
     aiConsent: (on: boolean): Promise<boolean> => ipcRenderer.invoke('settings:aiConsent', on),

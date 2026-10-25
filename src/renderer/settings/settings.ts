@@ -171,6 +171,7 @@ function pageGeneral(): HTMLElement[] {
         mem: boot.capabilities.machine.memGB, cpus: boot.capabilities.machine.cpus,
         gpu: t(boot.capabilities.machine.gpu ? 'settings.perf.gpuOn' : 'settings.perf.gpuOff'),
       }) })),
+      row('settings.general.desktopMenu', toggle(g.desktopMenu, (v) => void update({ general: { desktopMenu: v } })), 'settings.general.desktopMenu.desc'),
       row('settings.general.gpu', toggle(g.hardwareAcceleration, (v) => void update({ general: { hardwareAcceleration: v } })), 'settings.general.gpu.desc'),
       row('settings.perf.restart', button(t('settings.perf.restartBtn'), () => orelle.settings.restartNormal(), 'btn', 'restart'), 'settings.perf.restart.desc'),
     ),

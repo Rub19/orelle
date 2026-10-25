@@ -195,6 +195,8 @@ export interface Settings {
     onboarded: boolean;
     /** Look for a newer release once a day (nothing is downloaded automatically). */
     checkUpdates: boolean;
+    /** Orelle's menu on a right-click on the empty desktop (installs a mouse hook). */
+    desktopMenu: boolean;
     /** GPU compositing; off saves ~100 MB of memory at the cost of smoother animations (applies after restart). */
     hardwareAcceleration: boolean;
   };

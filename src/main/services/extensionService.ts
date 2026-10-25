@@ -60,6 +60,42 @@ export class ExtensionService implements SearchPlugin {
     log.info('extensions', `${this.loaded.filter((l) => l.manifest).length} extension(s) loaded`);
   }
 
+  /**
+   * Installs an extension from a manifest.json (or a folder containing one). Only the validated
+   * manifest is copied — an extension never brings code — and it starts disabled.
+   */
+  install(source: string): { ok: true; id: string; replaced: boolean } | { ok: false; error: string } {
+    let file = source;
+    try {
+      if (fs.statSync(source).isDirectory()) file = path.join(source, 'manifest.json');
+      if (fs.statSync(file).size > 256 * 1024) return { ok: false, error: 'manifest too large' };
+      const res = parseManifest(JSON.parse(fs.readFileSync(file, 'utf8')));
+      if (!res.ok) return { ok: false, error: res.error };
+      const id = res.manifest.id;
+      if (this.loaded.some((l) => l.builtin && l.manifest?.id === id)) return { ok: false, error: 'same id as a built-in extension' };
+      const dir = path.join(this.userDir, id.replace(/[^a-z0-9._-]/gi, '_'));
+      const replaced = fs.existsSync(dir);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(res.manifest, null, 2));
+      this.ctx.settings.update({ extensions: { enabled: { [id]: false } } });
+      this.load();
+      log.info('extensions', `Installed ${id} (disabled until the user enables it)`);
+      return { ok: true, id, replaced };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  /** Removes a user-installed extension (built-in ones can only be disabled). */
+  remove(id: string): boolean {
+    const l = this.loaded.find((x) => !x.builtin && (x.manifest?.id === id || path.basename(x.folder) === id));
+    if (!l || path.dirname(l.folder) !== this.userDir) return false;
+    fs.rmSync(l.folder, { recursive: true, force: true });
+    this.load();
+    log.info('extensions', `Removed ${id}`);
+    return true;
+  }
+
   private enabled(id: string, builtin: boolean) {
     return this.ctx.settings.get().extensions.enabled[id] ?? builtin;
   }

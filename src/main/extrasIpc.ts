@@ -28,6 +28,19 @@ export function registerExtrasIpc(
     if (reload) s.extensions.load();
     return s.extensions.list();
   });
+  ipcMain.handle('settings:installExtension', async (e) => {
+    const win = settingsWindow();
+    if (!from(e) || !win) return { ok: false };
+    const r = await dialog.showOpenDialog(win, { title: t()('settings.extensions.installTitle'), properties: ['openFile'], filters: [{ name: 'manifest.json', extensions: ['json'] }] });
+    if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true };
+    return s.extensions.install(r.filePaths[0]);
+  });
+  ipcMain.handle('settings:removeExtension', async (e, id: unknown) => {
+    const win = settingsWindow();
+    if (!from(e) || !win || typeof id !== 'string') return false;
+    const res = await dialog.showMessageBox(win, { type: 'question', message: t()('settings.extensions.removeConfirm', { id }), buttons: [t()('settings.extensions.remove'), t()('system.cancel')], defaultId: 1, cancelId: 1, noLink: true });
+    return res.response === 0 && s.extensions.remove(id);
+  });
   ipcMain.on('settings:openExtensionsFolder', (e) => {
     if (from(e)) void shell.openPath(s.extensions.userDir);
   });
