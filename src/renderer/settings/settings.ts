@@ -655,8 +655,28 @@ function pageAbout(): HTMLElement[] {
       }, 'btn', 'refresh'))),
       row('settings.about.logs', button(t('settings.about.logs'), () => orelle.settings.openFolder('logs'), 'btn', 'external')),
       row('settings.about.data', button(t('settings.about.data'), () => orelle.settings.openFolder('data'), 'btn', 'folder')),
+      row('settings.about.diagnostics', button(t('settings.about.diagnosticsBtn'), () => void orelle.settings.saveDiagnostics(), 'btn', 'file'), 'settings.about.diagnostics.desc'),
+    ),
+    ...group(
+      'settings.updates',
+      row('settings.updates.auto', toggle(settings.general.checkUpdates, (v) => void update({ general: { checkUpdates: v } })), 'settings.updates.auto.desc'),
+      row('settings.updates.now', updateRow()),
     ),
   ];
+}
+
+function updateRow(): HTMLElement {
+  const status = el('span', { class: 'ok-text' });
+  const show = (s: { state: string; latest?: string; at?: number } | null) => {
+    if (!s || s.state === 'idle') { status.textContent = ''; return; }
+    status.textContent = t(`settings.updates.state.${s.state}` as StringKey, { v: s.latest ?? '' });
+    if (s.state === 'available') status.append(' ', button(t('settings.updates.open'), () => orelle.settings.openRelease(), 'btn small', 'external'));
+  };
+  void orelle.settings.updateStatus().then(show);
+  return el('div', { class: 'slider' }, status, button(t('settings.updates.check'), async () => {
+    status.textContent = '…';
+    show(await orelle.settings.checkUpdates());
+  }, 'btn', 'refresh'));
 }
 
 const kit: Kit = {

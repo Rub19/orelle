@@ -193,6 +193,8 @@ export interface Settings {
     performance: 'auto' | 'standard' | 'light';
     /** The first-run guided setup was completed (or skipped). */
     onboarded: boolean;
+    /** Look for a newer release once a day (nothing is downloaded automatically). */
+    checkUpdates: boolean;
     /** GPU compositing; off saves ~100 MB of memory at the cost of smoother animations (applies after restart). */
     hardwareAcceleration: boolean;
   };

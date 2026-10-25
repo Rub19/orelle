@@ -52,6 +52,8 @@ import { StorageService } from './services/storageService';
 import { ThemeService } from './services/themeService';
 import { MemoryTrimmer } from './services/memoryTrimmer';
 import { WelcomeController } from './windows/welcomeController';
+import { UpdateService } from './services/updateService';
+import { buildDiagnostics } from './services/diagnostics';
 import { panelTiming } from './windows/panelWindow';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
@@ -211,6 +213,7 @@ async function main() {
   ctx.actions.toggleMission = () => mission.toggle();
   const storage = new StorageService(ctx);
   const themeSvc = new ThemeService(ctx);
+  const updates = new UpdateService(ctx, notifications);
   const tools = new ToolsController(ctx, storage, clip, () => windowsSvc.target());
   // First run: nothing that changes Windows' behaviour until the guided setup is finished.
   let onboarding = settings.firstRun && !SMOKE && !MEASURE && !settings.get().general.onboarded;
@@ -300,7 +303,7 @@ async function main() {
   notificationCenter.registerIpc();
   topbar.registerIpc();
   registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools, welcome });
-  registerExtrasIpc(ctx, () => settingsUi.window, { extensions, ai, windows: windowsSvc, profiles, automations });
+  registerExtrasIpc(ctx, () => settingsUi.window, { extensions, ai, windows: windowsSvc, profiles, automations, updates });
 
   // ---------- First run: build a Dock from installed apps ----------
   if (settings.firstRun || settings.get().dock.items.length === 0) {
@@ -338,6 +341,23 @@ async function main() {
   syncHotkeys(settings.get());
   alerts.sync();
   if (!SAFE) automations.start();
+  if (!SMOKE && !MEASURE) updates.schedule();
+  // Self-healing: a page frozen for 10 s is restarted (its controller recreates or reloads it).
+  app.on('web-contents-created', (_e, wc) => {
+    let frozen: NodeJS.Timeout | null = null;
+    wc.on('unresponsive', () => {
+      frozen ??= setTimeout(() => {
+        if (wc.isDestroyed()) return;
+        log.error('app', `Renderer unresponsive for 10 s, restarting it: ${wc.getTitle()}`);
+        wc.forcefullyCrashRenderer();
+        setTimeout(() => !wc.isDestroyed() && wc.reload(), 500);
+      }, 10_000);
+    });
+    wc.on('responsive', () => {
+      if (frozen) clearTimeout(frozen);
+      frozen = null;
+    });
+  });
   themeSvc.start();
   if (!SAFE && !MEASURE && !onboarding) syncWinKey(settings.get());
   if (SAFE) {
@@ -530,7 +550,7 @@ async function main() {
     launcher.hide();
     return ms;
   });
-  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage, welcome }, shutdown);
+  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage, welcome, updates }, shutdown);
 }
 
 function showSplash(firstRun: boolean, lang: 'fr' | 'en'): BrowserWindow {
@@ -664,7 +684,7 @@ async function runSmoke(
   ctx: OrelleContext,
   c: {
     dock: DockController; launcher: LauncherController; search: SearchService; files: FileIndex; widgets: WidgetsController; control: ControlCenterController; system: SystemService; apps: AppsController;
-    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService; welcome: WelcomeController;
+    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService; welcome: WelcomeController; updates: UpdateService;
   },
   shutdown: () => void,
 ) {
@@ -806,6 +826,10 @@ async function runSmoke(
     const aiRes = await c.ai.ask('ping');
     ctx.settings.update({ ai: { provider: 'none', consent: false, model: '', endpoint: '' } });
     check('ai error path', aiRes.state === 'error', aiRes);
+    const upd = await c.updates.check(true);
+    check('update check answers', ['unavailable', 'current', 'available'].includes(upd.state), upd);
+    const diag = buildDiagnostics(ctx);
+    check('diagnostics report', diag.includes('"capabilities"') && !diag.includes(os.homedir()), { chars: diag.length });
     const capDir = argValue('orelle-capture');
     if (capDir) {
       fs.mkdirSync(capDir, { recursive: true });

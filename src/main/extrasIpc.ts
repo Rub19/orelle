@@ -12,11 +12,13 @@ import type { AutomationService } from './services/automationService';
 import type { ExtensionService } from './services/extensionService';
 import type { ProfileService } from './services/profileService';
 import type { WindowService } from './services/windowService';
+import type { UpdateService } from './services/updateService';
+import { buildDiagnostics } from './services/diagnostics';
 
 export function registerExtrasIpc(
   ctx: OrelleContext,
   settingsWindow: () => BrowserWindow | null,
-  s: { extensions: ExtensionService; ai: AiService; windows: WindowService; profiles: ProfileService; automations: AutomationService },
+  s: { extensions: ExtensionService; ai: AiService; windows: WindowService; profiles: ProfileService; automations: AutomationService; updates: UpdateService },
 ) {
   const from = (e: IpcMainEvent | IpcMainInvokeEvent) => settingsWindow()?.webContents === e.sender;
   const t = () => ctx.t;
@@ -105,6 +107,21 @@ export function registerExtrasIpc(
     if (!from(e) || typeof id !== 'string') return;
     const a = ctx.settings.get().automations.find((x) => x.id === id);
     if (a) void s.automations.run(a);
+  });
+  ipcMain.handle('settings:updateStatus', (e) => (from(e) ? s.updates.status : null));
+  ipcMain.handle('settings:checkUpdates', (e) => (from(e) ? s.updates.check(true) : null));
+  ipcMain.on('settings:openRelease', (e) => {
+    const url = s.updates.status.url;
+    if (from(e) && url && url.startsWith('https://github.com/')) void shell.openExternal(url);
+  });
+  ipcMain.handle('settings:saveDiagnostics', async (e) => {
+    const win = settingsWindow();
+    if (!from(e) || !win) return { ok: false };
+    const r = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('desktop'), `orelle-diagnostic-${new Date().toISOString().slice(0, 10)}.txt`), filters: [{ name: 'Text', extensions: ['txt'] }] });
+    if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+    fs.writeFileSync(r.filePath, buildDiagnostics(ctx));
+    shell.showItemInFolder(r.filePath);
+    return { ok: true };
   });
   ipcMain.on('settings:restartNormal', (e) => {
     if (!from(e)) return;

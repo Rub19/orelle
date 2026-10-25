@@ -21,3 +21,13 @@ describe('performance profile', () => {
     expect(tuning('light').trimHiddenAfter).toBeLessThan(tuning('standard').trimHiddenAfter);
   });
 });
+
+describe('version comparison', async () => {
+  const { compareVersions } = await import('../src/shared/version');
+  it('orders releases and pre-releases', () => {
+    expect(compareVersions('0.5.0', '0.4.9')).toBe(1);
+    expect(compareVersions('v1.0', '1.0.0')).toBe(0);
+    expect(compareVersions('1.2.0-beta.1', '1.2.0')).toBe(-1);
+    expect(compareVersions('1.10.0', '1.9.3')).toBe(1);
+  });
+});
