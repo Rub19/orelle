@@ -50,7 +50,10 @@ export class UpdateService {
     autoUpdater.logger = { info: (m: unknown) => log.info('updates', String(m)), warn: (m: unknown) => log.warn('updates', String(m)), error: (m: unknown) => log.error('updates', String(m)), debug: () => {} };
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
-    autoUpdater.setFeedURL({ provider: 'github', owner: UPDATE_OWNER, repo: UPDATE_REPO });
+    // Test hook: a local feed (127.0.0.1 only) to exercise check → download → verify without publishing.
+    const local = process.argv.find((x) => x.startsWith('--orelle-update-feed='))?.split('=')[1];
+    if (local && /^http:\/\/127\.0\.0\.1:\d+\/?$/.test(local)) autoUpdater.setFeedURL({ provider: 'generic', url: local });
+    else autoUpdater.setFeedURL({ provider: 'github', owner: UPDATE_OWNER, repo: UPDATE_REPO });
     autoUpdater.on('download-progress', (p) => {
       this.status = { ...this.status, state: 'downloading', percent: Math.round(p.percent) };
     });

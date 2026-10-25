@@ -106,9 +106,20 @@ Mesures `npm run measure` (2ᵉ lancement, profil isolé, PC 16 Go / 12 threads,
 - ✅ Installateur : 112,7 Mo (au lieu de 121,3), 327 Mo installé (au lieu de 374) — langues de Chromium limitées au français et à l’anglais, compression maximale
 - ✅ CI GitHub Actions (Windows) : typecheck, 75 tests, build ; le smoke test (43 vérifications) se lance en local (`npm run smoke`, bureau interactif requis)
 
+## v0.6 ✅
+- ✅ **Mises à jour automatiques** (electron-updater, GitHub Releases du dépôt public) : vérification 1×/jour, téléchargement sur clic, vérification SHA-512, installation silencieuse par utilisateur au redémarrage — testé de bout en bout avec un flux local (détection → téléchargement → vérification)
+- ✅ **Barre supérieure et widgets dans le processus du Dock** (fenêtres « invitées ») : standard 341 → 258 Mo, léger 253 → 181 Mo, 17 Mo de RAM réelle au repos en léger
+- ✅ **Piles de dossiers** dans le Dock (derniers éléments au-dessus de l’icône, vraies miniatures ; Maj+clic ouvre le dossier)
+- ✅ **Bureaux virtuels** dans Mission Control : liste et noms lus dans le registre d’Explorer (lecture seule), changement par les raccourcis Windows, création d’un bureau
+- ✅ **Capteurs** (Moniteur › Système) : GPU NVIDIA (température, charge, VRAM, consommation) via nvidia-smi, santé et cycles de la batterie via powercfg ; température CPU affichée « indisponible » (droits admin ou pilote requis)
+- ✅ **Menu Orelle du bureau** (option, désactivée par défaut) : clic droit sur une zone vide ; icônes et « Plus d’options » gardent le menu Windows
+- ✅ **Extensions** : installation depuis un manifest.json (désactivée tant que non activée), suppression ; API et format de catalogue documentés (`docs/EXTENSIONS.md`)
+- ✅ **Fichiers refait** : double panneau (Tab, Maj+F5/F6), taille d’icônes réglable (curseur, Ctrl+molette, Ctrl +/−), étiquettes de couleur et vues par étiquette, renommage par lot avec aperçu et contrôle des conflits, sous-dossiers depuis le fil d’Ariane, panneau de détails redimensionnable (grandes miniatures Windows, dimensions des images)
+- ✅ Dépôt GitHub public : https://github.com/Rub19/orelle
+
 ## À faire ⬜
-- **Signature de code** de l’installateur (supprime l’avertissement SmartScreen) : nécessite un certificat de signature, à acheter par le propriétaire du projet
-- **Mises à jour installées automatiquement** (electron-updater) : nécessite des versions publiées et un dépôt public (ou un serveur de mises à jour)
-- Fusion barre supérieure + Dock dans un seul processus (≈ −30 Mo) : demande de remplacer deux fenêtres AppBar par une seule
-- Menu contextuel du bureau Orelle (pas d’API sans crochet souris global), dossiers « piles » dans le Dock, capteurs de température (non exposés sans pilote), marketplace de thèmes/extensions
-- Bureaux virtuels (aucune API publique pour les piloter)
+- **Signature de code** (supprime l’avertissement SmartScreen) : certificat à acheter par le propriétaire
+- Menu du bureau : testé à la compilation et sur la détection du bureau, pas encore sur un vrai clic (option désactivée par défaut)
+- Étiquettes : suivent les renommages faits dans Orelle, pas ceux faits ailleurs
+- Déplacer une fenêtre d’une autre application vers un autre bureau virtuel (aucune API publique)
+- Marketplace en ligne (le format de catalogue est prêt)

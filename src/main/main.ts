@@ -872,8 +872,15 @@ async function runSmoke(
     const aiRes = await c.ai.ask('ping');
     ctx.settings.update({ ai: { provider: 'none', consent: false, model: '', endpoint: '' } });
     check('ai error path', aiRes.state === 'error', aiRes);
+    if (argValue('orelle-update-feed')) {
+      // Packaged build against a local feed: the full check → download → SHA-512 verification path.
+      const st = await c.updates.check(true);
+      const started = st.state === 'available' && c.updates.download();
+      for (let i = 0; i < 120 && c.updates.status.state === 'downloading'; i++) await wait(500);
+      check('update: detect, download, verify', st.state === 'available' && started && c.updates.status.state === 'ready', { check: st.state, latest: st.latest, final: c.updates.status.state });
+    }
     const upd = await c.updates.check(true);
-    check('update check answers', ['unavailable', 'current', 'available'].includes(upd.state), upd);
+    check('update check answers', ['unavailable', 'current', 'available', 'ready'].includes(upd.state), upd);
     // Screenshot: capture the screen, then a 200×120 area as if the user had dragged it.
     ctx.settings.update({ capture: { folder: path.join(ctx.dataDir, 'shots'), copy: false } });
     fs.mkdirSync(path.join(ctx.dataDir, 'shots'), { recursive: true });

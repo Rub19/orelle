@@ -39,11 +39,11 @@ Options de ligne de commande :
 | **Barre supérieure** | haut de l’écran | Menu Orelle, application au premier plan avec actions de fenêtre et dispositions, profil actif, médias, CPU, réseau, volume (molette), batterie, notifications, recherche, centre de contrôle, aperçu de la barre des tâches, horloge — éléments réordonnables |
 | **Menu Orelle** | logo de la barre, touche Windows (option) | Recherche, apps épinglées et récentes, toutes les applications A–Z, profils, verrouiller / veille / redémarrer / arrêter (confirmés), accès au vrai menu Démarrer |
 | **Notifications** | horloge ou cloche de la barre | Historique local des notifications Orelle, calendrier mensuel, mode concentration, lien vers le centre Windows |
-| **Dock** | toujours visible | Grossissement, lancement réel, indicateurs, réorganisation par glisser, dépôt de fichiers, menus contextuels, réservation d’espace, masquage automatique, masquage en plein écran |
+| **Dock** | toujours visible | Identique à votre barre des tâches au premier lancement, piles de dossiers, Grossissement, lancement réel, indicateurs, réorganisation par glisser, dépôt de fichiers, menus contextuels, réservation d’espace, masquage automatique, masquage en plein écran |
 | **Launcher** | `Alt+Espace` | Apps, fenêtres, fichiers, Paramètres Windows, calculs, conversions, commandes, scripts autorisés, presse-papiers, favoris |
 | **Centre de contrôle** | `Ctrl+Alt+C`, Dock, zone de notification | Volume réel (Core Audio), micro, luminosité, Wi-Fi, batterie, médias, thème, barre des tâches, modules réordonnables |
 | **Widgets** | bureau (visibles avec Win+D) | 13 widgets, mode édition, opacité, persistance |
-| **Fichiers** | Dock, launcher, centre de contrôle | Onglets, favoris, 3 vues, aperçu, tri, regroupement, filtres, recherche par nom et par contenu, Corbeille, archives `.zip` |
+| **Fichiers** | Dock, launcher, centre de contrôle | Onglets, double panneau, favoris, étiquettes de couleur, 3 vues avec taille d’icônes réglable, aperçu redimensionnable, renommage par lot, tri, regroupement, filtres, recherche par nom et par contenu, Corbeille, archives `.zip` |
 | **Moniteur d’activité** | launcher, centre de contrôle, Fichiers | CPU, RAM, GPU, disque, réseau avec historique ; processus ; démarrage réversible ; services ; rapport de diagnostic |
 | **Mission Control** | `Ctrl+Alt+O`, barre supérieure, menu, launcher | Toutes les fenêtres avec aperçus en direct (DWM), recherche, regroupement par app, clavier, fermeture polie |
 | **Utilitaires** | launcher (« audio », « stockage », « presse-papiers »), `Ctrl+Alt+V` | Centre audio (volume et sourdine par périphérique et par application, niveaux en direct) ; Stockage (espace par dossier, gros fichiers, doublons SHA-256, nettoyage confirmé vers la Corbeille) ; Presse-papiers (texte et images, recherche, épingles chiffrées, collage dans la fenêtre précédente) ; Réseau (passerelle, DNS, Internet, latence) |
@@ -64,7 +64,8 @@ Options de ligne de commande :
 
 **Launcher** : `↑ ↓` naviguer · `Entrée` ouvrir · `Ctrl+Entrée` action secondaire · `Ctrl+1…9` · `Ctrl+D` favori · `Ctrl+P` épingler au Dock · `Échap` fermer.
 
-**Fichiers** :
+**Fichiers** : `F3` double panneau · `Tab` change de panneau · `Maj+F5` / `Maj+F6` copier / déplacer vers l’autre panneau · `Ctrl+molette` ou `Ctrl+ +/−` taille des icônes · `F2` sur plusieurs éléments : renommage par lot.
+
 - `Ctrl+T` / `Ctrl+W` : nouvel onglet / fermer l’onglet · `Ctrl+N` : nouvelle fenêtre.
 - `Ctrl+Maj+N` : nouveau dossier · `F2` : renommer · `Suppr` : Corbeille · `Maj+Suppr` : suppression définitive (avec confirmation).
 - `Ctrl+C/X/V` : copier, couper, coller · `Espace` : aperçu · `Ctrl+1/2/3` : vues · `Ctrl+H` : fichiers masqués.
@@ -77,8 +78,8 @@ Orelle choisit tout seul le profil **Léger** sur les PC modestes (8 Go de RAM o
 
 | Profil | Mémoire privée | RAM réelle après 50 s en arrière-plan | Réouverture du lanceur |
 |---|---|---|---|
-| Standard | 341 Mo | vidée après 2 min | instantanée |
-| Léger | 253 Mo | 71 Mo | 22 ms |
+| Standard | 258 Mo | vidée après 2 min | 19 ms |
+| Léger | 181 Mo | 17 Mo | 22 ms |
 
 Les fenêtres fermées restent chargées mais leur mémoire est rendue à Windows : elles rouvrent instantanément (touche Windows, raccourcis), et le menu est préparé dès l’appui sur la touche Windows.
 
@@ -94,7 +95,9 @@ Les fenêtres fermées restent chargées mais leur mémoire est rendue à Window
 - Presse-papiers : historique en mémoire uniquement (désactivé par défaut) ; les copies marquées privées par les gestionnaires de mots de passe et celles des applications exclues ne sont jamais enregistrées ; seuls les éléments épinglés sont écrits sur le disque, chiffrés (DPAPI).
 - Stockage : jamais de suppression automatique ; dossiers Windows, programmes et racines du profil protégés ; Corbeille par défaut.
 - Fond d’écran : appliqué par l’API Windows documentée ; l’original est mémorisé et rétabli à la demande.
-- Mises à jour : vérification seulement (GitHub Releases, désactivable) ; rien n’est téléchargé ni installé automatiquement.
+- Mises à jour : vérification une fois par jour (GitHub Releases, désactivable) ; le téléchargement ne démarre que sur votre clic, l’empreinte SHA-512 est vérifiée et l’installation (par utilisateur, sans droits administrateur) a lieu au redémarrage.
+- Capteurs : seulement ce que Windows laisse lire sans droits administrateur ; rien d’inventé.
+- Menu du bureau (option) : crochet souris installé seulement si l’option est activée.
 - Rapport de diagnostic : créé localement à votre demande, chemins personnels masqués, jamais envoyé.
 - Mode sans échec : après deux arrêts anormaux de suite (ou `--orelle-safe-mode`), Orelle démarre sans masquer la barre des tâches, sans crochet clavier, sans automatisations ni extensions.
 - Suppression de fichiers : Corbeille par défaut. La suppression définitive demande une confirmation explicite.
