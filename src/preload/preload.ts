@@ -100,6 +100,9 @@ const api = {
     restoreLayout: (id: string) => ipcRenderer.send('settings:restoreLayout', id),
     toggleProfile: (id: string) => ipcRenderer.send('settings:toggleProfile', id),
     runAutomation: (id: string) => ipcRenderer.send('settings:runAutomation', id),
+    pickWallpaper: (): Promise<string | null> => ipcRenderer.invoke('settings:pickWallpaper'),
+    exportTheme: (): Promise<{ ok: boolean; canceled?: boolean }> => ipcRenderer.invoke('settings:exportTheme'),
+    importTheme: (): Promise<{ ok: boolean; canceled?: boolean; error?: string }> => ipcRenderer.invoke('settings:importTheme'),
   },
 
   panel: {

@@ -6,12 +6,13 @@ import type { AppInfo, Bootstrap, DeepPartial, DisplayInfo, DockItem, LauncherPr
 import { el, orelle, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
-import { pageAi, pageAutomations, pageExtensions, pageNotifications, pageProfiles, pageTopBar, pageWindows, type Kit } from './shellPages';
+import { pageStudio, pageAi, pageAutomations, pageExtensions, pageNotifications, pageProfiles, pageTopBar, pageWindows, type Kit } from './shellPages';
 
-type Section = 'general' | 'appearance' | 'topbar' | 'dock' | 'launcher' | 'windows' | 'profiles' | 'widgets' | 'notifications' | 'apps' | 'extensions' | 'automations' | 'ai' | 'privacy' | 'backup' | 'about';
+type Section = 'general' | 'appearance' | 'studio' | 'topbar' | 'dock' | 'launcher' | 'windows' | 'profiles' | 'widgets' | 'notifications' | 'apps' | 'extensions' | 'automations' | 'ai' | 'privacy' | 'backup' | 'about';
 const SECTIONS: { id: Section; glyph: string; color: string }[] = [
   { id: 'general', glyph: 'sliders', color: '#8e8e93' },
   { id: 'appearance', glyph: 'palette', color: '#bf5af2' },
+  { id: 'studio', glyph: 'sparkle', color: '#ff375f' },
   { id: 'topbar', glyph: 'window', color: '#0a84ff' },
   { id: 'dock', glyph: 'dock', color: '#0a84ff' },
   { id: 'launcher', glyph: 'search', color: '#5e5ce6' },
@@ -655,6 +656,7 @@ const kit: Kit = {
 const PAGES: Record<Section, () => HTMLElement[]> = {
   general: pageGeneral,
   appearance: pageAppearance,
+  studio: () => pageStudio(kit),
   topbar: () => pageTopBar(kit),
   dock: pageDock,
   launcher: pageLauncher,

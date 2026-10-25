@@ -81,6 +81,8 @@ export interface ActivityProfile {
   launch: { appId?: string; path?: string; name: string }[];
   /** Optional window layout restored after launching. */
   layoutId: string | null;
+  /** Desktop wallpaper while active (restored afterwards). */
+  wallpaper: string | null;
   theme: ThemeId | null;
   taskbarMode: TaskbarMode | null;
   /** Hide desktop widgets while active (e.g. gaming). */
@@ -237,6 +239,12 @@ export interface Settings {
     /** Glass tint opacity, 0.35 – 1. */
     glassOpacity: number;
     effects: EffectsLevel;
+    /** Corner rounding of every Orelle surface. */
+    radius: 'compact' | 'standard' | 'round';
+    /** Switches between light and dark at fixed times (overrides `theme` while enabled). */
+    schedule: { enabled: boolean; lightAt: string; darkAt: string };
+    /** Desktop wallpaper set by Orelle ('' = leave Windows' wallpaper alone). */
+    wallpaper: string;
   };
   dock: {
     enabled: boolean;

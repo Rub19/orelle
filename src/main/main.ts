@@ -47,6 +47,7 @@ import { TopBarController } from './windows/topBarController';
 import { MissionControlController } from './windows/missionControlController';
 import { ToolsController, type ToolsSection } from './windows/toolsController';
 import { StorageService } from './services/storageService';
+import { ThemeService } from './services/themeService';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
 const SMOKE = process.argv.includes('--orelle-smoke');
@@ -181,6 +182,7 @@ async function main() {
   });
   ctx.actions.toggleMission = () => mission.toggle();
   const storage = new StorageService(ctx);
+  const themeSvc = new ThemeService(ctx);
   const tools = new ToolsController(ctx, storage, clip, () => windowsSvc.target());
   const menu = new MenuController(ctx, search, profiles);
   const notificationCenter = new NotificationCenterController(ctx, notifications);
@@ -278,6 +280,7 @@ async function main() {
   syncHotkeys(settings.get());
   alerts.sync();
   automations.start();
+  themeSvc.start();
   syncWinKey(settings.get());
   if (settings.get().privacy.clipboardHistory && launcher.window) clip.enable(launcher.window);
   // Close the splash once the Dock is painted (never sooner than its short intro animation).
@@ -341,6 +344,7 @@ async function main() {
     topbar.onSettingsChanged(next, prev);
     profiles.onSettingsChanged(next);
     automations.onSettingsChanged(next, prev);
+    themeSvc.onSettingsChanged(next, prev);
     if (next.general.winKey !== prev.general.winKey) syncWinKey(next);
     tray.sync();
     if (next.general.launchAtLogin !== prev.general.launchAtLogin) syncLoginItem(next);
@@ -425,6 +429,7 @@ async function main() {
     shutDown = true;
     winKey.stop();
     automations.stop();
+    themeSvc.stop();
     hotkeys.disableAll();
     tracker.stop();
     files.dispose();
@@ -623,7 +628,7 @@ async function runSmoke(
     check('notification center shows', c.notificationCenter.panel.isVisible());
     await shot('notifications', c.notificationCenter.panel.window);
     if (argValue('orelle-capture')) {
-      for (const section of ['topbar', 'windows', 'profiles', 'extensions', 'automations', 'ai', 'general']) {
+      for (const section of ['studio', 'topbar', 'windows', 'profiles', 'extensions', 'automations', 'ai', 'general']) {
         c.settingsUi.open(section);
         await wait(section === 'topbar' ? 2500 : 1200);
         await shot(`settings-${section}`, c.settingsUi.window);

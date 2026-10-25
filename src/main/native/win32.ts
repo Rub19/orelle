@@ -74,6 +74,8 @@ function bind() {
     ),
     UnhookWinEvent: user32.func('bool __stdcall UnhookWinEvent(intptr_t hook)'),
     LockWorkStation: user32.func('bool __stdcall LockWorkStation()'),
+    SPIGetString: user32.func('bool __stdcall SystemParametersInfoW(uint32_t action, uint32_t param, _Out_ uint16_t *buf, uint32_t ini)'),
+    SPISetString: user32.func('bool __stdcall SystemParametersInfoW(uint32_t action, uint32_t param, const char16_t *value, uint32_t ini)'),
     keybd_event: user32.func('void __stdcall keybd_event(uint8_t vk, uint8_t scan, uint32_t flags, uintptr_t extra)'),
     AddClipboardFormatListener: user32.func('bool __stdcall AddClipboardFormatListener(intptr_t hwnd)'),
     RemoveClipboardFormatListener: user32.func('bool __stdcall RemoveClipboardFormatListener(intptr_t hwnd)'),
@@ -264,6 +266,21 @@ export function focusWindow(hwnd: HWND): boolean {
   api.SetForegroundWindow(hwnd);
   api.BringWindowToTop(hwnd);
   return Number(api.GetForegroundWindow()) === hwnd;
+}
+
+/** Current desktop wallpaper path ('' for a solid colour or slideshow without a file). */
+export function getWallpaper(): string {
+  if (!api) return '';
+  const buf = new Uint16Array(1024);
+  if (!api.SPIGetString(0x0073 /* SPI_GETDESKWALLPAPER */, buf.length, buf, 0)) return '';
+  const end = buf.indexOf(0);
+  return String.fromCharCode(...buf.subarray(0, end < 0 ? buf.length : end));
+}
+
+/** Sets the wallpaper through the documented SystemParametersInfo call (same as Settings). */
+export function setWallpaper(file: string): boolean {
+  if (!api) return false;
+  return !!api.SPISetString(0x0014 /* SPI_SETDESKWALLPAPER */, 0, file, 0x1 | 0x2 /* SPIF_UPDATEINIFILE | SPIF_SENDCHANGE */);
 }
 
 /** Ctrl+V into the window in front (used after the user picks a clipboard entry to paste). */

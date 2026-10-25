@@ -1,6 +1,8 @@
 // Preferences IPC for extensions, AI, window layouts, profiles and automations. Only the
 // preferences window may call these.
 import { dialog, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import fs from 'node:fs';
+import { exportTheme, currentLook, lookPatch, parseTheme } from '../shared/themeModel';
 import type { OrelleContext } from './context';
 import type { AiService } from './services/aiService';
 import type { AutomationService } from './services/automationService';
@@ -66,6 +68,35 @@ export function registerExtrasIpc(
   });
   ipcMain.on('settings:toggleProfile', (e, id: unknown) => {
     if (from(e) && typeof id === 'string') s.profiles.toggle(id);
+  });
+  ipcMain.handle('settings:pickWallpaper', async (e) => {
+    const win = settingsWindow();
+    if (!from(e) || !win) return null;
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'bmp', 'webp'] }] });
+    return r.canceled ? null : r.filePaths[0] ?? null;
+  });
+  ipcMain.handle('settings:exportTheme', async (e) => {
+    const win = settingsWindow();
+    if (!from(e) || !win) return { ok: false };
+    const r = await dialog.showSaveDialog(win, { defaultPath: 'mon-theme.orelle-theme.json', filters: [{ name: 'Orelle theme', extensions: ['json'] }] });
+    if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+    fs.writeFileSync(r.filePath, JSON.stringify(exportTheme('Orelle', currentLook(ctx.settings.get())), null, 2));
+    return { ok: true };
+  });
+  ipcMain.handle('settings:importTheme', async (e) => {
+    const win = settingsWindow();
+    if (!from(e) || !win) return { ok: false };
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Orelle theme', extensions: ['json'] }] });
+    if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true };
+    try {
+      if (fs.statSync(r.filePaths[0]).size > 64 * 1024) return { ok: false, error: 'file too large' };
+      const parsed = parseTheme(JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8')));
+      if (!parsed.ok) return { ok: false, error: parsed.error };
+      ctx.settings.update(lookPatch(parsed.look));
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'invalid JSON' };
+    }
   });
   ipcMain.on('settings:runAutomation', (e, id: unknown) => {
     if (!from(e) || typeof id !== 'string') return;

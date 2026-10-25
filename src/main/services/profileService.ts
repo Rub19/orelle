@@ -14,7 +14,7 @@ import type { SearchPlugin } from './searchService';
 import type { WindowService } from './windowService';
 import { log } from '../logger';
 
-interface Snapshot { theme: ThemeId; taskbarMode: TaskbarMode; widgets: boolean }
+interface Snapshot { theme: ThemeId; taskbarMode: TaskbarMode; widgets: boolean; wallpaper?: string }
 
 export class ProfileService implements SearchPlugin {
   readonly prefix = 'profile';
@@ -63,10 +63,10 @@ export class ProfileService implements SearchPlugin {
     if (!p) return false;
     if (this.active) this.deactivate(true);
     const s = this.ctx.settings.get();
-    const snap: Snapshot = { theme: s.appearance.theme, taskbarMode: s.general.taskbarMode, widgets: s.widgets.enabled };
+    const snap: Snapshot = { theme: s.appearance.theme, taskbarMode: s.general.taskbarMode, widgets: s.widgets.enabled, wallpaper: s.appearance.wallpaper };
     fs.writeFileSync(this.file, JSON.stringify(snap));
     const patch: Record<string, unknown> = { profiles: { active: id } };
-    if (p.theme) patch.appearance = { theme: p.theme };
+    if (p.theme || p.wallpaper) patch.appearance = { ...(p.theme ? { theme: p.theme } : {}), ...(p.wallpaper ? { wallpaper: p.wallpaper } : {}) };
     if (p.taskbarMode) patch.general = { taskbarMode: p.taskbarMode };
     if (p.hideWidgets) patch.widgets = { enabled: false };
     this.ctx.settings.update(patch);
@@ -86,7 +86,7 @@ export class ProfileService implements SearchPlugin {
     const snap = this.readSnapshot();
     const patch: Record<string, unknown> = { profiles: { active: null } };
     if (snap) {
-      patch.appearance = { theme: snap.theme };
+      patch.appearance = { theme: snap.theme, ...(snap.wallpaper !== undefined ? { wallpaper: snap.wallpaper } : {}) };
       patch.general = { taskbarMode: snap.taskbarMode };
       patch.widgets = { enabled: snap.widgets };
     }

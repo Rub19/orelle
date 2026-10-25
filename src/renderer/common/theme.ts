@@ -30,6 +30,7 @@ export function applyTheme(settings: Settings, darkSystem: boolean) {
   const theme = a.theme === 'system' ? (darkSystem ? 'dark' : 'light') : a.theme;
   root.dataset.theme = theme;
   root.dataset.effects = a.effects;
+  root.dataset.radius = a.radius;
   const [r, g, b] = hexToRgb(a.accent);
   root.style.setProperty('--accent', a.accent);
   root.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);

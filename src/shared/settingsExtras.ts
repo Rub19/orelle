@@ -17,7 +17,7 @@ export type Extras = Pick<Settings, 'topBar' | 'clipboard' | 'storage' | 'window
 
 export function defaultProfiles(lang: 'fr' | 'en' = 'fr'): ActivityProfile[] {
   const fr = lang === 'fr';
-  const base = { launch: [], layoutId: null, theme: null, taskbarMode: null, hideWidgets: false, focus: false, muteAlerts: false };
+  const base = { launch: [], layoutId: null, wallpaper: null, theme: null, taskbarMode: null, hideWidgets: false, focus: false, muteAlerts: false };
   return [
     { ...base, id: 'gaming', name: 'Gaming', glyph: 'gamepad', hideWidgets: true, focus: true, muteAlerts: true },
     { ...base, id: 'dev', name: fr ? 'Développement' : 'Development', glyph: 'code' },
@@ -78,6 +78,7 @@ function normProfile(raw: unknown): ActivityProfile | null {
     glyph: str(raw.glyph, 'sparkle', 32),
     launch,
     layoutId: typeof raw.layoutId === 'string' ? raw.layoutId.slice(0, 64) : null,
+    wallpaper: typeof raw.wallpaper === 'string' && /^[a-z]:\\.+\.(jpe?g|png|bmp|webp)$/i.test(raw.wallpaper) ? raw.wallpaper.slice(0, 1024) : null,
     theme: typeof raw.theme === 'string' && THEMES.includes(raw.theme as ThemeId) ? (raw.theme as ThemeId) : null,
     taskbarMode: raw.taskbarMode === 'normal' || raw.taskbarMode === 'autohide' || raw.taskbarMode === 'hidden' ? raw.taskbarMode : null,
     hideWidgets: bool(raw.hideWidgets, false),

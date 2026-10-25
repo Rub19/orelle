@@ -3,6 +3,7 @@
 import type { ExtensionInfoDto } from '../../preload/preload';
 import type { StringKey } from '../../shared/i18n';
 import { THEMES } from '../../shared/settings';
+import { THEME_PRESETS, currentLook, lookPatch, type ThemeLook } from '../../shared/themeModel';
 import type { ActivityProfile, AppInfo, Automation, AutomationAction, AutomationTrigger, DeepPartial, DisplayInfo, Settings } from '../../shared/types';
 import { el, orelle, t } from '../common/env';
 import { glyph } from '../common/glyphs';
@@ -142,6 +143,10 @@ function profileCard(k: Kit, p: ActivityProfile, all: ActivityProfile[]): HTMLEl
     k.row('settings.profiles.theme', theme),
     k.row('settings.general.taskbarMode', taskbar),
     k.row('settings.profiles.layout', layout),
+    k.row('settings.profiles.wallpaper', el('div', { class: 'form-inline' },
+      el('span', { class: 'path-text', text: p.wallpaper ?? t('settings.profiles.unchanged') }),
+      k.button(t('settings.studio.pick'), async () => { const f = await orelle.settings.pickWallpaper(); if (f) set({ wallpaper: f }); }, 'btn'),
+      p.wallpaper ? k.button('', () => set({ wallpaper: null }), 'btn icon-only', 'close') : null)),
     k.row('settings.profiles.launch', addApp, undefined, launch),
   );
 }
@@ -149,7 +154,7 @@ function profileCard(k: Kit, p: ActivityProfile, all: ActivityProfile[]): HTMLEl
 export function pageProfiles(k: Kit): HTMLElement[] {
   const all = k.settings().profiles.list;
   const add = k.button(t('settings.profiles.new'), () => {
-    const p: ActivityProfile = { id: uid('profile'), name: t('settings.profiles.newName'), glyph: 'sparkle', launch: [], layoutId: null, theme: null, taskbarMode: null, hideWidgets: false, focus: false, muteAlerts: false };
+    const p: ActivityProfile = { id: uid('profile'), name: t('settings.profiles.newName'), glyph: 'sparkle', launch: [], layoutId: null, wallpaper: null, theme: null, taskbarMode: null, hideWidgets: false, focus: false, muteAlerts: false };
     void k.update({ profiles: { list: [...all, p] } }).then(k.rerender);
   }, 'btn', 'plus');
   return [
@@ -379,3 +384,83 @@ export function pageAi(k: Kit): HTMLElement[] {
   ];
 }
 
+
+// ---------- Theme Studio ----------
+
+let studioPreview: string | null = null;
+
+function scene(look: ThemeLook, big = false): HTMLElement {
+  const s = el('div', { class: `scene${big ? ' big' : ''}`, 'data-theme': look.theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : look.theme, 'data-radius': look.radius });
+  s.style.setProperty('--accent', look.accent);
+  s.style.setProperty('--glass-opacity', String(look.glassOpacity));
+  const dockIcons = el('div', { class: 'sc-dock' }, ...['#ff9f0a', look.accent, '#30d158', '#0a84ff', '#ff375f'].map((c) => {
+    const i = el('i');
+    i.style.background = c;
+    const sz = Math.round(look.dock.iconSize / (big ? 3.2 : 4.6));
+    i.style.width = `${sz}px`;
+    i.style.height = `${sz}px`;
+    return i;
+  }));
+  s.append(
+    el('div', { class: 'sc-bar' }, el('span', { class: 'sc-dot' }), el('span', { class: 'sc-line' }), el('span', { class: 'sc-grow' }), el('span', { class: 'sc-line short' })),
+    el('div', { class: 'sc-win' }, el('div', { class: 'sc-title' }), el('div', { class: 'sc-btn' }), el('div', { class: 'sc-text' }), el('div', { class: 'sc-text short' })),
+    dockIcons,
+  );
+  return s;
+}
+
+export function pageStudio(k: Kit): HTMLElement[] {
+  const s = k.settings();
+  const a = s.appearance;
+  const current = currentLook(s);
+  const presets = el('div', { class: 'presets' }, ...THEME_PRESETS.map((p) => {
+    const card = el('button', { class: `preset${studioPreview === p.id ? ' on' : ''}` }, scene(p.look), el('span', { text: t(`settings.studio.preset.${p.id}` as StringKey) }));
+    card.addEventListener('click', () => { studioPreview = p.id; k.rerender(); });
+    return card;
+  }));
+  const chosen = THEME_PRESETS.find((p) => p.id === studioPreview);
+  const previewBox = chosen
+    ? el('div', { class: 'group studio-preview' },
+      el('div', { class: 'sp-side' }, el('strong', { text: t('settings.studio.previewOf', { name: t(`settings.studio.preset.${chosen.id}` as StringKey) }) }), el('small', { text: t('settings.studio.previewDesc') }),
+        el('div', { class: 'toolbar' },
+          k.button(t('settings.studio.apply'), () => { studioPreview = null; void k.update(lookPatch(chosen.look)).then(k.rerender); }, 'btn primary', 'check'),
+          k.button(t('system.cancel'), () => { studioPreview = null; k.rerender(); }, 'btn'))),
+      scene(chosen.look, true))
+    : el('div', { class: 'group studio-preview' }, el('div', { class: 'sp-side' }, el('strong', { text: t('settings.studio.current') }), el('small', { text: t('settings.studio.pickPreset') })), scene(current, true));
+
+  const time = (value: string, onChange: (v: string) => void) => {
+    const i = el('input', { class: 'input time', type: 'time', value });
+    i.addEventListener('change', () => /^\d\d:\d\d$/.test(i.value) && onChange(i.value));
+    return i;
+  };
+  const wallpaperName = a.wallpaper ? a.wallpaper.split('\\').pop()! : t('settings.studio.wallpaperWindows');
+  return [
+    note('settings.studio.intro'),
+    previewBox,
+    el('div', { class: 'group-title', text: t('settings.studio.presets') }),
+    el('div', { class: 'group', 'data-search': `${t('settings.studio.presets')} ${THEME_PRESETS.map((p) => t(`settings.studio.preset.${p.id}` as StringKey)).join(' ')}`.toLowerCase() }, presets),
+    ...k.group('settings.studio.details',
+      k.row('settings.studio.radius', k.segmented([
+        { value: 'compact', label: t('settings.studio.radius.compact') },
+        { value: 'standard', label: t('settings.studio.radius.standard') },
+        { value: 'round', label: t('settings.studio.radius.round') },
+      ], a.radius, (v) => void k.update({ appearance: { radius: v } }))),
+      k.row('settings.studio.schedule', k.toggle(a.schedule.enabled, (v) => void k.update({ appearance: { schedule: { enabled: v } } }).then(k.rerender)), 'settings.studio.schedule.desc'),
+      a.schedule.enabled ? k.row('settings.studio.scheduleTimes', el('div', { class: 'form-inline' },
+        el('span', { class: 'lbl', text: t('settings.theme.light') }), time(a.schedule.lightAt, (v) => void k.update({ appearance: { schedule: { lightAt: v } } })),
+        el('span', { class: 'lbl', text: t('settings.theme.dark') }), time(a.schedule.darkAt, (v) => void k.update({ appearance: { schedule: { darkAt: v } } })))) : null,
+      k.row('settings.studio.wallpaper', el('div', { class: 'form-inline' },
+        el('span', { class: 'path-text', text: wallpaperName, title: a.wallpaper }),
+        k.button(t('settings.studio.pick'), async () => { const f = await orelle.settings.pickWallpaper(); if (f) void k.update({ appearance: { wallpaper: f } }).then(k.rerender); }, 'btn', 'image'),
+        a.wallpaper ? k.button(t('settings.studio.restoreWallpaper'), () => void k.update({ appearance: { wallpaper: '' } }).then(k.rerender), 'btn') : null), 'settings.studio.wallpaper.desc'),
+    ),
+    ...k.group('settings.studio.files',
+      k.row('settings.studio.export', k.button(t('settings.studio.exportBtn'), async () => { await orelle.settings.exportTheme(); }, 'btn', 'download'), 'settings.studio.export.desc'),
+      k.row('settings.studio.import', k.button(t('settings.studio.importBtn'), async () => {
+        const r = await orelle.settings.importTheme();
+        if (r.ok) { studioPreview = null; k.rerender(); } else if (r.error) alert(t('settings.studio.importError', { error: r.error }));
+      }, 'btn', 'folder'), 'settings.studio.import.desc'),
+      k.row('settings.studio.reset', k.button(t('settings.studio.resetBtn'), () => void k.update(lookPatch(THEME_PRESETS.find((p) => p.id === 'orelle')!.look)).then(k.rerender), 'btn'), 'settings.studio.reset.desc'),
+    ),
+  ];
+}

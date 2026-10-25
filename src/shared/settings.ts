@@ -67,7 +67,7 @@ export function defaultSettings(): Settings {
   return {
     version: SETTINGS_VERSION,
     general: { language: 'auto', launchAtLogin: false, showTrayIcon: true, taskbarMode: 'hidden', winKey: 'menu', hardwareAcceleration: true },
-    appearance: { theme: 'dark', accent: '#f2b33d', glassOpacity: 0.72, effects: 'full' },
+    appearance: { theme: 'dark', accent: '#f2b33d', glassOpacity: 0.72, effects: 'full', radius: 'standard', schedule: { enabled: false, lightAt: '07:30', darkAt: '19:30' }, wallpaper: '' },
     dock: {
       enabled: true,
       position: 'bottom',
@@ -322,6 +322,13 @@ export function normalizeSettings(raw: unknown): Settings {
       accent: color(a.accent, d.appearance.accent),
       glassOpacity: clamp(a.glassOpacity, 0.35, 1, d.appearance.glassOpacity),
       effects: oneOf(a.effects, ['full', 'reduced', 'off'] as const, d.appearance.effects),
+      radius: oneOf(a.radius, ['compact', 'standard', 'round'] as const, d.appearance.radius),
+      schedule: (() => {
+        const sc = isObj(a.schedule) ? a.schedule : {};
+        const hhmm = (v: unknown, def: string) => (typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : def);
+        return { enabled: bool(sc.enabled, false), lightAt: hhmm(sc.lightAt, d.appearance.schedule.lightAt), darkAt: hhmm(sc.darkAt, d.appearance.schedule.darkAt) };
+      })(),
+      wallpaper: typeof a.wallpaper === 'string' && /^[a-z]:\\.+\.(jpe?g|png|bmp|webp)$/i.test(a.wallpaper) && a.wallpaper.length < 1024 ? a.wallpaper : '',
     },
     dock: {
       enabled: bool(k.enabled, d.dock.enabled),
