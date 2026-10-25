@@ -16,7 +16,13 @@
         <div class="toolbar" id="toolbar"></div>
         <div class="filters" id="filters"></div>
         <div class="body">
-          <div class="content" id="content" tabindex="0"></div>
+          <div class="panes" id="panes">
+            <section class="pane active" id="pane0">
+              <div class="pane-head" hidden></div>
+              <div class="content" id="content" tabindex="0"></div>
+            </section>
+          </div>
+          <div class="pv-resize" id="pvResize" hidden></div>
           <aside class="preview" id="preview" hidden></aside>
         </div>
         <footer class="status" id="status"></footer>

@@ -326,6 +326,14 @@ export interface Settings {
     sort: { key: 'name' | 'mtime' | 'size' | 'kind'; desc: boolean };
     /** Folders opened from the Dock / launcher open in Orelle Files instead of File Explorer. */
     openFoldersInOrelle: boolean;
+    /** Grid icon size in px. */
+    iconSize: number;
+    /** Width of the details panel in px. */
+    previewWidth: number;
+    /** Two folders side by side. */
+    dualPane: boolean;
+    /** Colour labels by file path (kept by Orelle; files are not modified). */
+    tags: Record<string, 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'gray'>;
   };
   monitor: {
     alerts: boolean;

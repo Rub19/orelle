@@ -101,3 +101,59 @@ export function parentDir(p: string): string | null {
   const parent = trimmed.slice(0, i);
   return /^[a-z]:$/i.test(parent) ? `${parent}\\` : parent;
 }
+
+// ---------- Tags ----------
+
+export const TAG_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray'] as const;
+export type TagColor = (typeof TAG_COLORS)[number];
+
+// ---------- Batch rename ----------
+
+export interface BatchRenameOptions {
+  /** Plain text, matched case-insensitively (never interpreted as a regular expression). */
+  find: string;
+  replace: string;
+  prefix: string;
+  suffix: string;
+  /** Replace the base name by `base` + number (keeps extensions). '' = keep names. */
+  base: string;
+  start: number;
+  digits: number;
+  keepExtension: boolean;
+}
+
+const INVALID = /[<>:"/\\|?*\u0000-\u001f]/;
+const RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i;
+
+export function splitName(name: string, isDir: boolean): { stem: string; ext: string } {
+  const dot = isDir ? -1 : name.lastIndexOf('.');
+  return dot > 0 ? { stem: name.slice(0, dot), ext: name.slice(dot) } : { stem: name, ext: '' };
+}
+
+/**
+ * New names for a batch, in order, with an error per item when the result is invalid or collides
+ * with another result or with an untouched name in the folder.
+ */
+export function batchRename(items: { name: string; dir: boolean }[], o: BatchRenameOptions, others: string[] = []): { from: string; to: string; error: 'invalid' | 'duplicate' | null }[] {
+  const out = items.map((it, i) => {
+    const { stem, ext } = splitName(it.name, it.dir);
+    let s = o.base ? `${o.base}${String(o.start + i).padStart(Math.max(1, o.digits), '0')}` : stem;
+    if (o.find) s = s.replace(new RegExp(o.find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), o.replace);
+    s = `${o.prefix}${s}${o.suffix}`.trim();
+    const to = o.keepExtension || it.dir ? `${s}${ext}` : s;
+    return { from: it.name, to, error: null as 'invalid' | 'duplicate' | null };
+  });
+  const seen = new Map<string, number>();
+  const fixed = new Set(others.map((n) => n.toLowerCase()));
+  for (const r of out) {
+    if (!r.to.replace(/\.+$/, '').trim() || INVALID.test(r.to) || RESERVED.test(r.to) || /[ .]$/.test(r.to) || r.to.length > 240) r.error = 'invalid';
+    const k = r.to.toLowerCase();
+    seen.set(k, (seen.get(k) ?? 0) + 1);
+  }
+  for (const r of out) {
+    if (r.error) continue;
+    const k = r.to.toLowerCase();
+    if ((seen.get(k) ?? 0) > 1 || (fixed.has(k) && k !== r.from.toLowerCase())) r.error = 'duplicate';
+  }
+  return out;
+}

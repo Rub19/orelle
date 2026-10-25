@@ -242,6 +242,7 @@ const api = {
   files: {
     startPath: (): string | null => new URLSearchParams(location.search).get('path'),
     places: (): Promise<Place[]> => ipcRenderer.invoke('files:places'),
+    entries: (paths: string[]): Promise<FileEntry[]> => ipcRenderer.invoke('files:entries', paths),
     recent: (): Promise<FileEntry[]> => ipcRenderer.invoke('files:recent'),
     list: (dir: string): Promise<{ ok: true; entries: FileEntry[] } | { ok: false; error: FsError }> => ipcRenderer.invoke('files:list', dir),
     icons: (items: { path: string; dir: boolean }[]): Promise<Record<string, string | null>> => ipcRenderer.invoke('files:icons', items),

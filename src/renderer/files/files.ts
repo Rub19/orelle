@@ -1,7 +1,9 @@
-// Orelle Files: tabs, sidebar, breadcrumb, grid/list/details views, sorting, grouping, filters,
-// preview, context menus, drag and drop, keyboard navigation and long-operation progress.
+// Orelle Files: tabs, optional second pane, sidebar (favorites, places, volumes, colour tags),
+// breadcrumb with sibling folders, grid/list/details views with adjustable icon size, sorting,
+// grouping, filters, resizable details panel, batch rename, context menus, drag and drop, keyboard
+// navigation and long-operation progress.
 import type { FileEntry, FileOperation, FsError, Place } from '../../shared/appTypes';
-import { breadcrumbs, fileKind, filterEntries, groupEntries, isArchive, parentDir, sortEntries, type FileKind, type GroupBy, type SortKey } from '../../shared/filesModel';
+import { batchRename, breadcrumbs, fileKind, filterEntries, groupEntries, isArchive, parentDir, sortEntries, TAG_COLORS, type FileKind, type GroupBy, type SortKey, type TagColor } from '../../shared/filesModel';
 import type { StringKey } from '../../shared/i18n';
 import type { Settings } from '../../shared/types';
 import { formatBytes } from '../../shared/widgetModel';
@@ -15,7 +17,9 @@ const sidebar = $('sidebar');
 const tabsEl = $('tabs');
 const toolbar = $('toolbar');
 const filtersEl = $('filters');
-const content = $('content');
+let content = $('content');
+const panesEl = $('panes');
+const pvResize = $('pvResize');
 const previewEl = $('preview');
 const statusEl = $('status');
 const menuEl = $('menu');
@@ -27,6 +31,7 @@ let lang: 'fr' | 'en' = 'fr';
 let places: Place[] = [];
 
 const RECENT = '::recent';
+const TAG = '::tag:';
 
 interface Tab {
   id: string;
@@ -56,9 +61,116 @@ const icons = new Map<string, string | null>();
 const ops = new Map<string, FileOperation>();
 
 const tab = () => tabs[active];
+
+// ---------- Panes (one, or two side by side) ----------
+
+interface Pane { tabs: Tab[]; active: number; root: HTMLElement; content: HTMLElement; head: HTMLElement }
+const panes: Pane[] = [];
+let cur = 0;
+
+function syncPane() {
+  if (panes[cur]) { panes[cur].tabs = tabs; panes[cur].active = active; }
+}
+
+function usePane(i: number) {
+  syncPane();
+  cur = i;
+  tabs = panes[i].tabs;
+  active = panes[i].active;
+  content = panes[i].content;
+}
+
+/** Runs `fn` with pane `i` as the current one (rendering the other pane in place). */
+function withPane<T>(i: number, fn: () => T): T {
+  const prev = cur;
+  usePane(i);
+  try { return fn(); } finally { usePane(prev); }
+}
+
+function focusPane(i: number) {
+  if (i === cur || !panes[i]) return;
+  usePane(i);
+  for (const [j, p] of panes.entries()) p.root.classList.toggle('active', j === cur);
+  api.watch(isFolder(tab().location) ? tab().location : null);
+  render();
+}
+
+function paneHeads() {
+  const dual = panes.length > 1;
+  for (const [j, p] of panes.entries()) {
+    p.head.hidden = !dual;
+    if (!dual) continue;
+    const tb = p.tabs[p.active];
+    p.head.replaceChildren(el('span', { html: glyph(tb.location === RECENT ? 'clock' : tb.location.startsWith(TAG) ? 'star' : 'folder') }), el('span', { class: 'ph-name', text: locationName(tb.location) }), el('small', { text: tb.location.startsWith('::') ? '' : tb.location }));
+    p.root.classList.toggle('active', j === cur);
+  }
+}
+
+function wireContent(c: HTMLElement, index: number) {
+  // Any click inside a pane makes it the current one.
+  c.parentElement!.addEventListener('mousedown', () => focusPane(index), true);
+  // Click on empty space clears the selection; right-click there opens the folder menu.
+  c.addEventListener('mousedown', (ev) => {
+    if ((ev.target as HTMLElement).closest('.item')) return;
+    tab().selected.clear();
+    paintSelection();
+    renderStatus();
+  });
+  c.addEventListener('contextmenu', (ev) => {
+    if ((ev.target as HTMLElement).closest('.item')) return;
+    ev.preventDefault();
+    void backgroundMenu(ev);
+  });
+  // Drops from other apps (or the other pane) into the open folder.
+  c.addEventListener('dragover', (ev) => { if (isFolder(tab().location)) ev.preventDefault(); });
+  c.addEventListener('drop', (ev) => { if (isFolder(tab().location)) void handleDrop(ev, tab().location); });
+  // Ctrl+wheel resizes icons in the grid.
+  c.addEventListener('wheel', (ev) => {
+    if (!ev.ctrlKey || view() !== 'grid') return;
+    ev.preventDefault();
+    setIconSize(settings.files.iconSize + (ev.deltaY < 0 ? 8 : -8));
+  }, { passive: false });
+}
+
+function makePane(root: HTMLElement): Pane {
+  const head = root.querySelector<HTMLElement>('.pane-head')!;
+  const c = root.querySelector<HTMLElement>('.content')!;
+  const pane: Pane = { tabs: [], active: 0, root, content: c, head };
+  wireContent(c, panes.length);
+  return pane;
+}
+
+function setDual(on: boolean) {
+  if (on && panes.length === 1) {
+    const root = el('section', { class: 'pane' }, el('div', { class: 'pane-head' }), el('div', { class: 'content', tabindex: '0' }));
+    panesEl.append(root);
+    const p = makePane(root);
+    const start = isFolder(tab().location) ? tab().location : places[0]?.path ?? 'C:\\';
+    p.tabs = [newTab(start)];
+    panes.push(p);
+    withPane(1, () => void load(tab()));
+  } else if (!on && panes.length === 2) {
+    if (cur === 1) focusPane(0);
+    panes[1].root.remove();
+    panes.pop();
+  }
+  panesEl.classList.toggle('dual', panes.length > 1);
+  if (settings.files.dualPane !== on) saveFiles({ dualPane: on });
+  render();
+}
+
+/** Copies (or moves) the selection of the current pane into the other pane's folder. */
+async function toOtherPane(mode: 'copy' | 'move') {
+  if (panes.length < 2) return;
+  const other = panes[1 - cur];
+  const dest = other.tabs[other.active].location;
+  const paths = selectedEntries().map((e) => e.path);
+  if (!paths.length || !isFolder(dest)) return;
+  await api.transfer(paths, dest, mode);
+}
 const view = () => settings.files.view;
-const isFolder = (loc: string) => loc !== RECENT && !loc.startsWith('::search');
-const locationName = (loc: string) => (loc === RECENT ? t('files.recent') : loc.startsWith('::search') ? t('files.searchResults') : breadcrumbs(loc).pop()?.name ?? loc);
+const isFolder = (loc: string) => !loc.startsWith('::');
+const locationName = (loc: string) => (loc === RECENT ? t('files.recent') : loc.startsWith(TAG) ? t(`files.tag.${loc.slice(TAG.length)}` as StringKey) : loc.startsWith('::search') ? t('files.searchResults') : breadcrumbs(loc).pop()?.name ?? loc);
 const locale = () => (lang === 'fr' ? 'fr-FR' : 'en-US');
 
 // ---------- Settings persistence ----------
@@ -80,6 +192,9 @@ async function load(tb: Tab) {
   if (tb === tab()) render();
   if (tb.location === RECENT) {
     tb.entries = await api.recent();
+  } else if (tb.location.startsWith(TAG)) {
+    const color = tb.location.slice(TAG.length);
+    tb.entries = await api.entries(Object.entries(settings.files.tags).filter(([, c]) => c === color).map(([p]) => p));
   } else if (tb.search) {
     tb.entries = await api.search(tb.search.root, tb.search.query, tb.search.content);
   } else {
@@ -94,7 +209,15 @@ async function load(tb: Tab) {
   if (tb === tab()) {
     api.watch(isFolder(tb.location) && !tb.error ? tb.location : null);
     render();
-    void loadIcons();
+    void loadIcons(tb);
+    return;
+  }
+  // The other pane: redraw it in place.
+  const pi = panes.findIndex((p, j) => j !== cur && p.tabs[p.active] === tb);
+  if (pi >= 0) {
+    withPane(pi, () => renderContent());
+    paneHeads();
+    void loadIcons(tb);
   }
 }
 
@@ -141,8 +264,8 @@ function goUp() {
 
 // ---------- Icons & thumbnails ----------
 
-async function loadIcons() {
-  const missing = tab().entries.filter((e) => !icons.has(e.path)).slice(0, 400);
+async function loadIcons(tb: Tab = tab()) {
+  const missing = tb.entries.filter((e) => !icons.has(e.path)).slice(0, 400);
   if (!missing.length) return;
   const res = await api.icons(missing.map((e) => ({ path: e.path, dir: e.dir })));
   let changed = false;
@@ -153,7 +276,7 @@ async function loadIcons() {
 }
 
 function updateIconsInPlace() {
-  for (const img of content.querySelectorAll<HTMLImageElement>('img.ico[data-path]')) {
+  for (const img of panesEl.querySelectorAll<HTMLImageElement>('img.ico[data-path]')) {
     const url = icons.get(img.dataset.path!);
     if (url && img.getAttribute('src') !== url && !img.dataset.thumb) {
       img.src = url;
@@ -171,7 +294,7 @@ const thumbObserver = new IntersectionObserver((list) => {
       if (url) { img.src = url; img.dataset.thumb = '1'; img.classList.add('thumb'); }
     });
   }
-}, { root: content, rootMargin: '200px' });
+}, { root: null, rootMargin: '200px' });
 
 function iconFor(e: FileEntry, size: 'big' | 'small'): HTMLElement {
   const url = icons.get(e.path);
@@ -250,6 +373,9 @@ function render() {
   renderStatus();
   if (showPreview) void renderPreview();
   previewEl.hidden = !showPreview;
+  pvResize.hidden = !showPreview;
+  previewEl.style.width = `${settings.files.previewWidth}px`;
+  paneHeads();
   document.title = `${locationName(tab().location)} — ${t('files.title')}`;
 }
 
@@ -293,7 +419,7 @@ function sideItem(label: string, g: string, location: string, extra?: HTMLElemen
   b.addEventListener('click', () => go(location));
   b.addEventListener('contextmenu', (ev) => { ev.preventDefault(); onContext?.(ev); });
   // Drop files on a sidebar folder to move them there (Ctrl = copy).
-  if (location !== RECENT) {
+  if (isFolder(location)) {
     b.addEventListener('dragover', (ev) => { ev.preventDefault(); b.classList.add('drop'); });
     b.addEventListener('dragleave', () => b.classList.remove('drop'));
     b.addEventListener('drop', (ev) => { b.classList.remove('drop'); void handleDrop(ev, location); });
@@ -316,6 +442,19 @@ function renderSidebar() {
   }
   parts.push(el('div', { class: 'side-title', text: t('files.places') }));
   for (const p of places.filter((x) => x.kind !== 'drive')) parts.push(sideItem(p.name, PLACE_GLYPH[p.kind], p.path, null, (ev) => void showMenu(ev, [asItem({ label: t('files.addFavorite'), glyph: 'star', run: () => addFavorite(p.path) })])));
+  // Colour tags in use.
+  const counts = new Map<string, number>();
+  for (const c of Object.values(settings.files.tags)) counts.set(c, (counts.get(c) ?? 0) + 1);
+  if (counts.size) {
+    parts.push(el('div', { class: 'side-title', text: t('files.tags') }));
+    for (const c of TAG_COLORS) {
+      if (!counts.has(c)) continue;
+      const dot = el('span', { class: `tag-dot tag-${c}` });
+      const b = sideItem(t(`files.tag.${c}` as StringKey), 'star', `${TAG}${c}`, el('small', { class: 'side-count', text: String(counts.get(c)) }));
+      b.querySelector('.side-ico')!.replaceChildren(dot);
+      parts.push(b);
+    }
+  }
   parts.push(el('div', { class: 'side-title', text: t('files.volumes') }));
   for (const d of places.filter((x) => x.kind === 'drive')) {
     const used = d.total ? 1 - (d.free ?? 0) / d.total : 0;
@@ -355,7 +494,12 @@ function renderToolbar() {
       b.addEventListener('dragover', (ev) => ev.preventDefault());
       b.addEventListener('drop', (ev) => void handleDrop(ev, c.path));
       crumbs.append(b);
-      if (i < list.length - 1) crumbs.append(el('span', { class: 'sep', html: glyph('chevron') }));
+      if (i < list.length - 1) {
+        // The separator lists the sibling folders of the next crumb.
+        const sep = el('button', { class: 'sep', html: glyph('chevron'), title: t('files.subfolders'), 'aria-label': t('files.subfolders') });
+        sep.addEventListener('click', (ev) => { ev.stopPropagation(); void foldersMenu(ev, c.path); });
+        crumbs.append(sep);
+      }
     });
     // Click the empty part of the bar to type a path.
     crumbs.addEventListener('click', (ev) => { if (ev.target === crumbs) editPath(crumbs); });
@@ -399,6 +543,11 @@ function renderToolbar() {
     toolBtn('folderPlus', `${t('files.newFolder')} (Ctrl+Shift+N)`, () => void createFolder(), !isFolder(tb.location)),
     sortBtn,
     viewSeg,
+    ...(panes.length > 1 ? [
+      toolBtn('copy', `${t('files.copyToOther')} (Maj+F5)`, () => void toOtherPane('copy'), !tb.selected.size),
+      toolBtn('chevronRight', `${t('files.moveToOther')} (Maj+F6)`, () => void toOtherPane('move'), !tb.selected.size),
+    ] : []),
+    toolBtn('columns', `${t('files.dualPane')} (F3)`, () => setDual(panes.length === 1), false, panes.length > 1 ? 'on' : ''),
     toolBtn('sidebarRight', `${t('files.preview')} (Espace)`, () => { showPreview = !showPreview; render(); }, false, showPreview ? 'on' : ''),
     el('label', { class: 'search-wrap', html: glyph('search') }, search),
   );
@@ -460,6 +609,7 @@ function renderContent() {
   const tb = tab();
   const scroll = content.scrollTop;
   content.className = `content view-${view()}`;
+  content.style.setProperty('--tile', `${settings.files.iconSize}px`);
   if (tb.loading && !tb.entries.length) {
     content.replaceChildren(el('div', { class: 'state' }, el('div', { class: 'spinner' }), el('span', { text: tb.search ? t('files.searching') : t('files.loading') })));
     return;
@@ -509,7 +659,8 @@ function detailsHeader() {
 
 function itemNode(e: FileEntry): HTMLElement {
   const v = view();
-  const nameNode = renaming === e.path ? renameInput(e) : el('span', { class: 'name', text: e.name, title: e.name });
+  const tagColor = settings.files.tags[e.path];
+  const nameNode = renaming === e.path ? renameInput(e) : el('span', { class: 'name', title: e.name }, tagColor ? el('i', { class: `tag-dot tag-${tagColor}` }) : null, e.name);
   let node: HTMLElement;
   if (v === 'grid') {
     node = el('div', { class: `item tile${e.hidden ? ' hidden-file' : ''}`, 'data-path': e.path, draggable: 'true' }, el('div', { class: 'art' }, iconFor(e, 'big')), nameNode);
@@ -564,7 +715,12 @@ function renameInput(e: FileEntry) {
     if (commit && name && name !== e.name) {
       const res = await api.rename(e.path, name);
       if (!res.ok) toast(t(`files.error.${res.error}` as StringKey), 'error');
-      else { tab().selected = new Set([res.path!]); await load(tab()); return; }
+      else {
+        moveTag(e.path, res.path!);
+        tab().selected = new Set([res.path!]);
+        await load(tab());
+        return;
+      }
     }
     renderContent();
     content.focus();
@@ -595,6 +751,11 @@ function renderStatus() {
     parts.push(el('span', { class: 'op' }, el('span', { text: `${t(`files.op.${op.kind}` as StringKey)} ${op.done}/${op.total} · ${op.current}` }), bar));
   }
   if (tb.loading && tb.entries.length) parts.push(el('span', { class: 'mini-spinner' }));
+  if (view() === 'grid') {
+    const zoom = el('input', { class: 'zoom', type: 'range', min: 40, max: 192, step: 8, value: settings.files.iconSize, 'aria-label': t('files.iconSize'), title: `${t('files.iconSize')} (Ctrl+molette)` });
+    zoom.addEventListener('input', () => setIconSize(Number(zoom.value)));
+    parts.push(el('span', { class: 'grow' }), el('span', { class: 'zoom-wrap', html: glyph('image') }, zoom));
+  }
   statusEl.replaceChildren(...parts);
 }
 
@@ -615,17 +776,31 @@ async function renderPreview() {
   const open = el('button', { class: 'btn primary', text: t('files.open') });
   open.addEventListener('click', () => void openEntry(e));
   previewEl.replaceChildren(head, el('h3', { text: e.name }), info, el('div', { class: 'pv-actions' }, open));
+  const tagRow = el('div', { class: 'pv-tags' }, ...TAG_COLORS.map((c) => {
+    const b = el('button', { class: `tag-pick tag-${c}${settings.files.tags[e.path] === c ? ' on' : ''}`, title: t(`files.tag.${c}` as StringKey), 'aria-label': t(`files.tag.${c}` as StringKey) });
+    b.addEventListener('click', () => setTag([e.path], settings.files.tags[e.path] === c ? null : c));
+    return b;
+  }));
+  previewEl.insertBefore(tagRow, info);
   if (!e.dir) {
     const pv = await api.preview(e.path);
     if (selectedEntries()[0]?.path !== e.path) return;
-    if (pv.kind === 'image' && pv.data) head.replaceChildren(el('img', { class: 'pv-image', src: pv.data, alt: '' }));
-    else if (pv.kind === 'text' && pv.data !== undefined) previewEl.insertBefore(el('pre', { class: 'pv-text', text: pv.data + (pv.truncated ? '\n…' : '') }), info);
+    if (pv.kind === 'image' && pv.data) {
+      const img = el('img', { class: 'pv-image', src: pv.data, alt: '' });
+      img.addEventListener('load', () => info.append(el('dt', { text: t('files.dimensions') }), el('dd', { text: `${img.naturalWidth} × ${img.naturalHeight}` })));
+      head.replaceChildren(img);
+    } else if (pv.kind === 'text' && pv.data !== undefined) previewEl.insertBefore(el('pre', { class: 'pv-text', text: pv.data + (pv.truncated ? '\n…' : '') }), info);
+    else {
+      // Videos, PDFs, Office files…: the large Windows thumbnail, when a handler provides one.
+      const big = await api.thumbnail(e.path, 512);
+      if (big && selectedEntries()[0]?.path === e.path) head.replaceChildren(el('img', { class: 'pv-image', src: big, alt: '' }));
+    }
   }
 }
 
 // ---------- Menus ----------
 
-interface MenuItem { label: string; glyph?: string; key?: string; run?: () => void; danger?: boolean; disabled?: boolean; separator?: boolean }
+interface MenuItem { label: string; glyph?: string; key?: string; run?: () => void; danger?: boolean; disabled?: boolean; separator?: boolean; /** Colour-tag picker for these paths. */ tags?: string[] }
 const asItem = (m: MenuItem) => m;
 const SEP: MenuItem = { label: '', separator: true };
 
@@ -633,6 +808,15 @@ function showMenu(ev: MouseEvent, items: MenuItem[]): Promise<void> {
   return new Promise((resolve) => {
     menuEl.replaceChildren(...items.map((m) => {
       if (m.separator) return el('div', { class: 'menu-sep' });
+      if (m.tags) {
+        const paths = m.tags;
+        const current = paths.every((p) => settings.files.tags[p] === settings.files.tags[paths[0]]) ? settings.files.tags[paths[0]] : undefined;
+        return el('div', { class: 'menu-tags', title: m.label }, ...TAG_COLORS.map((c) => {
+          const b = el('button', { class: `tag-pick tag-${c}${current === c ? ' on' : ''}`, title: t(`files.tag.${c}` as StringKey), 'aria-label': t(`files.tag.${c}` as StringKey) });
+          b.addEventListener('click', () => { hideMenu(); setTag(paths, current === c ? null : c); resolve(); });
+          return b;
+        }));
+      }
       const b = el('button', { class: `menu-item${m.danger ? ' danger' : ''}`, html: m.glyph ? glyph(m.glyph) : '' }, el('span', { text: m.label }), m.key ? el('kbd', { text: m.key }) : null);
       b.disabled = !!m.disabled;
       b.addEventListener('click', () => { hideMenu(); m.run?.(); resolve(); });
@@ -672,7 +856,9 @@ async function itemMenu(ev: MouseEvent) {
     { label: t('files.paste'), glyph: 'clipboard', key: 'Ctrl+V', disabled: !clipboard || !(one?.dir || isFolder(here)), run: () => void paste(one?.dir ? one.path : here) },
     { label: t('files.copyPath'), glyph: 'link', run: () => { api.copyPath(sel.map((e) => e.path)); toast(t('launcher.copied')); } },
     SEP,
-    ...(one ? [{ label: t('files.rename'), glyph: 'pencil', key: 'F2', run: () => startRename(one) }] : []),
+    ...(one ? [{ label: t('files.rename'), glyph: 'pencil', key: 'F2', run: () => startRename(one) }] : [{ label: t('files.batchRename'), glyph: 'pencil', key: 'F2', run: () => void batchRenameModal(sel) }]),
+    { label: t('files.tags'), tags: sel.map((e) => e.path) },
+    ...(panes.length > 1 ? [{ label: t('files.copyToOther'), glyph: 'copy', key: 'Maj+F5', run: () => void toOtherPane('copy') }, { label: t('files.moveToOther'), glyph: 'chevronRight', key: 'Maj+F6', run: () => void toOtherPane('move') }] : []),
     { label: t('files.compress'), glyph: 'archive', run: () => void runArchive('compress', sel.map((e) => e.path)) },
     ...(one && isArchive(one) ? [{ label: t('files.extract'), glyph: 'archive', run: () => void runArchive('extract', [one.path]) }] : []),
     ...(one?.dir ? [{ label: t('files.addFavorite'), glyph: 'star', run: () => addFavorite(one.path) }, { label: t('files.terminal'), glyph: 'command', run: () => api.terminal(one.path) }] : []),
@@ -702,6 +888,96 @@ async function sortMenu(ev: MouseEvent) {
   const item = (key: SortKey) => ({ label: t(`files.col.${key === 'mtime' ? 'modified' : key}` as StringKey), glyph: s.key === key ? 'check' : undefined, run: () => { saveFiles({ sort: { key, desc: s.key === key ? !s.desc : false } }); renderContent(); } });
   const grp = (g: GroupBy) => ({ label: t(`files.groupBy.${g}` as StringKey), glyph: groupBy === g ? 'check' : undefined, run: () => { groupBy = g; renderContent(); } });
   await showMenu(ev, [item('name'), item('mtime'), item('kind'), item('size'), { label: s.desc ? t('files.sort.desc') : t('files.sort.asc'), glyph: 'sort', run: () => { saveFiles({ sort: { ...s, desc: !s.desc } }); renderContent(); } }, SEP, grp('none'), grp('kind'), grp('date')]);
+}
+
+// ---------- Tags, icon size, sibling folders, batch rename ----------
+
+function setTag(paths: string[], color: TagColor | null) {
+  const tags = { ...settings.files.tags };
+  for (const p of paths) {
+    if (color) tags[p] = color;
+    else delete tags[p];
+  }
+  // The whole map is replaced (a merge could not delete keys).
+  settings = { ...settings, files: { ...settings.files, tags } };
+  void orelle.updateSettings({ files: { tags: null } }).then(() => orelle.updateSettings({ files: { tags } }));
+  renderContent();
+  renderSidebar();
+  if (showPreview) void renderPreview();
+}
+
+function moveTag(from: string, to: string) {
+  const c = settings.files.tags[from];
+  if (!c) return;
+  const tags = { ...settings.files.tags, [to]: c };
+  delete tags[from];
+  settings = { ...settings, files: { ...settings.files, tags } };
+  void orelle.updateSettings({ files: { tags: null } }).then(() => orelle.updateSettings({ files: { tags } }));
+}
+
+let zoomTimer: number | null = null;
+function setIconSize(px: number) {
+  const size = Math.max(40, Math.min(192, Math.round(px)));
+  settings = { ...settings, files: { ...settings.files, iconSize: size } };
+  for (const p of panes) p.content.style.setProperty('--tile', `${size}px`);
+  if (zoomTimer) clearTimeout(zoomTimer);
+  zoomTimer = window.setTimeout(() => void orelle.updateSettings({ files: { iconSize: size } }), 300);
+}
+
+async function foldersMenu(ev: MouseEvent, dir: string) {
+  const res = await api.list(dir);
+  if (!res.ok) return;
+  const dirs = sortEntries(res.entries.filter((e) => e.dir && (settings.files.showHidden || !e.hidden)), 'name', false).slice(0, 40);
+  await showMenu(ev, dirs.length ? dirs.map((d) => ({ label: d.name, glyph: 'folder', run: () => go(d.path) })) : [{ label: t('files.noSubfolders'), disabled: true }]);
+}
+
+async function batchRenameModal(sel: FileEntry[]) {
+  const others = tab().entries.filter((e) => !sel.some((s) => s.path === e.path)).map((e) => e.name);
+  const field = (label: string, value = '', type = 'text') => {
+    const input = el('input', { class: 'input', type, value, spellcheck: 'false' });
+    return { input, row: el('label', { class: 'br-field' }, el('span', { text: label }), input) };
+  };
+  const find = field(t('files.br.find'));
+  const replace = field(t('files.br.replace'));
+  const prefix = field(t('files.br.prefix'));
+  const suffix = field(t('files.br.suffix'));
+  const base = field(t('files.br.base'));
+  const start = field(t('files.br.start'), '1', 'number');
+  const preview = el('div', { class: 'br-preview' });
+  const apply = el('button', { class: 'btn primary', text: t('files.br.apply') });
+  const opts = () => ({ find: find.input.value, replace: replace.input.value, prefix: prefix.input.value, suffix: suffix.input.value, base: base.input.value, start: Math.max(0, Number(start.input.value) || 0), digits: String(sel.length + (Number(start.input.value) || 0)).length, keepExtension: true });
+  const update = () => {
+    const res = batchRename(sel, opts(), others);
+    preview.replaceChildren(...res.slice(0, 200).map((r) => el('div', { class: `br-row${r.error ? ' bad' : r.from !== r.to ? ' changed' : ''}` }, el('span', { text: r.from }), el('span', { class: 'arrow', html: glyph('chevron') }), el('span', { text: r.error ? t(`files.br.${r.error}` as StringKey) : r.to }))));
+    apply.disabled = res.some((r) => r.error) || res.every((r) => r.from === r.to);
+  };
+  for (const f of [find, replace, prefix, suffix, base, start]) f.input.addEventListener('input', update);
+  const cancel = el('button', { class: 'btn', text: t('common.cancel') });
+  cancel.addEventListener('click', closeModal);
+  apply.addEventListener('click', async () => {
+    const res = batchRename(sel, opts(), others);
+    closeModal();
+    let done = 0;
+    // Two passes through temporary names, so swaps (a→b, b→a) never collide.
+    const temp: { entry: FileEntry; tmp: string; to: string }[] = [];
+    for (const [i, r] of res.entries()) {
+      if (r.from === r.to) continue;
+      const tmpName = `~orelle-${Date.now()}-${i}${r.to.slice(r.to.lastIndexOf('.')) || ''}`;
+      const a = await api.rename(sel[i].path, tmpName);
+      if (a.ok) temp.push({ entry: sel[i], tmp: a.path!, to: r.to });
+    }
+    for (const x of temp) {
+      const b = await api.rename(x.tmp, x.to);
+      if (b.ok) { done++; moveTag(x.entry.path, b.path!); } else await api.rename(x.tmp, x.entry.name);
+    }
+    toast(t('files.br.done', { n: done }), done === temp.length ? 'info' : 'error');
+    await load(tab());
+  });
+  openModal(el('div', { class: 'modal wide' }, el('h2', { text: t('files.batchRenameTitle', { n: sel.length }) }),
+    el('div', { class: 'br-grid' }, find.row, replace.row, prefix.row, suffix.row, base.row, start.row),
+    el('p', { class: 'br-hint', text: t('files.br.hint') }), preview, el('div', { class: 'modal-actions' }, cancel, apply)));
+  update();
+  setTimeout(() => find.input.focus(), 0);
 }
 
 // ---------- Actions ----------
@@ -871,6 +1147,9 @@ document.addEventListener('keydown', (ev) => {
   if (ev.altKey && k === 'ArrowLeft') { ev.preventDefault(); goBack(); return; }
   if (ev.altKey && k === 'ArrowRight') { ev.preventDefault(); goForward(); return; }
   if (ev.altKey && k === 'ArrowUp') { ev.preventDefault(); goUp(); return; }
+  if (k === 'F5' && ev.shiftKey) { ev.preventDefault(); void toOtherPane('copy'); return; }
+  if (k === 'F6' && ev.shiftKey) { ev.preventDefault(); void toOtherPane('move'); return; }
+  if (k === 'F3') { ev.preventDefault(); setDual(panes.length === 1); return; }
   if (k === 'F5') { ev.preventDefault(); void load(tab()); return; }
   if (typing) return;
   if (ctrl && ['1', '2', '3'].includes(k)) { ev.preventDefault(); saveFiles({ view: (['grid', 'list', 'details'] as const)[Number(k) - 1] }); renderToolbar(); renderContent(); return; }
@@ -880,7 +1159,10 @@ document.addEventListener('keydown', (ev) => {
   if (ctrl && k.toLowerCase() === 'v') { ev.preventDefault(); if (isFolder(tab().location)) void paste(tab().location); return; }
   if (ctrl && k.toLowerCase() === 'h') { ev.preventDefault(); toggleHidden(); return; }
   if (k === 'Backspace') { ev.preventDefault(); goBack(); return; }
-  if (k === 'F2') { const s = selectedEntries(); if (s.length === 1) startRename(s[0]); return; }
+  if (k === 'F2') { const s = selectedEntries(); if (s.length === 1) startRename(s[0]); else if (s.length > 1) void batchRenameModal(s); return; }
+  if (k === 'Tab' && panes.length > 1 && !ctrl) { ev.preventDefault(); focusPane(1 - cur); panes[cur].content.focus(); return; }
+  if (ctrl && (k === '+' || k === '=')) { ev.preventDefault(); setIconSize(settings.files.iconSize + 8); return; }
+  if (ctrl && k === '-') { ev.preventDefault(); setIconSize(settings.files.iconSize - 8); return; }
   if (k === 'Delete') { ev.preventDefault(); void trash(ev.shiftKey); return; }
   if (k === 'Enter' && ev.altKey) { const s = selectedEntries(); if (s[0]) void showProperties(s[0]); return; }
   if (k === 'Enter') { ev.preventDefault(); selectedEntries().forEach((e) => void openEntry(e, ctrl)); return; }
@@ -903,21 +1185,19 @@ document.addEventListener('keydown', (ev) => {
   }
 });
 
-// Click on empty space clears the selection; right-click there opens the folder menu.
-content.addEventListener('mousedown', (ev) => {
-  if ((ev.target as HTMLElement).closest('.item')) return;
-  tab().selected.clear();
-  paintSelection();
-  renderStatus();
+// Resizable details panel.
+pvResize.addEventListener('pointerdown', (ev) => {
+  pvResize.setPointerCapture(ev.pointerId);
+  const startX = ev.clientX;
+  const startW = previewEl.getBoundingClientRect().width;
+  const move = (e: PointerEvent) => { previewEl.style.width = `${Math.max(240, Math.min(640, startW + (startX - e.clientX)))}px`; };
+  const up = () => {
+    pvResize.removeEventListener('pointermove', move);
+    saveFiles({ previewWidth: Math.round(previewEl.getBoundingClientRect().width) });
+  };
+  pvResize.addEventListener('pointermove', move);
+  pvResize.addEventListener('pointerup', up, { once: true });
 });
-content.addEventListener('contextmenu', (ev) => {
-  if ((ev.target as HTMLElement).closest('.item')) return;
-  ev.preventDefault();
-  void backgroundMenu(ev);
-});
-// Drops from other apps into the open folder.
-content.addEventListener('dragover', (ev) => { if (isFolder(tab().location)) ev.preventDefault(); });
-content.addEventListener('drop', (ev) => { if (isFolder(tab().location)) void handleDrop(ev, tab().location); });
 // Mouse back/forward buttons.
 window.addEventListener('mouseup', (ev) => {
   if (ev.button === 3) goBack();
@@ -929,6 +1209,11 @@ window.addEventListener('mouseup', (ev) => {
 api.onChanged((dir) => {
   if (tab().location.toLowerCase() === dir.toLowerCase()) void load(tab());
 });
+
+function reloadAll() {
+  syncPane();
+  for (const p of panes) void load(p.tabs[p.active]);
+}
 api.onProgress((op) => {
   ops.set(op.id, op);
   renderStatus();
@@ -936,13 +1221,15 @@ api.onProgress((op) => {
     ops.delete(op.id);
     if (op.error) toast(t(`files.error.${op.error}` as StringKey), 'error');
     else if (op.kind === 'compress' || op.kind === 'extract') toast(t(`files.op.${op.kind}.done` as StringKey));
-    void load(tab());
+    reloadAll();
   }
 });
 orelle.onIconsChanged(() => void loadIconsAgain());
 
 async function loadIconsAgain() {
-  const res = await api.icons(tab().entries.slice(0, 400).map((e) => ({ path: e.path, dir: e.dir })));
+  syncPane();
+  const all = panes.flatMap((p) => p.tabs[p.active]?.entries ?? []).slice(0, 600);
+  const res = await api.icons(all.map((e) => ({ path: e.path, dir: e.dir })));
   for (const [p, url] of Object.entries(res)) if (url) icons.set(p, url);
   updateIconsInPlace();
 }
@@ -955,9 +1242,14 @@ async function init() {
   applyTheme(settings, boot.darkSystem);
   places = await api.places();
   const start = api.startPath() ?? places.find((p) => p.kind === 'home')?.path ?? places[0]?.path ?? 'C:\\';
-  tabs = [newTab(start)];
+  const first = makePane($('pane0'));
+  first.tabs = [newTab(start)];
+  panes.push(first);
+  tabs = first.tabs;
+  active = 0;
   render();
   void load(tab());
+  if (settings.files.dualPane) setDual(true);
   content.focus();
   orelle.onSettings((p) => {
     settings = p.settings;

@@ -120,7 +120,7 @@ export function defaultSettings(): Settings {
       seeded: false,
       weather: { city: '', latitude: null, longitude: null, unit: 'c' },
     },
-    files: { favorites: [], showHidden: false, view: 'grid', sort: { key: 'name', desc: false }, openFoldersInOrelle: false },
+    files: { favorites: [], showHidden: false, view: 'grid', sort: { key: 'name', desc: false }, openFoldersInOrelle: false, iconSize: 64, previewWidth: 320, dualPane: false, tags: {} },
     monitor: { alerts: false, cpuAlert: 90, memAlert: 90 },
     controlCenter: { hotkey: 'Ctrl+Alt+C', modules: defaultControlModules() },
     ...defaultExtras(),
@@ -391,6 +391,15 @@ export function normalizeSettings(raw: unknown): Settings {
       view: oneOf(fl.view, ['grid', 'list', 'details'] as const, d.files.view),
       sort: { key: oneOf(fs.key, ['name', 'mtime', 'size', 'kind'] as const, 'name'), desc: bool(fs.desc, false) },
       openFoldersInOrelle: bool(fl.openFoldersInOrelle, d.files.openFoldersInOrelle),
+      iconSize: Math.round(clamp(fl.iconSize, 40, 192, d.files.iconSize)),
+      previewWidth: Math.round(clamp(fl.previewWidth, 240, 640, d.files.previewWidth)),
+      dualPane: bool(fl.dualPane, d.files.dualPane),
+      tags: (() => {
+        const out: Settings['files']['tags'] = {};
+        const colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray'];
+        if (isObj(fl.tags)) for (const [k, v] of Object.entries(fl.tags).slice(0, 5000)) if (/^[a-z]:\\/i.test(k) && k.length < 1024 && colors.includes(v as string)) out[k] = v as Settings['files']['tags'][string];
+        return out;
+      })(),
     },
     monitor: {
       alerts: bool(mo.alerts, d.monitor.alerts),

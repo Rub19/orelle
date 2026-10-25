@@ -901,6 +901,19 @@ async function runSmoke(
     check('dock folder stack', c.stack.panel.isVisible());
     await shot('stack', c.stack.panel.window);
     c.stack.panel.hide();
+    // Files: dual pane, a colour tag and larger icons.
+    const dl = app.getPath('downloads');
+    const firstFile = fs.readdirSync(dl).map((n) => path.join(dl, n)).find((p) => { try { return fs.statSync(p).isFile(); } catch { return false; } });
+    ctx.settings.update({ files: { dualPane: true, iconSize: 88, tags: firstFile ? { [firstFile]: 'blue' } : {} } });
+    c.apps.openFiles(dl);
+    await wait(4000);
+    const fw = BrowserWindow.getAllWindows().find((w) => c.apps.isFiles(w.webContents));
+    const filesState = fw ? await fw.webContents.executeJavaScript("JSON.stringify({ panes: document.querySelectorAll('.pane').length, items: document.querySelectorAll('.item').length, tags: document.querySelectorAll('.side-item .tag-dot').length, tile: getComputedStyle(document.querySelector('.content')).getPropertyValue('--tile') })") : '{}';
+    const fsx = JSON.parse(filesState);
+    check('files: dual pane, tags, icon size', fsx.panes === 2 && fsx.items > 0 && (!firstFile || fsx.tags === 1) && fsx.tile.trim() === '88px', fsx);
+    await shot('files', fw);
+    fw?.close();
+    ctx.settings.update({ files: { dualPane: false } });
     const diag = buildDiagnostics(ctx);
     check('diagnostics report', diag.includes('"capabilities"') && !diag.includes(os.homedir()), { chars: diag.length });
     const capDir = argValue('orelle-capture');

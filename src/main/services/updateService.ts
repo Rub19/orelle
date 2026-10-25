@@ -13,9 +13,9 @@ import type { OrelleContext } from '../context';
 import type { NotificationService } from './notificationService';
 import { log } from '../logger';
 
-/** Where installers are published (binaries only; the source repository can stay private). */
+/** Where installers are published (this repository's GitHub releases). */
 export const UPDATE_OWNER = 'Rub19';
-export const UPDATE_REPO = 'orelle-releases';
+export const UPDATE_REPO = 'orelle';
 const DAY = 86_400_000;
 
 export interface UpdateStatus {

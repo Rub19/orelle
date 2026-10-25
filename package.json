@@ -97,7 +97,7 @@
       {
         "provider": "github",
         "owner": "Rub19",
-        "repo": "orelle-releases",
+        "repo": "orelle",
         "releaseType": "release"
       }
     ]

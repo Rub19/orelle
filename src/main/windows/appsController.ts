@@ -125,6 +125,8 @@ export class AppsController {
 
     // ---------- Files ----------
     ipcMain.handle('files:places', (e) => (fromFiles(e) ? this.files.places() : []));
+    // Entries for a set of paths (tag views): existing ones only.
+    ipcMain.handle('files:entries', (e, paths: unknown) => (fromFiles(e) && Array.isArray(paths) ? paths.filter(abs).slice(0, 2000).map((p) => this.files.entry(p)).filter(Boolean) : []));
     ipcMain.handle('files:recent', (e) => (fromFiles(e) ? this.files.recent() : []));
     ipcMain.handle('files:list', (e, dir: unknown) => (fromFiles(e) && abs(dir) ? this.files.list(dir) : { ok: false, error: 'invalid' }));
     ipcMain.handle('files:icons', (e, items: unknown) => {

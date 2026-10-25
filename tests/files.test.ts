@@ -50,3 +50,22 @@ describe('files model', () => {
     expect(parentDir('C:\\')).toBeNull();
   });
 });
+
+describe('batch rename', async () => {
+  const { batchRename } = await import('../src/shared/filesModel');
+  const base = { find: '', replace: '', prefix: '', suffix: '', base: '', start: 1, digits: 2, keepExtension: true };
+  const items = [{ name: 'IMG_001.JPG', dir: false }, { name: 'img_002.jpg', dir: false }, { name: 'Notes', dir: true }];
+  it('numbers files and keeps extensions', () => {
+    expect(batchRename(items.slice(0, 2), { ...base, base: 'Vacances ' }).map((r) => r.to)).toEqual(['Vacances 01.JPG', 'Vacances 02.jpg']);
+  });
+  it('replaces plain text case-insensitively, with prefix and suffix', () => {
+    expect(batchRename(items, { ...base, find: 'img_', replace: 'Photo-', prefix: '2026 ', suffix: ' (ok)' }).map((r) => r.to)).toEqual(['2026 Photo-001 (ok).JPG', '2026 Photo-002 (ok).jpg', '2026 Notes (ok)']);
+    expect(batchRename([{ name: 'a.b.txt', dir: false }], { ...base, find: '.', replace: '_' })[0].to).toBe('a_b.txt');
+  });
+  it('flags invalid names and collisions', () => {
+    const r = batchRename(items.slice(0, 2), { ...base, base: 'x', digits: 1, start: 1 }, ['x2.jpg']);
+    expect(r.map((x) => x.error)).toEqual([null, 'duplicate']);
+    expect(batchRename([{ name: 'a.txt', dir: false }], { ...base, prefix: 'bad:' })[0].error).toBe('invalid');
+    expect(batchRename([{ name: 'a.txt', dir: false }, { name: 'b.txt', dir: false }], { ...base, base: 'same', digits: 1, start: 1, find: '1', replace: '2' }).map((x) => x.error)).toEqual(['duplicate', 'duplicate']);
+  });
+});
