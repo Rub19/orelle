@@ -277,7 +277,7 @@ async function main() {
     toggleLauncher: () => launcher.toggle(),
     toggleMission: () => mission.toggle(),
   });
-  const trayArea = new TrayAreaController(ctx, taskbar);
+  const trayArea = new TrayAreaController(ctx, taskbar, { system, notifications, updates, toggleNotifications: () => notificationCenter.toggle() });
   const automations = new AutomationService(ctx, hotkeys, notifications, profiles, windowsSvc);
   // Optional: a lone press of the Windows key opens Orelle's menu or launcher instead of Start.
   const winKey = new WinKeyHook(() => {

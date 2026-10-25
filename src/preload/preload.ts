@@ -4,6 +4,7 @@ import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'ele
 import type {
   AllowedScript, AppInfo, Bootstrap, ControlState, DisplayInfo, DockLayout, DockState, ResultPreview, SearchResponse, Settings, SystemStats, WeatherData,
 } from '../shared/types';
+import type { TrayAreaState } from '../shared/trayAreaModel';
 import type { OrelleNotification } from '../shared/types';
 import type { FileEntry, FileOperation, FileProperties, FsError, MonitorSampleDto, Place, StartupItemDto } from '../shared/appTypes';
 
@@ -135,7 +136,9 @@ const api = {
   },
 
   trayArea: {
+    onState: (cb: (s: TrayAreaState) => void) => on('trayarea:state', cb),
     peek: () => ipcRenderer.send('trayarea:peek'),
+    action: (a: 'network' | 'volume' | 'battery' | 'update' | 'notifications' | 'clock') => ipcRenderer.send('trayarea:action', a),
   },
 
   tools: {

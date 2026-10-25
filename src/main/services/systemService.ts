@@ -130,6 +130,20 @@ export class SystemService extends EventEmitter {
     return { connected: !!ssid, ssid, signal: signal ? Number(signal) : null };
   }
 
+  /** Read-only Windows signals indicating that an update has completed and needs a restart. */
+  async windowsUpdatePending(): Promise<boolean> {
+    const keys = [
+      'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\\Auto Update\\RebootRequired',
+      'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\RebootPending',
+      'HKLM\\SOFTWARE\\Microsoft\\Updates\\UpdateExeVolatile',
+    ];
+    for (const key of keys) {
+      const out = await run(path.join(SYS32, 'reg.exe'), ['query', key], 2500);
+      if (/^HKEY_/im.test(out)) return true;
+    }
+    return false;
+  }
+
   /** Internal panel brightness through WMI (laptops). Returns null on desktops / unsupported panels. */
   async brightness(): Promise<number | null> {
     if (this.brightnessSupported === false) return null;

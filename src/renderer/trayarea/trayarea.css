@@ -3,23 +3,48 @@
 html,
 body { width: 100%; height: 100%; overflow: hidden; background: transparent; user-select: none; }
 
-#root { width: 100%; height: 100%; display: grid; place-items: center; }
+#root { width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end; }
+
+.tray {
+  height: 32px;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 0 7px;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: rgba(var(--glass-rgb), var(--glass-opacity));
+  box-shadow: var(--shadow-md);
+}
+[data-effects='off'] .tray { background: var(--surface-solid); }
 
 button {
-  width: 32px;
-  height: 28px;
+  min-width: 28px;
+  height: 26px;
   padding: 0;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  background: rgba(var(--glass-rgb), var(--glass-opacity));
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   color: var(--text-2);
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font: inherit;
   cursor: pointer;
   transition: background var(--dur-fast) linear, color var(--dur-fast) linear;
 }
 button:hover { background: var(--hover); color: var(--text); }
 button:active { background: var(--pressed); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-button .glyph { width: 16px; height: 16px; transform: rotate(180deg); stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-[data-effects='off'] button { background: var(--surface-solid); }
+.status .icon { display: grid; place-items: center; }
+.status .glyph { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.status .value { font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.status.battery { min-width: 52px; }
+.status.update { color: var(--accent); }
+.status.peek { border-left: 1px solid var(--separator); border-radius: 0 6px 6px 0; margin-left: 2px; padding-left: 4px; }
+.status.peek .glyph { transform: rotate(180deg); }
+.badge { min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: var(--accent); color: var(--accent-text); font-size: 9px; font-weight: 700; line-height: 14px; }
+.clock { min-width: 68px; }
+.clock-text { display: grid; justify-items: center; font-size: 10px; line-height: 11px; font-variant-numeric: tabular-nums; }

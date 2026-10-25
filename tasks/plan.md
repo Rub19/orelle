@@ -2,10 +2,11 @@
 
 ## Overview
 
-Ajouter une petite zone de notification Orelle en bas à droite lorsque la barre
-des tâches Windows est masquée : une flèche accessible ouvre temporairement la
-zone de notification Windows réelle. Ajouter aussi un indicateur explicite dans
-la barre supérieure lorsque Orelle tourne avec un jeton administrateur.
+Ajouter une zone de notification Orelle en bas à droite lorsque la barre des
+tâches Windows est masquée : réseau, volume, batterie, notifications, horloge,
+état des mises à jour et flèche accessible vers la zone Windows réelle. Ajouter
+aussi un indicateur explicite dans la barre supérieure lorsque Orelle tourne
+avec un jeton administrateur.
 
 ## Architecture Decisions
 
@@ -16,6 +17,9 @@ la barre supérieure lorsque Orelle tourne avec un jeton administrateur.
 - Pour la zone de notification, garder les icônes et interactions des autres
   applications dans Windows : Orelle ne peut pas héberger proprement leurs
   icônes via une API publique.
+- Afficher dans Orelle les états système qu'il peut lire de façon fiable
+  (réseau, audio, batterie, notifications, horloge et mises à jour), puis
+  déléguer les réglages détaillés à Orelle ou aux URI `ms-settings:`.
 - Afficher le bouton de zone uniquement quand `taskbarMode` vaut `hidden`, afin
   de ne pas dupliquer la vraie zone de notification quand Windows est visible.
 
@@ -23,24 +27,26 @@ la barre supérieure lorsque Orelle tourne avec un jeton administrateur.
 
 ### Phase 1: Zone de notification
 
-- [ ] Ajouter une petite fenêtre non activante en bas à droite en mode barre des
+- [x] Ajouter une petite fenêtre non activante en bas à droite en mode barre des
   tâches masquée.
-- [ ] Ajouter la flèche accessible qui bascule l’aperçu de la barre des tâches
+- [x] Ajouter la flèche accessible qui bascule l’aperçu de la barre des tâches
   Windows et masque temporairement le bouton pendant cet aperçu.
-- [ ] Relayout sur changement d’écran, réglages, plein écran et arrêt propre.
+- [x] Afficher réseau, volume, batterie, notifications, horloge et indicateur de
+  mise à jour dans cette fenêtre.
+- [x] Relayout sur changement d’écran, réglages, plein écran et arrêt propre.
 
 ### Phase 2: Indicateur visible
 
-- [ ] Ajouter `elevated` au contrat d’état de la barre supérieure et à son rendu.
-- [ ] Ajouter les libellés français/anglais et le style visuel accessible.
-- [ ] Couvrir les nouvelles traductions et vérifier typecheck, tests et build.
+- [x] Ajouter `elevated` au contrat d’état de la barre supérieure et à son rendu.
+- [x] Ajouter les libellés français/anglais et le style visuel accessible.
+- [x] Couvrir les nouvelles traductions et vérifier typecheck, tests et build.
 
 ### Checkpoint: Zone et indicateur
 
-- [ ] L’indicateur n’apparaît pas en mode normal.
-- [ ] L’indicateur apparaît en mode administrateur avec un nom accessible.
-- [ ] La flèche n’apparaît qu’en mode barre des tâches masquée et ouvre l’aperçu Windows.
-- [ ] Tous les contrôles automatisés passent.
+- [x] L’indicateur n’apparaît pas en mode normal.
+- [x] L’indicateur apparaît en mode administrateur avec un nom accessible.
+- [x] La flèche n’apparaît qu’en mode barre des tâches masquée et ouvre l’aperçu Windows.
+- [x] Tous les contrôles automatisés passent.
 
 ## Risks and Mitigations
 

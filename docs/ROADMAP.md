@@ -48,7 +48,7 @@ Légende : ✅ implémenté et vérifié sur Windows · 🟡 partiel · ⬜ à f
 - ✅ Application au premier plan avec menu de fenêtre (ancrage, dispositions, fermer), profil actif, médias, CPU, réseau, volume, batterie, notifications, recherche, centre de contrôle, aperçu de la barre des tâches, horloge ; éléments réordonnables
 - ✅ Barre des tâches Windows : normale, masquage auto ou masquée (avec surveillance et aperçu de 10 s), état d’origine restauré à toute sortie, au lancement suivant après un plantage et par le désinstalleur
 - ✅ Touche Windows (option) : appui seul → menu Orelle ou launcher ; `Win+lettre` intacts
-- 🟡 Icônes de la zone de notification : bouton Orelle fixe en bas à droite en mode barre masquée, qui ouvre l’aperçu Windows réel (Windows n’offre pas d’API publique pour héberger ailleurs les icônes des autres applications)
+- ✅ Zone de notification Orelle : réseau, volume, batterie, notifications, horloge/date et mises à jour en bas à droite en mode barre masquée ; la flèche ouvre temporairement l’aperçu Windows réel pour les icônes des autres applications (Windows n’offre pas d’API publique pour les héberger ailleurs)
 
 ## Fenêtres ✅
 - ✅ Ancrage en moitiés, quarts, tiers et deux tiers, agrandir, centrer (raccourcis `Ctrl+Alt+…`, menu de la barre, launcher)

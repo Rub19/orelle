@@ -1,13 +1,18 @@
 // A small, non-activating affordance for the Windows notification area when Orelle hides
 // the taskbar. The other applications' icons remain owned and rendered by Explorer.
-import { BrowserWindow, ipcMain, screen, type IpcMainEvent } from 'electron';
+import { BrowserWindow, ipcMain, screen, shell, type IpcMainEvent } from 'electron';
 import type { Settings } from '../../shared/types';
+import type { TrayAreaState } from '../../shared/trayAreaModel';
 import type { OrelleContext } from '../context';
+import * as audio from '../native/audio';
+import type { SystemService } from '../services/systemService';
 import type { TaskbarService } from '../services/taskbarService';
+import type { NotificationService } from '../services/notificationService';
+import type { UpdateService } from '../services/updateService';
 import { lockNavigation, openSurfaceWindow, whenReady } from './sharedHost';
 
-const WIDTH = 48;
-const HEIGHT = 36;
+const WIDTH = 292;
+const HEIGHT = 38;
 const GAP = 8;
 const PEEK_SECONDS = 10;
 
@@ -16,11 +21,24 @@ export class TrayAreaController {
   private creating = false;
   private restoreTimer: NodeJS.Timeout | null = null;
   private fullscreenHidden = false;
+  private statsTimer: NodeJS.Timeout | null = null;
+  private wifiTimer: NodeJS.Timeout | null = null;
+  private stats: TrayAreaState['battery'] = null;
+  private wifi: TrayAreaState['wifi'] = null;
+  private windowsUpdatePending = false;
+  private statsListener = (s: { battery: TrayAreaState['battery'] }) => {
+    this.stats = s.battery;
+    this.pushState();
+  };
 
   /** The Dock's renderer is reused when available to keep the always-visible surfaces light. */
   host: () => BrowserWindow | null = () => null;
 
-  constructor(private readonly ctx: OrelleContext, private readonly taskbar: TaskbarService) {}
+  constructor(
+    private readonly ctx: OrelleContext,
+    private readonly taskbar: TaskbarService,
+    private readonly d: { system: SystemService; notifications: NotificationService; updates: UpdateService; toggleNotifications: () => void },
+  ) {}
 
   get window() {
     return this.win;
@@ -60,9 +78,12 @@ export class TrayAreaController {
     lockNavigation(this.ctx, win, 'trayarea');
     whenReady(win, () => {
       this.layout();
+      this.startPolling();
+      this.pushState();
       if (!this.fullscreenHidden && this.ctx.settings.get().general.taskbarMode === 'hidden') win.showInactive();
     });
     win.on('closed', () => {
+      this.stopPolling();
       this.win = null;
       if (this.restoreTimer) clearTimeout(this.restoreTimer);
       this.restoreTimer = null;
@@ -70,10 +91,58 @@ export class TrayAreaController {
   }
 
   destroy() {
+    this.stopPolling();
     if (this.restoreTimer) clearTimeout(this.restoreTimer);
     this.restoreTimer = null;
     this.win?.destroy();
     this.win = null;
+  }
+
+  private startPolling() {
+    if (this.statsTimer) return;
+    this.d.system.on('stats', this.statsListener);
+    this.d.system.subscribe('trayarea');
+    void this.refreshWifi();
+    void this.refreshWindowsUpdate();
+    this.statsTimer = setInterval(() => this.pushState(), 5_000);
+    this.wifiTimer = setInterval(() => void this.refreshWifi(), 30_000);
+  }
+
+  private stopPolling() {
+    if (this.statsTimer) clearInterval(this.statsTimer);
+    if (this.wifiTimer) clearInterval(this.wifiTimer);
+    this.statsTimer = null;
+    this.wifiTimer = null;
+    this.d.system.off('stats', this.statsListener);
+    this.d.system.unsubscribe('trayarea');
+  }
+
+  private async refreshWifi() {
+    this.wifi = await this.d.system.wifi();
+    this.pushState();
+  }
+
+  private async refreshWindowsUpdate() {
+    this.windowsUpdatePending = await this.d.system.windowsUpdatePending();
+    this.pushState();
+  }
+
+  private pushState() {
+    if (!this.win || this.win.isDestroyed()) return;
+    this.win.webContents.send('trayarea:state', this.state());
+  }
+
+  private state(): TrayAreaState {
+    const updateState = this.d.updates.status.state;
+    const volume = audio.getVolume();
+    return {
+      wifi: this.wifi,
+      volume: volume ? { level: volume.level, muted: volume.muted } : null,
+      battery: this.stats,
+      unread: this.d.notifications.unread(),
+      windowsUpdatePending: this.windowsUpdatePending,
+      orelleUpdateAvailable: updateState === 'available' || updateState === 'ready',
+    };
   }
 
   layout() {
@@ -123,6 +192,17 @@ export class TrayAreaController {
       this.taskbar.peek(PEEK_SECONDS);
       this.win?.hide();
       this.showAfterPeek();
+    });
+    ipcMain.on('trayarea:action', (e, action: unknown) => {
+      if (!from(e)) return;
+      if (action === 'network') void shell.openExternal('ms-settings:network-status');
+      else if (action === 'volume') this.ctx.actions.toggleControlCenter();
+      else if (action === 'battery') void shell.openExternal('ms-settings:batterysaver');
+      else if (action === 'notifications' || action === 'clock') this.d.toggleNotifications();
+      else if (action === 'update') {
+        if (this.windowsUpdatePending) void shell.openExternal('ms-settings:windowsupdate');
+        else this.ctx.actions.openSettings('about');
+      }
     });
   }
 }
