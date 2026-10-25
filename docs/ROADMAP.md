@@ -81,6 +81,20 @@ Légende : ✅ implémenté et vérifié sur Windows · 🟡 partiel · ⬜ à f
 - 🟡 Bureaux virtuels : aucune API publique pour les piloter (Mission Control couvre le bureau courant)
 - 🟡 Périphérique audio par défaut : réglage Windows (aucune API publique)
 
+## v0.5 — Performances (mesuré) ✅
+Mesures `npm run measure` (2ᵉ lancement, profil isolé, PC 16 Go / 12 threads, Electron 44) :
+
+| Profil | Démarrage (Dock affiché) | Mémoire privée | RAM réelle après 50 s en arrière-plan | Réouverture du lanceur |
+|---|---|---|---|---|
+| Avant (v0.4) | 1,4 s | 337 Mo | ~650 Mo (rien n’était rendu) | — |
+| Standard (v0.5) | 1,3 s | 341 Mo | vidée après 2 min | — |
+| Léger (v0.5) | 1,3 s | 253 Mo | **71 Mo** | **22 ms** |
+
+- ✅ Profil Léger automatique (≤ 8 Go de RAM ou ≤ 4 threads), forçable dans Préférences › Général : pas de processus GPU (−100 Mo), lanceur chargé une fois le bureau au repos, index des fichiers à la première recherche, mesures système toutes les 4 s, réindexation des applis repoussée
+- ✅ Fenêtres cachées gardées chargées mais vidées de la RAM (`SetProcessWorkingSetSize`), réouverture instantanée ; tout Orelle vidé quand une autre appli est au premier plan
+- ✅ Touche Windows : le menu est préparé dès l’appui, avant le relâchement
+- ✅ Horloge mise à jour à la minute (et non chaque seconde) quand les secondes sont masquées
+
 ## À faire ⬜
 - Menu contextuel du bureau Orelle, dossiers dans le Dock, capteurs de température (non exposés sans pilote), marketplace de thèmes/extensions
 - Capture d’écran, diagnostics réseau

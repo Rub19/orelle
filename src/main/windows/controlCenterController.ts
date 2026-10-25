@@ -6,6 +6,7 @@ import * as audio from '../native/audio';
 import * as w32 from '../native/win32';
 import type { SystemService } from '../services/systemService';
 import { log } from '../logger';
+import { panelTiming } from './panelWindow';
 
 const WIDTH = 380;
 const HEIGHT = 660;
@@ -110,7 +111,7 @@ export class ControlCenterController {
     if (this.win?.isVisible()) this.win.hide();
     // Free the renderer if the panel stays closed for a while; reopening recreates it.
     if (this.releaseTimer) clearTimeout(this.releaseTimer);
-    this.releaseTimer = setTimeout(() => this.release(), 60_000);
+    this.releaseTimer = setTimeout(() => this.release(), panelTiming.releaseAfter);
   }
 
   release() {

@@ -154,7 +154,18 @@ function pageGeneral(): HTMLElement[] {
         { value: 'menu', label: t('settings.winKey.menu') },
         { value: 'launcher', label: t('settings.winKey.launcher') },
       ], g.winKey, (v) => void update({ general: { winKey: v as Settings['general']['winKey'] } })), 'settings.general.winKey.desc'),
+      row('settings.general.performance', segmented([
+        { value: 'auto', label: t('settings.perf.auto') },
+        { value: 'standard', label: t('settings.perf.standard') },
+        { value: 'light', label: t('settings.perf.light') },
+      ], g.performance, (v) => void update({ general: { performance: v } }).then(rerender)), 'settings.general.performance.desc',
+      el('small', { class: 'perf-now', text: t('settings.perf.now', {
+        mode: t(boot.capabilities.performance === 'light' ? 'settings.perf.light' : 'settings.perf.standard'),
+        mem: boot.capabilities.machine.memGB, cpus: boot.capabilities.machine.cpus,
+        gpu: t(boot.capabilities.machine.gpu ? 'settings.perf.gpuOn' : 'settings.perf.gpuOff'),
+      }) })),
       row('settings.general.gpu', toggle(g.hardwareAcceleration, (v) => void update({ general: { hardwareAcceleration: v } })), 'settings.general.gpu.desc'),
+      row('settings.perf.restart', button(t('settings.perf.restartBtn'), () => orelle.settings.restartNormal(), 'btn', 'restart'), 'settings.perf.restart.desc'),
     ),
   ];
 }

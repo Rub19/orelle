@@ -15,6 +15,9 @@ export class LauncherController {
 
   constructor(private readonly ctx: OrelleContext, private readonly search: SearchService) {}
 
+  private releaseTimer: NodeJS.Timeout | null = null;
+  private loaded = false;
+
   get window() {
     return this.win;
   }
@@ -61,8 +64,13 @@ export class LauncherController {
       this.create();
     });
     win.on('closed', () => { if (this.win === win) this.win = null; });
+    this.loaded = false;
+    win.webContents.once('did-finish-load', () => { this.loaded = true; });
     void win.loadFile(this.ctx.rendererFile('launcher'));
   }
+
+  /** Set by main when the clipboard history listens through this window. */
+  hostsClipboard = false;
 
   isVisible() {
     return !!this.win?.isVisible();
@@ -75,8 +83,15 @@ export class LauncherController {
 
   show() {
     if (!this.ctx.settings.get().launcher.enabled) return;
+    if (this.releaseTimer) clearTimeout(this.releaseTimer);
+    this.releaseTimer = null;
     if (!this.win) this.create();
     const win = this.win!;
+    // Created on demand: show once the page can receive the 'show' message.
+    if (!this.loaded) {
+      win.webContents.once('did-finish-load', () => this.show());
+      return;
+    }
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const wa = display.workArea;
     win.setBounds({ x: Math.round(wa.x + (wa.width - WIDTH) / 2), y: Math.round(wa.y + wa.height * 0.2), width: WIDTH, height: HEIGHT });
@@ -92,6 +107,7 @@ export class LauncherController {
     if (!this.win?.isVisible()) return;
     this.win.webContents.send('launcher:hide');
     this.win.hide();
+
   }
 
   onEffectsChanged() {

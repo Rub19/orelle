@@ -2,6 +2,8 @@
 import { app, BrowserWindow, ipcMain, nativeTheme, powerMonitor, screen, shell, type IpcMainInvokeEvent, type WebContents } from 'electron';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
+import { resolvePerformance, tuning } from '../shared/performance';
 import path from 'node:path';
 import { createTranslator, resolveLanguage } from '../shared/i18n';
 import type { Bootstrap, Settings, SurfaceKind } from '../shared/types';
@@ -48,12 +50,17 @@ import { MissionControlController } from './windows/missionControlController';
 import { ToolsController, type ToolsSection } from './windows/toolsController';
 import { StorageService } from './services/storageService';
 import { ThemeService } from './services/themeService';
+import { MemoryTrimmer } from './services/memoryTrimmer';
+import { panelTiming } from './windows/panelWindow';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
 const SMOKE = process.argv.includes('--orelle-smoke');
+// Performance measurement: a normal start in an isolated profile, then an idle memory report.
+const MEASURE = process.argv.includes('--orelle-measure');
+const T0 = Date.now();
 
 // Isolated profile for tests: --orelle-user-data=<dir>.
-const customData = argValue('orelle-user-data') ?? (SMOKE ? path.join(app.getPath('temp'), `orelle-smoke-${process.pid}`) : undefined);
+const customData = argValue('orelle-user-data') ?? (SMOKE || MEASURE ? path.join(app.getPath('temp'), `orelle-smoke-${process.pid}`) : undefined);
 if (customData) app.setPath('userData', customData);
 else {
   const dataDir = path.join(app.getPath('appData'), 'Orelle');
@@ -74,10 +81,16 @@ app.setAppUserModelId('com.orelle.desktop');
 registerIconScheme();
 
 // Must be decided before Chromium starts: read the raw setting synchronously.
+let rawGeneral: Record<string, unknown> = {};
 try {
-  const raw = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'settings.json'), 'utf8'));
-  if (raw?.general?.hardwareAcceleration === false) app.disableHardwareAcceleration();
-} catch { /* first run or unreadable: keep the default (on) */ }
+  rawGeneral = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'settings.json'), 'utf8'))?.general ?? {};
+} catch { /* first run or unreadable: defaults */ }
+const pref = rawGeneral.performance === 'standard' || rawGeneral.performance === 'light' ? rawGeneral.performance : 'auto';
+const PERF = resolvePerformance(pref, os.totalmem(), os.cpus().length);
+const TUNE = tuning(PERF);
+// Light profile: no GPU process (≈ 100 MB). Effects are drawn in software instead.
+const GPU = rawGeneral.hardwareAcceleration !== false && PERF !== 'light';
+if (!GPU) app.disableHardwareAcceleration();
 
 if (process.argv.includes('--orelle-restore-taskbar')) {
   // Used by the uninstaller: gives the taskbar back even if Orelle crashed while it was hidden.
@@ -104,6 +117,13 @@ async function main() {
   log.init(logDir);
   log.info('app', `Orelle ${app.getVersion()} starting (Electron ${process.versions.electron}, ${process.platform} ${process.getSystemVersion()})`);
 
+  // Clipboard notifications need a window that lives as long as Orelle: the Dock when there is one.
+  const clipHost = () => {
+    if (dock.window) return dock.window;
+    launcher.create();
+    launcher.hostsClipboard = true;
+    return launcher.window!;
+  };
   // Crash guard: two unclean exits in a row → safe mode (nothing that changes Windows' behaviour).
   const runState = path.join(dataDir, 'run-state.json');
   let unclean = 0;
@@ -121,7 +141,7 @@ async function main() {
   const apps = new AppIndex(dataDir, icons);
   const tracker = new WindowTracker(process.pid);
   const files = new FileIndex();
-  const system = new SystemService();
+  const system = new SystemService(TUNE.statsInterval);
   const weather = new WeatherService();
   const screenTime = new ScreenTimeService(dataDir);
   const taskbar = new TaskbarService(dataDir);
@@ -136,7 +156,7 @@ async function main() {
     icons,
     apps,
     tracker,
-    capabilities: { win32: w32.win32Available(), windowTracking: false, appBar: w32.win32Available(), acrylic: Number(process.getSystemVersion().split('.')[2] ?? 0) >= 22621, safeMode: SAFE },
+    capabilities: { win32: w32.win32Available(), windowTracking: false, appBar: w32.win32Available(), acrylic: Number(process.getSystemVersion().split('.')[2] ?? 0) >= 22621, safeMode: SAFE, performance: PERF, machine: { memGB: Math.round(os.totalmem() / 1024 ** 3), cpus: os.cpus().length, gpu: GPU } },
     t: createTranslator(language()),
     language: language(),
     preload: path.join(distDir, 'preload.js'),
@@ -215,6 +235,11 @@ async function main() {
     const mode = settings.get().general.winKey;
     if (mode === 'menu') menu.toggle();
     else if (mode === 'launcher') launcher.toggle();
+  }, () => {
+    // Win just went down: make sure the target is loaded so it opens instantly on release.
+    const mode = settings.get().general.winKey;
+    if (mode === 'menu') menu.panel.prewarm();
+    else if (mode === 'launcher') launcher.create();
   });
   const syncWinKey = (s: Settings) => (s.general.winKey !== 'windows' && !SMOKE ? winKey.start() : winKey.stop());
   ai.on('answer', (a) => launcher.window?.webContents.send('launcher:ai', a));
@@ -267,9 +292,12 @@ async function main() {
   if (settings.firstRun || settings.get().dock.items.length === 0) {
     if (!apps.ready) await apps.refresh();
     settings.update({ dock: { items: await buildDefaultDock(apps, icons.cacheDir, tracker) } });
+    // Modest PC: start lighter (the user can turn these back on at any time).
+    if (settings.firstRun && PERF === 'light' && !SMOKE) settings.update({ widgets: { enabled: false }, appearance: { effects: 'reduced' } });
     log.info('app', 'First run: Dock built from the Windows taskbar pins');
   } else {
-    void apps.refresh();
+    // The cached list is used right away; the (PowerShell) rescan waits until the desktop is idle.
+    setTimeout(() => void apps.refresh(), SMOKE ? 0 : TUNE.appRefreshDelay);
   }
 
   tracker.start();
@@ -280,7 +308,16 @@ async function main() {
   topbar.start();
   dock.start();
   widgets.start();
-  launcher.create();
+  if (PERF !== 'light' || SMOKE) launcher.create();
+  panelTiming.releaseAfter = SMOKE ? 60_000 : TUNE.releasePanelsAfter;
+  // Light profile: the launcher is loaded once the desktop is idle, not during startup.
+  if (PERF === 'light' && !SMOKE) setTimeout(() => launcher.create(), TUNE.prewarmLauncherAfter);
+  const trimmer = new MemoryTrimmer(TUNE.trimHiddenAfter, TUNE.trimAwayAfter, () => {
+    const fg = w32.getForegroundWindow();
+    return !!fg && w32.getWindowPid(fg) === process.pid;
+  });
+  if (!SMOKE) trimmer.start();
+  topbar.volumePoll = TUNE.volumePoll;
   // The control center is created on first use (saves a renderer process at idle).
   tray.sync();
   syncLoginItem(settings.get());
@@ -288,12 +325,12 @@ async function main() {
   alerts.sync();
   if (!SAFE) automations.start();
   themeSvc.start();
-  if (!SAFE) syncWinKey(settings.get());
+  if (!SAFE && !MEASURE) syncWinKey(settings.get());
   if (SAFE) {
     notifications.notify({ title: ctx.t('safe.title'), body: ctx.t('safe.body'), source: 'orelle', glyph: 'shield', action: 'settings:general' });
     setTimeout(() => settingsUi.open('general'), 1500);
   }
-  if (settings.get().privacy.clipboardHistory && launcher.window) clip.enable(launcher.window);
+  if (settings.get().privacy.clipboardHistory) clip.enable(clipHost());
   // Close the splash once the Dock is painted (never sooner than its short intro animation).
   if (splash) {
     const dockWin = dock.window;
@@ -312,7 +349,8 @@ async function main() {
   // Background warm-up, once the UI is up.
   setTimeout(() => {
     apps.warmIcons();
-    if (settings.get().launcher.providers.files) void files.build();
+    // Light profile: the file index is built on the first file search instead.
+    if (settings.get().launcher.providers.files && TUNE.buildFileIndexAtStart) void files.build();
   }, SMOKE ? 0 : 8000);
 
   // ---------- Reactivity ----------
@@ -373,7 +411,7 @@ async function main() {
       tools.updateTitleBar();
     }
     if (next.privacy.clipboardHistory !== prev.privacy.clipboardHistory) {
-      if (next.privacy.clipboardHistory && launcher.window) clip.enable(launcher.window);
+      if (next.privacy.clipboardHistory) clip.enable(clipHost());
       else clip.disable();
     }
     if (next.launcher.providers.files && !prev.launcher.providers.files) void files.build();
@@ -440,6 +478,7 @@ async function main() {
     if (shutDown) return;
     shutDown = true;
     winKey.stop();
+    trimmer.stop();
     automations.stop();
     themeSvc.stop();
     hotkeys.disableAll();
@@ -468,6 +507,15 @@ async function main() {
     try { taskbar.restore(); } catch { /* exiting */ }
   });
 
+  if (MEASURE) void runMeasure(dock.window, shutdown, async () => {
+    // Wake-up cost after the idle trim: show the launcher and wait for its page to answer.
+    const t = Date.now();
+    launcher.show();
+    await launcher.window?.webContents.executeJavaScript('document.body.getBoundingClientRect().height');
+    const ms = Date.now() - t;
+    launcher.hide();
+    return ms;
+  });
   if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage }, shutdown);
 }
 
@@ -564,6 +612,35 @@ function registerSharedIpc(
     if (allowed !== 'all' && Object.keys(patch).some((k) => !allowed.includes(k))) return null;
     return ctx.settings.update(patch);
   });
+}
+
+// ---------- Performance measurement (npm run measure) ----------
+
+async function runMeasure(dockWin: BrowserWindow | null, shutdown: () => void, wake: () => Promise<number>) {
+  const dockReady = await new Promise<number>((r) => {
+    if (!dockWin) return r(Date.now());
+    if (dockWin.isVisible()) return r(Date.now());
+    dockWin.once('show', () => r(Date.now()));
+    setTimeout(() => r(Date.now()), 15000);
+  });
+  await new Promise((r) => setTimeout(r, Number(argValue('orelle-idle') ?? 15) * 1000));
+  const titles = new Map<number, string>();
+  for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) titles.set(w.webContents.getOSProcessId(), w.getTitle());
+  const metrics = app.getAppMetrics();
+  const mb = (m: Electron.ProcessMetric) => Math.round(((m.memory as unknown as Record<string, number>)?.privateBytes ?? 0) / 1024);
+  const report = {
+    startupMs: dockReady - T0,
+    privateMB: metrics.reduce((s, m) => s + mb(m), 0),
+    workingSetMB: Math.round(metrics.reduce((s, m) => s + (m.memory?.workingSetSize ?? 0), 0) / 1024),
+    cpuIdlePercent: +metrics.reduce((s, m) => s + m.cpu.percentCPUUsage, 0).toFixed(2),
+    processes: metrics.map((m) => ({ type: m.type, name: titles.get(m.pid) ?? m.name ?? '', privateMB: mb(m), workingSetMB: Math.round((m.memory?.workingSetSize ?? 0) / 1024) })),
+  };
+  (report as Record<string, unknown>).launcherWakeMs = await wake();
+  const out = argValue('orelle-measure-report');
+  if (out) fs.writeFileSync(out, JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(report, null, 2));
+  shutdown();
+  app.exit(0);
 }
 
 // ---------- Smoke test (npm run smoke) ----------

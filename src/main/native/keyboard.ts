@@ -40,7 +40,8 @@ export class WinKeyHook {
   private winDown = false;
   private combo = false;
 
-  constructor(private readonly onLonePress: () => void) {}
+  /** `onDown` runs as soon as Win goes down, so the target can be prepared before the release. */
+  constructor(private readonly onLonePress: () => void, private readonly onDown?: () => void) {}
 
   get active() {
     return this.hook !== 0;
@@ -59,7 +60,11 @@ export class WinKeyHook {
           const down = wParam === WM_KEYDOWN || wParam === WM_SYSKEYDOWN;
           const up = wParam === WM_KEYUP || wParam === WM_SYSKEYUP;
           if (isWin && down) {
-            if (!this.winDown) { this.winDown = true; this.combo = false; }
+            if (!this.winDown) {
+              this.winDown = true;
+              this.combo = false;
+              if (this.onDown) setImmediate(this.onDown);
+            }
           } else if (!isWin && down && this.winDown) {
             this.combo = true;
           } else if (isWin && up && this.winDown) {

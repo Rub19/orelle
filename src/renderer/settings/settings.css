@@ -440,3 +440,4 @@ select option { background: var(--surface-solid); color: var(--text); }
 .ph.run-failed, .ph.run-partial { color: #ff6961; }
 .ph.run-skipped { color: var(--text-3); }
 .safe-banner { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 14px; border-color: rgba(255, 159, 10, 0.5); background: rgba(255, 159, 10, 0.12); } .safe-banner .label { flex: 1; }
+.perf-now { display: block; margin-top: 6px; color: var(--accent); font-size: 11.5px; }

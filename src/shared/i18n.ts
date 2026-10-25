@@ -1037,6 +1037,17 @@ const fr = {
   'settings.dock.syncTaskbar': 'Reprendre la barre des tâches Windows',
   'settings.dock.syncTaskbar.confirm': 'Remplacer les applications du Dock par celles épinglées à votre barre des tâches Windows, dans le même ordre ? Les boutons Orelle, dossiers et liens sont conservés.',
   'settings.dock.syncTaskbar.none': 'Aucune application épinglée n’a pu être lue dans la barre des tâches.',
+  'settings.general.performance': 'Performances',
+  'settings.general.performance.desc': '« Léger » économise la mémoire et le processeur sur les PC modestes : pas d’accélération GPU, lanceur créé à la demande puis libéré, mesures moins fréquentes, index des fichiers construit à la première recherche. « Auto » choisit Léger à 8 Go de RAM ou moins, ou 4 cœurs logiques ou moins.',
+  'settings.perf.auto': 'Auto',
+  'settings.perf.standard': 'Standard',
+  'settings.perf.light': 'Léger',
+  'settings.perf.now': 'En cours : {mode} · {mem} Go de RAM · {cpus} cœurs logiques · GPU {gpu}',
+  'settings.perf.gpuOn': 'activé',
+  'settings.perf.gpuOff': 'désactivé',
+  'settings.perf.restart': 'Appliquer les changements de performances',
+  'settings.perf.restart.desc': 'Le profil et l’accélération GPU sont choisis au démarrage d’Orelle.',
+  'settings.perf.restartBtn': 'Redémarrer Orelle',
 };
 
 export type StringKey = keyof typeof fr;
@@ -2051,6 +2062,17 @@ const en: Record<StringKey, string> = {
   'settings.dock.syncTaskbar': 'Copy the Windows taskbar',
   'settings.dock.syncTaskbar.confirm': 'Replace the Dock\'s apps with the ones pinned to your Windows taskbar, in the same order? Orelle buttons, folders and links are kept.',
   'settings.dock.syncTaskbar.none': 'No pinned apps could be read from the taskbar.',
+  'settings.general.performance': 'Performance',
+  'settings.general.performance.desc': '“Light” saves memory and CPU on modest PCs: no GPU acceleration, launcher created on demand then freed, less frequent sampling, file index built on the first search. “Auto” picks Light with 8 GB of RAM or less, or 4 logical cores or fewer.',
+  'settings.perf.auto': 'Auto',
+  'settings.perf.standard': 'Standard',
+  'settings.perf.light': 'Light',
+  'settings.perf.now': 'Now: {mode} · {mem} GB RAM · {cpus} logical cores · GPU {gpu}',
+  'settings.perf.gpuOn': 'on',
+  'settings.perf.gpuOff': 'off',
+  'settings.perf.restart': 'Apply performance changes',
+  'settings.perf.restart.desc': 'The profile and GPU acceleration are chosen when Orelle starts.',
+  'settings.perf.restartBtn': 'Restart Orelle',
 };
 
 const DICTS = { fr: fr as Record<StringKey, string>, en };

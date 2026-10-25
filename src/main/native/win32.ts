@@ -81,6 +81,7 @@ function bind() {
     RemoveClipboardFormatListener: user32.func('bool __stdcall RemoveClipboardFormatListener(intptr_t hwnd)'),
     OpenProcess: kernel32.func('intptr_t __stdcall OpenProcess(uint32_t access, bool inherit, uint32_t pid)'),
     CloseHandle: kernel32.func('bool __stdcall CloseHandle(intptr_t h)'),
+    SetProcessWorkingSetSize: kernel32.func('bool __stdcall SetProcessWorkingSetSize(intptr_t h, intptr_t min, intptr_t max)'),
     QueryFullProcessImageNameW: kernel32.func(
       'bool __stdcall QueryFullProcessImageNameW(intptr_t h, uint32_t flags, _Out_ uint16_t *buf, _Inout_ uint32_t *size)',
     ),
@@ -281,6 +282,18 @@ export function getWallpaper(): string {
 export function setWallpaper(file: string): boolean {
   if (!api) return false;
   return !!api.SPISetString(0x0014 /* SPI_SETDESKWALLPAPER */, 0, file, 0x1 | 0x2 /* SPIF_UPDATEINIFILE | SPIF_SENDCHANGE */);
+}
+
+/** Hands a process's physical memory back to Windows (pages come back on demand). Orelle's own processes only. */
+export function trimWorkingSet(pid: number): boolean {
+  if (!api) return false;
+  const h = api.OpenProcess(0x0100 /* PROCESS_SET_QUOTA */ | PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+  if (!h) return false;
+  try {
+    return !!api.SetProcessWorkingSetSize(h, -1, -1);
+  } finally {
+    api.CloseHandle(h);
+  }
 }
 
 /** Ctrl+V into the window in front (used after the user picks a clipboard entry to paste). */

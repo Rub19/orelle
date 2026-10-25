@@ -40,6 +40,8 @@ export class TopBarController {
   private appBarFailed = false;
   private fullscreenHidden = false;
   private volumeTimer: NodeJS.Timeout | null = null;
+  /** Volume refresh period (the light profile polls less). */
+  volumePoll = 5000;
   private stats: TopBarState['stats'] = null;
   private statsOn = false;
   private pushQueued = false;
@@ -227,7 +229,7 @@ export class TopBarController {
       }
     }
     const wantVolume = !!this.win && items.has('volume');
-    if (wantVolume && !this.volumeTimer) this.volumeTimer = setInterval(() => this.pushState(), 5000);
+    if (wantVolume && !this.volumeTimer) this.volumeTimer = setInterval(() => this.pushState(), this.volumePoll);
     else if (!wantVolume && this.volumeTimer) {
       clearInterval(this.volumeTimer);
       this.volumeTimer = null;

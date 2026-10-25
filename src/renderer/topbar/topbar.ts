@@ -109,11 +109,16 @@ function render() {
   root.replaceChildren(el('div', { class: 'bar' }, left, right));
 }
 
-// The clock is the only thing that changes on its own: update it in place.
-setInterval(() => {
+// The clock is the only thing that changes on its own: update it in place, once per second only
+// when seconds are shown, otherwise right at each new minute.
+function tickClock() {
   const time = document.querySelector('.item.clock .time');
   if (time && settings) time.textContent = clockText();
-}, 1000);
+  const now = new Date();
+  const delay = settings?.topBar.showSeconds ? 1000 - now.getMilliseconds() : 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds());
+  setTimeout(tickClock, Math.max(50, delay));
+}
+tickClock();
 
 // Only the visible strip catches the mouse; the transparent margin below lets clicks through.
 let interactive = false;

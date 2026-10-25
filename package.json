@@ -16,7 +16,8 @@
     "test": "vitest run",
     "smoke": "node scripts/build.mjs && electron . --orelle-smoke",
     "check": "npm run typecheck && npm test && npm run smoke",
-    "dist": "node scripts/build.mjs && electron-builder --win nsis --x64 --publish never"
+    "dist": "node scripts/build.mjs && electron-builder --win nsis --x64 --publish never",
+    "measure": "node scripts/build.mjs && electron . --orelle-measure"
   },
   "dependencies": {
     "koffi": "3.3.3"

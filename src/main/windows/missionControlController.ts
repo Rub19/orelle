@@ -7,6 +7,7 @@ import type { OrelleContext } from '../context';
 import * as dwm from '../native/dwm';
 import * as w32 from '../native/win32';
 import { log } from '../logger';
+import { panelTiming } from './panelWindow';
 
 export interface MissionWindow {
   hwnd: number;
@@ -132,7 +133,7 @@ export class MissionControlController {
         this.win.destroy();
         this.win = null;
       }
-    }, 60_000);
+    }, panelTiming.releaseAfter);
   }
 
   private clearThumbs() {

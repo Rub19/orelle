@@ -189,6 +189,8 @@ export interface Settings {
     taskbarMode: TaskbarMode;
     /** What a lone press of the Windows key does. */
     winKey: 'windows' | 'menu' | 'launcher';
+    /** auto = light on modest PCs (≤ 8 GB RAM or ≤ 4 threads). */
+    performance: 'auto' | 'standard' | 'light';
     /** GPU compositing; off saves ~100 MB of memory at the cost of smoother animations (applies after restart). */
     hardwareAcceleration: boolean;
   };
@@ -472,4 +474,7 @@ export interface Capabilities {
   acrylic: boolean;
   /** Started in safe mode (after repeated crashes or --orelle-safe-mode). */
   safeMode: boolean;
+  /** Effective performance profile and what it was derived from. */
+  performance: 'standard' | 'light';
+  machine: { memGB: number; cpus: number; gpu: boolean };
 }

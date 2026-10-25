@@ -1,9 +1,12 @@
 // A pop-over panel (Orelle menu, notification center): Acrylic, frameless, hidden when it loses
-// focus, created on first use and released after a minute closed so it costs nothing at idle.
+// focus, created on first use, kept loaded (and trimmed) while closed so it reopens instantly, freed after a long idle.
 import { BrowserWindow, type Rectangle } from 'electron';
 import type { SurfaceKind } from '../../shared/types';
 import type { OrelleContext } from '../context';
 import * as w32 from '../native/win32';
+
+/** How long a closed panel stays loaded (hidden and trimmed) before being freed; set by main. */
+export const panelTiming = { releaseAfter: 60_000 };
 
 export class PanelWindow {
   private win: BrowserWindow | null = null;
@@ -71,6 +74,13 @@ export class PanelWindow {
     void win.loadFile(this.ctx.rendererFile(this.surface));
   }
 
+  /** Creates the window without showing it, so the next show is instant. */
+  prewarm() {
+    if (this.releaseTimer) clearTimeout(this.releaseTimer);
+    this.releaseTimer = null;
+    if (!this.win) this.create();
+  }
+
   toggle() {
     // A click on the top bar button that opened the panel first blurs it (hiding it): don't reopen.
     if (this.isVisible() || Date.now() - this.hiddenAt < 250) this.hide();
@@ -102,7 +112,7 @@ export class PanelWindow {
       this.hooks.onHide?.();
     }
     if (this.releaseTimer) clearTimeout(this.releaseTimer);
-    this.releaseTimer = setTimeout(() => this.release(), 60_000);
+    this.releaseTimer = setTimeout(() => this.release(), panelTiming.releaseAfter);
   }
 
   release() {

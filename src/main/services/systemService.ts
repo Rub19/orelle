@@ -32,11 +32,15 @@ export class SystemService extends EventEmitter {
   private latest: SystemStats | null = null;
   private brightnessSupported: boolean | null = null;
 
+  constructor(private readonly intervalMs = 2000) {
+    super();
+  }
+
   subscribe(id: string) {
     this.subscribers.add(id);
     if (!this.timer) {
       void this.sample();
-      this.timer = setInterval(() => void this.sample(), 2000);
+      this.timer = setInterval(() => void this.sample(), this.intervalMs);
     }
   }
 
