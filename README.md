@@ -106,6 +106,12 @@ Les fenêtres fermées restent chargées mais leur mémoire est rendue à Window
 - Extensions : déclaratives, sans code ; celles que vous ajoutez restent désactivées tant que vous ne les activez pas après avoir lu leurs permissions. Elles ne peuvent ouvrir que des pages `https`, des dossiers (jamais un programme) ou copier un texte.
 - Automatisations : aucune ligne de commande interprétée ; seules les fonctions d’Orelle et les cibles que vous avez saisies.
 
+## Publier une version
+
+1. Augmenter `version` dans `package.json`, puis `npm run dist`.
+2. Créer une release GitHub `vX.Y.Z` sur ce dépôt avec trois fichiers de `release/` : l’installateur renommé `Orelle-Setup-X.Y.Z.exe` (nom attendu par `latest.yml`), son `.blockmap` et `latest.yml`. (`npm run release` le fait automatiquement avec un jeton `GH_TOKEN`.)
+3. Les Orelle installés la voient à leur prochaine vérification quotidienne (Préférences › À propos › Vérifier maintenant).
+
 ## Installation et désinstallation
 
 `npm run dist` produit un installateur NSIS **par utilisateur** (installé dans `%LOCALAPPDATA%\Programs\Orelle`, aucun droit administrateur demandé). Le désinstalleur (Paramètres Windows › Applications) :
