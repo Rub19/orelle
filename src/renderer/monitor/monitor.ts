@@ -369,6 +369,43 @@ async function loadInfo() {
   if (tab === 'system') renderSystem();
 }
 
+// Sensors: only what Windows lets a standard user read; the rest is labelled unavailable.
+let sensors: Awaited<ReturnType<typeof api.sensors>> = null;
+let sensorsTimer: number | null = null;
+
+function sensorsCard(): HTMLElement {
+  const card = el('section', { class: 'card' });
+  const fill = () => {
+    const s = sensors;
+    if (!s) { card.replaceChildren(el('div', { class: 'state small' }, el('div', { class: 'mini-spinner' }), el('span', { text: t('monitor.loading') }))); return; }
+    const na = t('monitor.sensor.na');
+    const rows: [string, string][] = [];
+    for (const g of s.gpus) {
+      rows.push([`${g.name} — ${t('monitor.sensor.temp')}`, g.tempC !== null ? `${g.tempC} °C` : na]);
+      rows.push([`${g.name} — ${t('monitor.sensor.load')}`, g.load !== null ? `${g.load} %` : na]);
+      if (g.memTotalMB) rows.push([`${g.name} — VRAM`, `${g.memUsedMB ?? 0} / ${g.memTotalMB} Mo`]);
+      rows.push([`${g.name} — ${t('monitor.sensor.power')}`, g.powerW !== null ? `${g.powerW.toFixed(1)} W` : na]);
+      rows.push([`${g.name} — ${t('monitor.sensor.fan')}`, g.fan !== null ? `${g.fan} %` : t('monitor.sensor.fanNa')]);
+    }
+    if (!s.gpus.length) rows.push([t('monitor.sensor.gpuTemp'), t('monitor.sensor.gpuNa')]);
+    rows.push([t('monitor.sensor.cpuTemp'), t('monitor.sensor.cpuNa')]);
+    if (s.battery) {
+      rows.push([t('monitor.sensor.batteryHealth'), `${s.battery.healthPercent} % (${Math.round(s.battery.fullMWh / 1000)} / ${Math.round(s.battery.designMWh / 1000)} Wh)`]);
+      rows.push([t('monitor.sensor.cycles'), s.battery.cycles !== null ? String(s.battery.cycles) : na]);
+    }
+    card.replaceChildren(el('dl', { class: 'sys' }, ...rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { class: v === na || v.startsWith('—') ? 'na' : '', text: v })])), el('p', { class: 'note', text: t('monitor.sensor.note') }));
+  };
+  fill();
+  const refresh = async () => {
+    sensors = await api.sensors();
+    if (tab === 'system' && card.isConnected) fill();
+    else if (sensorsTimer) { clearInterval(sensorsTimer); sensorsTimer = null; }
+  };
+  if (!sensors) void refresh();
+  if (!sensorsTimer) sensorsTimer = window.setInterval(() => void refresh(), 5000);
+  return card;
+}
+
 function renderSystem() {
   if (!info) {
     page.replaceChildren(el('div', { class: 'state' }, el('div', { class: 'spinner' }), el('span', { text: t('monitor.loading') })));
@@ -396,6 +433,8 @@ function renderSystem() {
       (bar.firstElementChild as HTMLElement).style.width = `${Math.round(used * 100)}%`;
       return el('div', { class: 'list-row' }, el('span', { class: 'p-ico ph', html: glyph('drive') }), el('div', { class: 'grow' }, el('strong', { text: d.mount }), bar, el('small', { text: t('monitor.sys.free', { free: formatBytes(d.free, lang), total: formatBytes(d.total, lang) }) })));
     })),
+    el('h2', { class: 'sub', text: t('monitor.sensors') }),
+    sensorsCard(),
     el('div', { class: 'row-actions' }, (() => {
       const b = el('button', { class: 'btn', html: glyph('external') }, t('monitor.openTaskmgr'));
       b.addEventListener('click', () => api.system('taskmgr'));

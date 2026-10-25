@@ -56,6 +56,7 @@ import { UpdateService } from './services/updateService';
 import { CaptureController } from './windows/captureController';
 import { StackController } from './windows/stackController';
 import { DesktopService } from './services/desktopService';
+import { SensorService } from './services/sensorService';
 import { buildDiagnostics } from './services/diagnostics';
 import { diagnose } from './services/networkService';
 import { panelTiming } from './windows/panelWindow';
@@ -918,6 +919,8 @@ async function runSmoke(
     check('monitor: processes', !!sample && sample.processes.length > 20, sample && { processes: sample.processes.length, gpu: sample.gpu, diskBusy: sample.diskBusy, netDown: sample.netDown });
     const startup = await c.apps.monitor.startupItems();
     check('monitor: startup apps readable', Array.isArray(startup), { count: startup.length });
+    const sens = await new SensorService().read();
+    check('sensors (standard user)', Array.isArray(sens.gpus) && sens.cpuTemp === null, { gpus: sens.gpus.map((g) => `${g.name} ${g.tempC ?? '?'}°C`), battery: sens.battery && `${sens.battery.healthPercent}%` });
     // Memory of every Orelle process (KB → MB), after the UI is fully up.
     // Idle footprint after closing the control center (created on demand, then released).
     c.control.release();

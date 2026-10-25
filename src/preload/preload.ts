@@ -280,6 +280,7 @@ const api = {
     journal: (): Promise<{ at: number; id: string; name: string }[]> => ipcRenderer.invoke('monitor:journal'),
     services: (): Promise<{ name: string; display: string; state: string; start: string; pid: number }[]> => ipcRenderer.invoke('monitor:services'),
     info: (): Promise<Record<string, unknown> | null> => ipcRenderer.invoke('monitor:info'),
+    sensors: (): Promise<{ gpus: { name: string; tempC: number | null; load: number | null; memUsedMB: number | null; memTotalMB: number | null; powerW: number | null; fan: number | null }[]; gpuSource: string | null; battery: { id: string; designMWh: number; fullMWh: number; healthPercent: number; cycles: number | null } | null; cpuTemp: null; cpuTempReason: string } | null> => ipcRenderer.invoke('monitor:sensors'),
     exportReport: (): Promise<{ ok: boolean; canceled?: boolean }> => ipcRenderer.invoke('monitor:export'),
     reveal: (p: string) => ipcRenderer.send('monitor:reveal', p),
     openFolder: (p: string) => ipcRenderer.send('monitor:openFolder', p),

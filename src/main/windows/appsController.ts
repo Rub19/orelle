@@ -8,6 +8,7 @@ import type { OrelleContext } from '../context';
 import type { FileService } from '../services/fileService';
 import type { MonitorService, MonitorSample } from '../services/monitorService';
 import { log } from '../logger';
+import { SensorService } from '../services/sensorService';
 
 type AppKind = 'files' | 'monitor';
 
@@ -16,6 +17,7 @@ export class AppsController {
   private monitorWin: BrowserWindow | null = null;
   private watchers = new Map<number, fs.FSWatcher>();
   private latest: MonitorSample | null = null;
+  private sensors = new SensorService();
 
   constructor(private readonly ctx: OrelleContext, readonly files: FileService, readonly monitor: MonitorService) {
     files.on('progress', (op) => {
@@ -200,6 +202,7 @@ export class AppsController {
     ipcMain.handle('monitor:journal', (e) => (fromMonitor(e) ? this.monitor.journal() : []));
     ipcMain.handle('monitor:services', (e) => (fromMonitor(e) ? this.monitor.services() : []));
     ipcMain.handle('monitor:info', (e) => (fromMonitor(e) ? this.monitor.systemInfo() : null));
+    ipcMain.handle('monitor:sensors', (e) => (fromMonitor(e) ? this.sensors.read() : null));
     ipcMain.handle('monitor:export', (e) => (fromMonitor(e) ? this.monitor.exportReport(this.monitorWin, this.latest) : { ok: false }));
     ipcMain.on('monitor:reveal', (e, p: unknown) => { if (fromMonitor(e) && abs(p)) shell.showItemInFolder(p); });
     ipcMain.on('monitor:openFolder', (e, p: unknown) => { if (fromMonitor(e) && abs(p)) this.openFiles(path.dirname(p)); });

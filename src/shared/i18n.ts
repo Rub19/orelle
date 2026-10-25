@@ -1139,6 +1139,20 @@ const fr = {
   'settings.dock.folderStacks.desc': 'Un clic sur un dossier du Dock affiche ses derniers éléments au-dessus de l’icône. Maj+clic ouvre le dossier.',
   'desktops.default': 'Bureau {n}',
   'desktops.new': 'Nouveau bureau (Ctrl+Win+D)',
+  'monitor.sensors': 'Capteurs',
+  'monitor.sensor.temp': 'température',
+  'monitor.sensor.load': 'charge',
+  'monitor.sensor.power': 'consommation',
+  'monitor.sensor.fan': 'ventilateur',
+  'monitor.sensor.fanNa': 'non exposé par le pilote',
+  'monitor.sensor.na': 'indisponible',
+  'monitor.sensor.gpuTemp': 'Température GPU',
+  'monitor.sensor.gpuNa': 'indisponible (pilote NVIDIA requis ; AMD et Intel ne l’exposent pas sans pilote tiers)',
+  'monitor.sensor.cpuTemp': 'Température processeur',
+  'monitor.sensor.cpuNa': 'indisponible sans droits administrateur ou pilote tiers',
+  'monitor.sensor.batteryHealth': 'Santé de la batterie',
+  'monitor.sensor.cycles': 'Cycles de charge',
+  'monitor.sensor.note': 'Sources : pilote NVIDIA (nvidia-smi) et rapport de batterie de Windows (powercfg). Orelle n’installe aucun pilote et n’affiche jamais de valeur inventée.',
 };
 
 export type StringKey = keyof typeof fr;
@@ -2255,6 +2269,20 @@ const en: Record<StringKey, string> = {
   'settings.dock.folderStacks.desc': 'Clicking a Dock folder shows its latest items above the icon. Shift+click opens the folder.',
   'desktops.default': 'Desktop {n}',
   'desktops.new': 'New desktop (Ctrl+Win+D)',
+  'monitor.sensors': 'Sensors',
+  'monitor.sensor.temp': 'temperature',
+  'monitor.sensor.load': 'load',
+  'monitor.sensor.power': 'power draw',
+  'monitor.sensor.fan': 'fan',
+  'monitor.sensor.fanNa': 'not exposed by the driver',
+  'monitor.sensor.na': 'unavailable',
+  'monitor.sensor.gpuTemp': 'GPU temperature',
+  'monitor.sensor.gpuNa': 'unavailable (NVIDIA driver required; AMD and Intel don’t expose it without a third-party driver)',
+  'monitor.sensor.cpuTemp': 'CPU temperature',
+  'monitor.sensor.cpuNa': 'unavailable without administrator rights or a third-party driver',
+  'monitor.sensor.batteryHealth': 'Battery health',
+  'monitor.sensor.cycles': 'Charge cycles',
+  'monitor.sensor.note': 'Sources: NVIDIA driver (nvidia-smi) and Windows’ battery report (powercfg). Orelle installs no driver and never shows invented values.',
 };
 
 const DICTS = { fr: fr as Record<StringKey, string>, en };
