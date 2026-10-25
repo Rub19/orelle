@@ -325,6 +325,7 @@ select option { background: var(--surface-solid); color: var(--text); }
 }
 .error-text { color: #ff6961; font-size: 12px; margin-top: 4px; }
 .ok-text { color: #30d158; font-size: 12px; }
+.muted { color: var(--text-2); font-size: 12px; }
 
 /* Dock item list */
 .items { list-style: none; margin: 0; padding: 4px 0; }

@@ -662,6 +662,10 @@ function pageAbout(): HTMLElement[] {
       row('settings.about.cap.acrylic', cap(c.acrylic)),
     ),
     ...group(
+      'settings.admin',
+      row('settings.admin.mode', adminRow(), c.elevated ? 'settings.admin.on.desc' : 'settings.admin.off.desc'),
+    ),
+    ...group(
       null,
       row('settings.about.reindex', el('div', { class: 'slider' }, reindexStatus, button(t('settings.about.reindex'), async () => {
         reindexStatus.textContent = '…';
@@ -679,6 +683,23 @@ function pageAbout(): HTMLElement[] {
       row('settings.updates.now', updateRow()),
     ),
   ];
+}
+
+/** Administrator mode: Orelle relaunches itself through UAC (or back), nothing else changes. */
+function adminRow(): HTMLElement {
+  const on = boot.capabilities.elevated;
+  const status = el('span', { class: on ? 'ok-text' : 'muted', text: t(on ? 'settings.admin.state.on' : 'settings.admin.state.off') });
+  const b = button(t(on ? 'settings.admin.disable' : 'settings.admin.enable'), async () => {
+    b.disabled = true;
+    status.className = 'muted';
+    status.textContent = on ? '…' : t('settings.admin.waiting');
+    const r = await orelle.settings.elevate(!on);
+    // On success Orelle quits and the new instance takes over: nothing more to show.
+    if (r.ok) return;
+    b.disabled = false;
+    status.textContent = r.canceled ? t('settings.admin.canceled') : r.error === 'dev' ? t('settings.admin.dev') : t('settings.admin.failed', { e: r.error ?? '?' });
+  }, on ? 'btn' : 'btn primary', 'shield');
+  return el('div', { class: 'slider' }, status, b);
 }
 
 function updateRow(): HTMLElement {

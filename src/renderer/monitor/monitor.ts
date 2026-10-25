@@ -388,6 +388,7 @@ function sensorsCard(): HTMLElement {
       rows.push([`${g.name} — ${t('monitor.sensor.fan')}`, g.fan !== null ? `${g.fan} %` : t('monitor.sensor.fanNa')]);
     }
     if (!s.gpus.length) rows.push([t('monitor.sensor.gpuTemp'), t('monitor.sensor.gpuNa')]);
+    for (const z of s.thermal) rows.push([t('monitor.sensor.zone', { name: z.name }), `${z.tempC.toFixed(1)} °C`]);
     rows.push([t('monitor.sensor.cpuTemp'), t('monitor.sensor.cpuNa')]);
     if (s.battery) {
       rows.push([t('monitor.sensor.batteryHealth'), `${s.battery.healthPercent} % (${Math.round(s.battery.fullMWh / 1000)} / ${Math.round(s.battery.designMWh / 1000)} Wh)`]);

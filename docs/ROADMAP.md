@@ -117,9 +117,9 @@ Mesures `npm run measure` (2ᵉ lancement, profil isolé, PC 16 Go / 12 threads,
 - ✅ **Fichiers refait** : double panneau (Tab, Maj+F5/F6), taille d’icônes réglable (curseur, Ctrl+molette, Ctrl +/−), étiquettes de couleur et vues par étiquette, renommage par lot avec aperçu et contrôle des conflits, sous-dossiers depuis le fil d’Ariane, panneau de détails redimensionnable (grandes miniatures Windows, dimensions des images)
 - ✅ Dépôt GitHub public : https://github.com/Rub19/orelle
 
+## v0.7 ✅
+- ✅ **Mode administrateur à la demande** (Préférences › À propos) : un bouton relance Orelle via l’invite UAC de Windows, pour la session seulement, et un autre le ramène en mode normal. Débloque l’arrêt des processus protégés, les programmes au démarrage de tous les utilisateurs (journalisés et restaurables), le nettoyage des fichiers temporaires de Windows et la gestion des fenêtres lancées en administrateur. Les applis ouvertes depuis Orelle repartent sans droits administrateur.
+- ✅ **Zones thermiques ACPI** dans les capteurs, lues sans droits administrateur
+
 ## À faire ⬜
-- **Signature de code** (supprime l’avertissement SmartScreen) : certificat à acheter par le propriétaire
-- Menu du bureau : testé à la compilation et sur la détection du bureau, pas encore sur un vrai clic (option désactivée par défaut)
-- Étiquettes : suivent les renommages faits dans Orelle, pas ceux faits ailleurs
-- Déplacer une fenêtre d’une autre application vers un autre bureau virtuel (aucune API publique)
-- Marketplace en ligne (le format de catalogue est prêt)
+Liste à jour et détaillée : [TODO.md](../TODO.md).

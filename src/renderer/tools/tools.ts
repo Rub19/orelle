@@ -261,11 +261,11 @@ async function cleanupCard() {
   const card = el('div', { class: 'card pad' }, el('div', { class: 'card-head' }, el('h2', { text: t('tools.storage.cleanup') })), el('div', { class: 'center' }, el('div', { class: 'mini-spinner' })));
   void api.cleanup().then((list) => {
     const rows = list.map((c) => el('div', { class: 'c-row' },
-      el('span', { class: 'c-ico', html: glyph(c.id === 'downloads' ? 'download' : c.id === 'temp' ? 'clock' : 'file') }),
+      el('span', { class: 'c-ico', html: glyph(c.id === 'downloads' ? 'download' : c.id === 'temp' || c.id === 'systemtemp' ? 'clock' : 'file') }),
       el('div', { class: 'c-name' }, el('strong', { text: t(`tools.storage.clean.${c.id}` as StringKey) }), el('small', { text: t(c.olderThanDays ? 'tools.storage.cleanOlder' : 'tools.storage.cleanAll', { files: c.files, size: size(c.size), days: c.olderThanDays }) })),
       button(t('tools.storage.view'), () => api.openFolder(c.path), 'btn small'),
       c.id === 'downloads' ? el('span', { class: 'c-hint', text: t('tools.storage.reviewOnly') }) : button(t('tools.storage.clean'), async () => {
-        const r = await api.clean(c.id as 'temp' | 'crashdumps');
+        const r = await api.clean(c.id as Exclude<typeof c.id, 'downloads'>);
         if (r?.ok) { toast(t('tools.storage.cleaned', { n: r.removed, size: size(r.freed) })); void storagePage(); }
       }, 'btn', 'trash')));
     card.replaceChildren(card.firstElementChild!, ...rows, el('p', { class: 'note', text: t('tools.storage.cleanupNote') }));

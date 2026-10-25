@@ -14,6 +14,13 @@ export interface AppTarget {
   args?: string[];
 }
 
+// Set when Orelle runs in administrator mode: apps, files and folders it opens go through Explorer,
+// which starts them at the signed-in user's normal level, so they don't inherit administrator rights.
+let deElevate = false;
+export function setDeElevatedLaunch(on: boolean) {
+  deElevate = on;
+}
+
 function spawnDetached(file: string, args: string[], cwd?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(file, args, { detached: true, stdio: 'ignore', cwd, windowsHide: false });
@@ -25,19 +32,20 @@ function spawnDetached(file: string, args: string[], cwd?: string): Promise<void
 /** Launches an application, preferring its Start-menu identity (keeps jump lists, AUMID grouping). */
 export async function launchApp(t: AppTarget): Promise<void> {
   const exe = t.path && /\.exe$/i.test(t.path) && fs.existsSync(t.path) ? t.path : null;
+  // Explorer cannot pass arguments: items with arguments start directly (elevated in administrator mode).
   if (t.args?.length && exe) return spawnDetached(exe, t.args, path.dirname(exe));
   if (t.appId) {
     // A filesystem path used as app id: open it directly.
     if (/^[a-z]:\\/i.test(t.appId) && fs.existsSync(t.appId)) return openPath(t.appId);
     return spawnDetached(EXPLORER, [`shell:AppsFolder\\${t.appId}`]);
   }
-  if (exe) return spawnDetached(exe, [], path.dirname(exe));
+  if (exe) return deElevate ? spawnDetached(EXPLORER, [exe]) : spawnDetached(exe, [], path.dirname(exe));
   if (t.path) return openPath(t.path);
   throw new Error('Nothing to launch');
 }
 
 export async function openPath(p: string): Promise<void> {
-  if (p.startsWith('shell:')) return spawnDetached(EXPLORER, [p]);
+  if (p.startsWith('shell:') || deElevate) return spawnDetached(EXPLORER, [p]);
   const err = await shell.openPath(p);
   if (err) throw new Error(err);
 }

@@ -16,9 +16,12 @@ export interface FileItem { path: string; size: number; mtime: number }
 export interface FolderUsage { path: string; name: string; size: number; files: number; dir: boolean }
 export interface ScanResult { ok: boolean; canceled?: boolean; root: string; total: number; files: number; skipped: number; children: FolderUsage[]; largest: FileItem[]; ms: number }
 export interface DuplicateGroup { size: number; hash: string; files: FileItem[] }
-export interface CleanupCandidate { id: 'temp' | 'crashdumps' | 'downloads'; path: string; size: number; files: number; olderThanDays: number }
+export interface CleanupCandidate { id: 'temp' | 'systemtemp' | 'crashdumps' | 'downloads'; path: string; size: number; files: number; olderThanDays: number }
 
 class Canceled extends Error {}
+
+const SYSTEM_TEMP = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'Temp');
+const isInside = (p: string, dir: string) => p.toLowerCase().startsWith(`${dir.toLowerCase().replace(/\\+$/, '')}\\`);
 
 export class StorageService extends EventEmitter {
   private job = 0;
@@ -187,6 +190,8 @@ export class StorageService extends EventEmitter {
       { id: 'crashdumps', path: path.join(local, 'CrashDumps'), days: 0 },
       { id: 'downloads', path: path.join(os.homedir(), 'Downloads'), days: 90 },
     ];
+    // Windows' own temp folder is writable only with administrator rights.
+    if (this.ctx.capabilities.elevated) defs.splice(1, 0, { id: 'systemtemp', path: SYSTEM_TEMP, days: 7 });
     for (const d of defs) {
       if (!d.path || !fs.existsSync(d.path)) continue;
       const s = await this.sizeOf(d.path, d.days * 86_400_000);
@@ -226,8 +231,9 @@ export class StorageService extends EventEmitter {
       await this.walk(c.path, job, (f) => { if (f.mtime < cutoff) targets.push(f); }, () => {});
     } catch { /* canceled */ }
     for (const f of targets) {
-      // The temp folder lives under LOCALAPPDATA: only its own content may go.
-      if (isProtectedPath(f.path, env, this.exclusions())) continue;
+      // The temp folder lives under LOCALAPPDATA: only its own content may go. Windows\Temp sits
+      // inside a protected tree: only files strictly inside it are accepted.
+      if (id === 'systemtemp' ? !isInside(f.path, SYSTEM_TEMP) || this.exclusions().some((x) => isInside(f.path, x)) : isProtectedPath(f.path, env, this.exclusions())) continue;
       try {
         await fs.promises.unlink(f.path);
         removed++;

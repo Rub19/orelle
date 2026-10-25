@@ -58,6 +58,8 @@ import { StackController } from './windows/stackController';
 import { DesktopService } from './services/desktopService';
 import { SensorService } from './services/sensorService';
 import { DesktopMenuService } from './services/desktopMenuService';
+import { ElevationService, readHandoff, waitForExit } from './services/elevationService';
+import { setDeElevatedLaunch } from './services/launchService';
 import { buildDiagnostics } from './services/diagnostics';
 import { diagnose } from './services/networkService';
 import { panelTiming } from './windows/panelWindow';
@@ -107,13 +109,18 @@ if (process.argv.includes('--orelle-restore-taskbar')) {
     new TaskbarService(app.getPath('userData')).restore();
     app.exit(0);
   });
-} else if (!SMOKE && !app.requestSingleInstanceLock()) {
-  app.quit();
-} else if (process.argv.includes('--orelle-quit')) {
-  // Nothing was running: nothing to stop (the installer calls this unconditionally).
-  app.quit();
 } else {
-  void main();
+  const start = () => {
+    if (!SMOKE && !app.requestSingleInstanceLock()) app.quit();
+    // Nothing was running: nothing to stop (the installer calls this unconditionally).
+    else if (process.argv.includes('--orelle-quit')) app.quit();
+    else void main();
+  };
+  // Relaunch into or out of administrator mode: wait until the previous instance has given the
+  // taskbar and AppBars back before taking over.
+  const handoff = SMOKE ? null : readHandoff();
+  if (handoff) void waitForExit(handoff.pid).then(start);
+  else start();
 }
 
 process.on('uncaughtException', (err) => log.error('process', 'Uncaught exception', err));
@@ -157,6 +164,11 @@ async function main() {
 
   const distDir = __dirname;
   const language = () => resolveLanguage(settings.get().general.language, app.getLocale());
+  const ELEVATED = w32.isElevated();
+  const elevation = new ElevationService(ELEVATED);
+  // Apps opened from an elevated Orelle must not inherit administrator rights.
+  setDeElevatedLaunch(ELEVATED);
+  if (ELEVATED) log.info('app', 'Running in administrator mode');
   const ctx: OrelleContext = {
     dataDir,
     logDir,
@@ -165,7 +177,7 @@ async function main() {
     icons,
     apps,
     tracker,
-    capabilities: { win32: w32.win32Available(), windowTracking: false, appBar: w32.win32Available(), acrylic: Number(process.getSystemVersion().split('.')[2] ?? 0) >= 22621, safeMode: SAFE, performance: PERF, machine: { memGB: Math.round(os.totalmem() / 1024 ** 3), cpus: os.cpus().length, gpu: GPU } },
+    capabilities: { win32: w32.win32Available(), windowTracking: false, appBar: w32.win32Available(), acrylic: Number(process.getSystemVersion().split('.')[2] ?? 0) >= 22621, safeMode: SAFE, elevated: ELEVATED, performance: PERF, machine: { memGB: Math.round(os.totalmem() / 1024 ** 3), cpus: os.cpus().length, gpu: GPU } },
     t: createTranslator(language()),
     language: language(),
     preload: path.join(distDir, 'preload.js'),
@@ -319,7 +331,7 @@ async function main() {
   notificationCenter.registerIpc();
   topbar.registerIpc();
   registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools, welcome, capture, stack });
-  registerExtrasIpc(ctx, () => settingsUi.window, { extensions, ai, windows: windowsSvc, profiles, automations, updates });
+  registerExtrasIpc(ctx, () => settingsUi.window, { extensions, ai, windows: windowsSvc, profiles, automations, updates, elevation });
 
   // ---------- First run: build a Dock from installed apps ----------
   if (settings.firstRun || settings.get().dock.items.length === 0) {
@@ -528,6 +540,7 @@ async function main() {
     return true;
   };
   app.on('second-instance', (_e, argv) => {
+    if (elevation.relaunching) return;
     if (argv.includes('--orelle-quit')) app.quit();
     else if (!openFromArgs(argv)) settingsUi.open(argv.find((a) => a.startsWith('--orelle-section='))?.split('=')[1]);
   });
@@ -952,7 +965,7 @@ async function runSmoke(
     const startup = await c.apps.monitor.startupItems();
     check('monitor: startup apps readable', Array.isArray(startup), { count: startup.length });
     const sens = await new SensorService().read();
-    check('sensors (standard user)', Array.isArray(sens.gpus) && sens.cpuTemp === null, { gpus: sens.gpus.map((g) => `${g.name} ${g.tempC ?? '?'}°C`), battery: sens.battery && `${sens.battery.healthPercent}%` });
+    check('sensors (standard user)', Array.isArray(sens.gpus) && Array.isArray(sens.thermal), { gpus: sens.gpus.map((g) => `${g.name} ${g.tempC ?? '?'}°C`), zones: sens.thermal.map((z) => `${z.name} ${z.tempC}°C`), battery: sens.battery && `${sens.battery.healthPercent}%` });
     // Memory of every Orelle process (KB → MB), after the UI is fully up.
     // Idle footprint after closing the control center (created on demand, then released).
     c.control.release();

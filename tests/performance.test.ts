@@ -42,7 +42,7 @@ describe('network diagnostics', async () => {
 });
 
 describe('sensors', async () => {
-  const { parseBatteryReport, parseNvidiaSmi } = await import('../src/main/services/sensorService');
+  const { parseBatteryReport, parseNvidiaSmi, parseThermalZones } = await import('../src/main/services/sensorService');
   it('reads nvidia-smi CSV with missing fields', () => {
     expect(parseNvidiaSmi('NVIDIA GeForce RTX 3050 Laptop GPU, 38, 0, 9, 4096, 6.62, [N/A]\n')).toEqual([
       { name: 'NVIDIA GeForce RTX 3050 Laptop GPU', tempC: 38, load: 0, memUsedMB: 9, memTotalMB: 4096, powerW: 6.62, fan: null },
@@ -52,5 +52,9 @@ describe('sensors', async () => {
     const xml = '<BatteryReport><Batteries><Battery><Id>AP18E7M</Id><DesignCapacity>58751</DesignCapacity><FullChargeCapacity>46801</FullChargeCapacity><CycleCount>14</CycleCount></Battery></Batteries></BatteryReport>';
     expect(parseBatteryReport(xml)).toEqual({ id: 'AP18E7M', designMWh: 58751, fullMWh: 46801, healthPercent: 79.7, cycles: 14 });
     expect(parseBatteryReport('<BatteryReport/>')).toBeNull();
+  });
+  it('converts thermal zones from tenths of kelvin and drops empty ones', () => {
+    expect(parseThermalZones('\\_TZ.TZ00|3132\r\n\\_TZ.TZ01|0\r\nbad|x\r\n')).toEqual([{ name: 'TZ00', tempC: 40.1 }]);
+    expect(parseThermalZones('')).toEqual([]);
   });
 });

@@ -135,7 +135,7 @@ export class ToolsController {
     ipcMain.handle('tools:duplicates', async (e, root: unknown, minMB: unknown) => (from(e) && abs(root) ? this.storage.duplicates(root, Math.max(0.01, Number(minMB) || 1) * 1024 * 1024) : null));
     ipcMain.on('tools:cancel', (e) => from(e) && this.storage.cancel());
     ipcMain.handle('tools:cleanup', (e) => (from(e) ? this.storage.cleanupCandidates() : []));
-    ipcMain.handle('tools:clean', (e, id: unknown) => (from(e) && (id === 'temp' || id === 'crashdumps') ? this.storage.clean(id, this.win) : null));
+    ipcMain.handle('tools:clean', (e, id: unknown) => (from(e) && (id === 'temp' || id === 'crashdumps' || (id === 'systemtemp' && this.ctx.capabilities.elevated)) ? this.storage.clean(id, this.win) : null));
     ipcMain.handle('tools:recycle', (e, paths: unknown) => {
       if (!from(e) || !Array.isArray(paths) || !paths.length || paths.length > 2000 || !paths.every(abs)) return null;
       return this.storage.recycle(paths as string[], this.win);

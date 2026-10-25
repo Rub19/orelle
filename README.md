@@ -85,7 +85,7 @@ Les fenêtres fermées restent chargées mais leur mémoire est rendue à Window
 
 ## Sécurité et confidentialité
 
-- Aucun droit administrateur, aucune donnée envoyée à un service externe, sauf la météo (Open-Meteo, coordonnées de la ville choisie), les recherches web que vous validez et, si vous l’activez avec votre consentement explicite, les questions posées à l’assistant IA (rien d’autre que la question).
+- Aucun droit administrateur par défaut (le mode administrateur ne s’active que sur votre clic, via l’invite UAC de Windows, pour la session en cours), aucune donnée envoyée à un service externe, sauf la météo (Open-Meteo, coordonnées de la ville choisie), les recherches web que vous validez et, si vous l’activez avec votre consentement explicite, les questions posées à l’assistant IA (rien d’autre que la question).
 - Clé d’API de l’IA chiffrée avec la protection de données de Windows (DPAPI, `safeStorage`), jamais exportée. Avec Claude, le repli côté serveur d’Anthropic est activé (`fallbacks: "default"`) : une demande refusée peut être relancée sur le modèle de repli, facturé à son tarif.
 - Touche Windows : crochet clavier de bas niveau installé uniquement si l’option est activée ; il n’agit que sur l’appui seul de la touche Windows et laisse passer toutes les autres touches sans les lire.
 - Orelle ne modifie la configuration de Windows que sur votre demande, toujours de façon réversible :
@@ -96,7 +96,8 @@ Les fenêtres fermées restent chargées mais leur mémoire est rendue à Window
 - Stockage : jamais de suppression automatique ; dossiers Windows, programmes et racines du profil protégés ; Corbeille par défaut.
 - Fond d’écran : appliqué par l’API Windows documentée ; l’original est mémorisé et rétabli à la demande.
 - Mises à jour : vérification une fois par jour (GitHub Releases, désactivable) ; le téléchargement ne démarre que sur votre clic, l’empreinte SHA-512 est vérifiée et l’installation (par utilisateur, sans droits administrateur) a lieu au redémarrage.
-- Capteurs : seulement ce que Windows laisse lire sans droits administrateur ; rien d’inventé.
+- Capteurs : GPU NVIDIA, zones thermiques ACPI et batterie, lus sans droits administrateur ; rien d’inventé.
+- Ce qu’il reste à faire : [TODO.md](TODO.md).
 - Menu du bureau (option) : crochet souris installé seulement si l’option est activée.
 - Rapport de diagnostic : créé localement à votre demande, chemins personnels masqués, jamais envoyé.
 - Mode sans échec : après deux arrêts anormaux de suite (ou `--orelle-safe-mode`), Orelle démarre sans masquer la barre des tâches, sans crochet clavier, sans automatisations ni extensions.

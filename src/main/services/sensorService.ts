@@ -3,8 +3,10 @@
 //   the driver) — other GPUs do not expose temperatures without a kernel driver;
 // - battery health from Windows' battery report (powercfg /batteryreport, design vs full charge
 //   capacity, cycle count);
-// - CPU/motherboard temperatures need administrator rights (ACPI thermal zones) or a third-party
-//   driver: reported as unavailable, never as a made-up value.
+// - ACPI thermal zones through Windows' performance counters (readable without administrator
+//   rights); they measure the zone the firmware defines (often near the CPU), not CPU cores;
+// - per-core CPU temperatures need a kernel driver, which Orelle never installs: reported as
+//   unavailable, never as a made-up value.
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,9 +14,11 @@ import path from 'node:path';
 
 export interface GpuSensor { name: string; tempC: number | null; load: number | null; memUsedMB: number | null; memTotalMB: number | null; powerW: number | null; fan: number | null }
 export interface BatteryHealth { id: string; designMWh: number; fullMWh: number; healthPercent: number; cycles: number | null }
-export interface Sensors { gpus: GpuSensor[]; gpuSource: 'nvidia-smi' | null; battery: BatteryHealth | null; cpuTemp: null; cpuTempReason: 'admin-or-driver' }
+export interface ThermalZone { name: string; tempC: number }
+export interface Sensors { gpus: GpuSensor[]; gpuSource: 'nvidia-smi' | null; battery: BatteryHealth | null; thermal: ThermalZone[] }
 
 const SYS = process.env.SystemRoot ?? 'C:\\Windows';
+const PS = path.join(SYS, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 const run = (file: string, args: string[], timeout = 10_000) =>
   new Promise<string | null>((resolve) => execFile(file, args, { timeout, windowsHide: true }, (err, out) => resolve(err ? null : String(out))));
 
@@ -29,6 +33,17 @@ export function parseNvidiaSmi(out: string): GpuSensor[] {
     const [name, temp, load, used, total, power, fan] = line.split(',').map((x) => x.trim());
     return { name, tempC: num(temp), load: num(load), memUsedMB: num(used), memTotalMB: num(total), powerW: num(power), fan: num(fan) };
   }).filter((g) => g.name);
+}
+
+/** `Name|HighPrecisionTemperature` lines (tenths of kelvin) from the thermal-zone counters. */
+export function parseThermalZones(out: string): ThermalZone[] {
+  return out.split(/\r?\n/).map((l) => l.trim().split('|')).flatMap(([name, raw]) => {
+    const tenthK = Number(raw);
+    if (!name || !Number.isFinite(tenthK) || tenthK <= 0) return [];
+    const tempC = Math.round(tenthK - 2731.5) / 10;
+    // Zones with no sensor report 0 K or nonsense: dropped rather than shown.
+    return tempC > 0 && tempC < 130 ? [{ name: name.replace(/^\\_TZ\./, ''), tempC }] : [];
+  });
 }
 
 /** Battery report XML (powercfg /batteryreport /xml): first battery. */
@@ -53,7 +68,8 @@ export class SensorService {
       const out = await run(smi, ['--query-gpu=name,temperature.gpu,utilization.gpu,memory.used,memory.total,power.draw,fan.speed', '--format=csv,noheader,nounits']);
       if (out) gpus = parseNvidiaSmi(out);
     }
-    return { gpus, gpuSource: gpus.length ? 'nvidia-smi' : null, battery: await this.battery(), cpuTemp: null, cpuTempReason: 'admin-or-driver' };
+    const [battery, zones] = await Promise.all([this.battery(), run(PS, ['-NoProfile', '-NonInteractive', '-Command', "Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation | ForEach-Object { $_.Name + '|' + $_.HighPrecisionTemperature }"])]);
+    return { gpus, gpuSource: gpus.length ? 'nvidia-smi' : null, battery, thermal: zones ? parseThermalZones(zones) : [] };
   }
 
   /** The battery report takes ~1 s to generate: cached for an hour. */

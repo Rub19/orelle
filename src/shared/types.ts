@@ -498,6 +498,8 @@ export interface Capabilities {
   acrylic: boolean;
   /** Started in safe mode (after repeated crashes or --orelle-safe-mode). */
   safeMode: boolean;
+  /** Running with administrator rights (administrator mode, this session only). */
+  elevated: boolean;
   /** Effective performance profile and what it was derived from. */
   performance: 'standard' | 'light';
   machine: { memGB: number; cpus: number; gpu: boolean };

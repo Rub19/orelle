@@ -1,5 +1,6 @@
 // Preferences IPC for extensions, AI, window layouts, profiles and automations. Only the
 // preferences window may call these.
+import type { ElevationService } from './services/elevationService';
 import { app, dialog, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,7 +19,7 @@ import { buildDiagnostics } from './services/diagnostics';
 export function registerExtrasIpc(
   ctx: OrelleContext,
   settingsWindow: () => BrowserWindow | null,
-  s: { extensions: ExtensionService; ai: AiService; windows: WindowService; profiles: ProfileService; automations: AutomationService; updates: UpdateService },
+  s: { extensions: ExtensionService; ai: AiService; windows: WindowService; profiles: ProfileService; automations: AutomationService; updates: UpdateService; elevation: ElevationService },
 ) {
   const from = (e: IpcMainEvent | IpcMainInvokeEvent) => settingsWindow()?.webContents === e.sender;
   const t = () => ctx.t;
@@ -120,6 +121,11 @@ export function registerExtrasIpc(
     if (!from(e) || typeof id !== 'string') return;
     const a = ctx.settings.get().automations.find((x) => x.id === id);
     if (a) void s.automations.run(a);
+  });
+  // Administrator mode: always started from the Preferences window, always through UAC.
+  ipcMain.handle('settings:elevate', (e, on: unknown) => {
+    if (!from(e)) return { ok: false };
+    return on === true ? s.elevation.enable() : s.elevation.disable();
   });
   ipcMain.handle('settings:updateStatus', (e) => (from(e) ? s.updates.status : null));
   ipcMain.handle('settings:checkUpdates', (e) => (from(e) ? s.updates.check(true) : null));

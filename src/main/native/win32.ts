@@ -90,6 +90,7 @@ function bind() {
     ),
     DwmGetWindowAttribute: dwmapi.func('long __stdcall DwmGetWindowAttribute(intptr_t hwnd, uint32_t attr, _Out_ int32_t *value, uint32_t size)'),
     DwmSetWindowAttribute: dwmapi.func('long __stdcall DwmSetWindowAttribute(intptr_t hwnd, uint32_t attr, int32_t *value, uint32_t size)'),
+    IsUserAnAdmin: shell32.func('bool __stdcall IsUserAnAdmin()'),
     SHAppBarMessage: shell32.func('uintptr_t __stdcall SHAppBarMessage(uint32_t msg, _Inout_ ORELLE_APPBARDATA *data)'),
     SHGetPropertyStoreForWindow: shell32.func('long __stdcall SHGetPropertyStoreForWindow(intptr_t hwnd, const uint8_t *riid, _Out_ void **store)'),
     PropVariantClear: koffi.load('ole32.dll').func('long __stdcall PropVariantClear(void *pv)'),
@@ -282,6 +283,15 @@ export function getWallpaper(): string {
 export function setWallpaper(file: string): boolean {
   if (!api) return false;
   return !!api.SPISetString(0x0014 /* SPI_SETDESKWALLPAPER */, 0, file, 0x1 | 0x2 /* SPIF_UPDATEINIFILE | SPIF_SENDCHANGE */);
+}
+
+/** True when Orelle runs with an elevated (administrator) token. */
+export function isElevated(): boolean {
+  try {
+    return !!api?.IsUserAnAdmin();
+  } catch {
+    return false;
+  }
 }
 
 /** Hands a process's physical memory back to Windows (pages come back on demand). Orelle's own processes only. */

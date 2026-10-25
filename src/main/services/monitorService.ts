@@ -265,7 +265,7 @@ export class MonitorService extends EventEmitter {
         if (v.type !== 'REG_SZ' && v.type !== 'REG_EXPAND_SZ') continue;
         const exe = exeOf(v.data);
         items.push({
-          id: `${src}:${v.name}`, name: v.name, command: v.data, source: src, enabled: isEnabled(src, v.name), canToggle: src === 'HKCU',
+          id: `${src}:${v.name}`, name: v.name, command: v.data, source: src, enabled: isEnabled(src, v.name), canToggle: this.canToggle(src),
           icon: exe && fs.existsSync(exe) ? this.ctx.icons.get(exe, true) : null,
         });
       }
@@ -280,12 +280,17 @@ export class MonitorService extends EventEmitter {
       for (const f of files) {
         const full = path.join(dir, f);
         items.push({
-          id: `${src}:${f}`, name: f.replace(/\.lnk$/i, ''), command: full, source: src, enabled: isEnabled(src, f), canToggle: src === 'StartupUser',
+          id: `${src}:${f}`, name: f.replace(/\.lnk$/i, ''), command: full, source: src, enabled: isEnabled(src, f), canToggle: this.canToggle(src),
           icon: this.ctx.icons.get(full, true),
         });
       }
     }
     return items.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /** Per-user entries always; machine-wide ones (HKLM, all-users Startup folder) in administrator mode. */
+  private canToggle(src: string) {
+    return src === 'HKCU' || src === 'StartupUser' || (this.ctx.capabilities.elevated && src in APPROVED);
   }
 
   /**
@@ -295,8 +300,8 @@ export class MonitorService extends EventEmitter {
   async setStartupEnabled(id: string, enabled: boolean): Promise<boolean> {
     const [src, ...rest] = id.split(':');
     const name = rest.join(':');
-    if (src !== 'HKCU' && src !== 'StartupUser') return false;
-    const key = APPROVED[src];
+    if (!this.canToggle(src)) return false;
+    const key = APPROVED[src as keyof typeof APPROVED];
     const previous = (await regValues(key)).find((v) => v.name.toLowerCase() === name.toLowerCase())?.data ?? null;
     const data = (enabled ? '02' : '03') + '0'.repeat(22);
     const out = await run(REG, ['add', key, '/v', name, '/t', 'REG_BINARY', '/d', data, '/f']);
@@ -313,14 +318,20 @@ export class MonitorService extends EventEmitter {
   /** Puts every startup flag Orelle changed back to its original value. */
   async restoreStartup(): Promise<number> {
     let n = 0;
+    const kept: ReturnType<MonitorService['journal']> = [];
     for (const j of this.journal()) {
-      const key = APPROVED[j.source as 'HKCU' | 'StartupUser'];
+      const key = APPROVED[j.source as keyof typeof APPROVED];
       if (!key) continue;
+      // Machine-wide flags can only be put back in administrator mode: kept for later until then.
+      if (!this.canToggle(j.source)) { kept.push(j); continue; }
       if (j.previous === null) await run(REG, ['delete', key, '/v', j.name, '/f']);
       else await run(REG, ['add', key, '/v', j.name, '/t', 'REG_BINARY', '/d', j.previous, '/f']);
       n++;
     }
-    try { fs.unlinkSync(this.journalFile()); } catch { /* none */ }
+    try {
+      if (kept.length) fs.writeFileSync(this.journalFile(), JSON.stringify(kept, null, 2));
+      else fs.unlinkSync(this.journalFile());
+    } catch { /* none */ }
     return n;
   }
 
