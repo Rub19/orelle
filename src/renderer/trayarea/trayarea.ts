@@ -8,6 +8,10 @@ let state: TrayAreaState = {
   wifi: null,
   volume: null,
   battery: null,
+  microphone: null,
+  keyboard: 'FRA',
+  displayCount: 1,
+  focus: false,
   unread: 0,
   windowsUpdatePending: false,
   orelleUpdateAvailable: false,
@@ -36,6 +40,14 @@ function render() {
     if (id === 'network') {
       const wifi = state.wifi;
       row.append(statusButton('network', wifi?.connected ? 'wifi' : 'network', wifi?.connected ? `${t('trayArea.network')} — ${wifi.signal ?? '—'} %` : `${t('trayArea.network')} — ${t('control.wifi.off')}`));
+    } else if (id === 'microphone') {
+      const mic = state.microphone;
+      row.append(statusButton('microphone', mic?.muted ? 'micOff' : 'mic', mic?.muted ? t('trayArea.microphoneMuted') : t('trayArea.microphone')));
+    } else if (id === 'keyboard') {
+      row.append(statusButton('keyboard', 'keyboard', `${t('trayArea.keyboard')} — ${state.keyboard ?? '—'}`, state.keyboard ?? '—'));
+    } else if (id === 'display') {
+      const count = state.displayCount ?? 1;
+      row.append(statusButton('display', 'display', `${t('trayArea.display')} — ${count}`, count > 1 ? String(count) : undefined));
     } else if (id === 'volume') {
       const v = state.volume!;
       row.append(statusButton('volume', v.muted || v.level === 0 ? 'volumeMute' : 'volume', `${t('trayArea.volume')} — ${v.level} %`));
@@ -45,6 +57,10 @@ function render() {
     } else if (id === 'update') {
       const windows = state.windowsUpdatePending;
       row.append(statusButton('update', 'download', windows ? t('trayArea.windowsUpdate') : t('trayArea.orelleUpdate')));
+    } else if (id === 'focus') {
+      const b = statusButton('focus', 'moon', state.focus ? t('trayArea.focusOn') : t('trayArea.focusOff'));
+      if (state.focus) b.classList.add('active');
+      row.append(b);
     } else if (id === 'notifications') {
       const label = state.unread ? `${t('trayArea.notifications')} — ${state.unread}` : t('trayArea.notifications');
       const b = statusButton('notifications', state.unread ? 'bellOn' : 'bell', label);

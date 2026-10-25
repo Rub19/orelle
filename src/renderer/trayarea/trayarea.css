@@ -42,6 +42,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .status .glyph { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .status .value { font-size: 10.5px; font-variant-numeric: tabular-nums; }
 .status.battery { min-width: 52px; }
+.status.keyboard { min-width: 38px; font-size: 11px; font-weight: 650; }
+.status.display { min-width: 30px; }
+.status.microphone.muted, .status.focus.active { color: var(--accent); }
 .status.update { color: var(--accent); }
 .status.peek { border-left: 1px solid var(--separator); border-radius: 0 6px 6px 0; margin-left: 2px; padding-left: 4px; }
 .status.peek .glyph { transform: rotate(180deg); }
