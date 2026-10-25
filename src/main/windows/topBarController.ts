@@ -27,6 +27,7 @@ const APPBAR_MSG = 0x0400 + 0x54; // WM_USER + 'T'
 export interface TopBarState {
   app: { name: string; title: string; icon: string | null } | null;
   profile: { name: string; glyph: string } | null;
+  elevated: boolean;
   unread: number;
   focus: boolean;
   volume: { level: number; muted: boolean } | null;
@@ -272,6 +273,7 @@ export class TopBarController {
     return {
       app,
       profile: p ? { name: p.name, glyph: p.glyph } : null,
+      elevated: this.ctx.capabilities.elevated,
       unread: this.d.notifications.unread(),
       focus: this.d.notifications.focus,
       volume: vol ? { level: vol.level, muted: vol.muted } : null,
@@ -338,6 +340,7 @@ export class TopBarController {
         case 'menu': this.d.toggleMenu(); break;
         case 'app': this.appMenu(px ?? 0); break;
         case 'profile': this.profilesMenu(px ?? 0); break;
+        case 'admin': this.ctx.actions.openSettings('about'); break;
         case 'notifications':
         case 'clock': this.d.toggleNotifications(); break;
         case 'control':

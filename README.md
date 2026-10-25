@@ -36,7 +36,7 @@ Options de ligne de commande :
 
 | Module | Accès | Points clés |
 |---|---|---|
-| **Barre supérieure** | haut de l’écran | Menu Orelle, application au premier plan avec actions de fenêtre et dispositions, profil actif, médias, CPU, réseau, volume (molette), batterie, notifications, recherche, centre de contrôle, aperçu de la barre des tâches, horloge — éléments réordonnables |
+| **Barre supérieure** | haut de l’écran | Menu Orelle, application au premier plan avec actions de fenêtre et dispositions, profil actif, mode administrateur, médias, CPU, réseau, volume (molette), batterie, notifications, recherche, centre de contrôle, aperçu de la barre des tâches, horloge — éléments réordonnables |
 | **Menu Orelle** | logo de la barre, touche Windows (option) | Recherche, apps épinglées et récentes, toutes les applications A–Z, profils, verrouiller / veille / redémarrer / arrêter (confirmés), accès au vrai menu Démarrer |
 | **Notifications** | horloge ou cloche de la barre | Historique local des notifications Orelle, calendrier mensuel, mode concentration, lien vers le centre Windows |
 | **Dock** | toujours visible | Identique à votre barre des tâches au premier lancement, piles de dossiers, Grossissement, lancement réel, indicateurs, réorganisation par glisser, dépôt de fichiers, menus contextuels, réservation d’espace, masquage automatique, masquage en plein écran |

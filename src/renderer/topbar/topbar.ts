@@ -97,6 +97,7 @@ function render() {
   } else if (settings.profiles.list.length) {
     left.append(btn('profile ghost', t('topbar.profile'), 'profile', ico('sparkle')));
   }
+  if (state?.elevated) left.append(btn('admin', t('topbar.admin'), 'admin', ico('shield'), el('span', { text: t('topbar.admin.short') })));
   const right = el('div', { class: 'right' });
   for (const item of settings.topBar.items) {
     if (!item.visible) continue;

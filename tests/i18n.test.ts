@@ -12,4 +12,14 @@ describe('i18n', () => {
     expect(resolveLanguage('auto', 'de-DE')).toBe('en');
     expect(resolveLanguage('fr', 'en-US')).toBe('fr');
   });
+
+  it('provides accessible labels for the Windows notification area button', () => {
+    expect(createTranslator('fr')('trayArea.show')).toContain('zone de notification');
+    expect(createTranslator('en')('trayArea.show')).toContain('notification area');
+  });
+
+  it('provides an accessible administrator-mode label', () => {
+    expect(createTranslator('fr')('topbar.admin')).toContain('administrateur');
+    expect(createTranslator('en')('topbar.admin').toLowerCase()).toContain('administrator');
+  });
 });

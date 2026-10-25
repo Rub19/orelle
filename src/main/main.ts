@@ -46,6 +46,7 @@ import { WinKeyHook } from './native/keyboard';
 import { registerExtrasIpc } from './extrasIpc';
 import { MenuController, NotificationCenterController } from './windows/shellPanels';
 import { TopBarController } from './windows/topBarController';
+import { TrayAreaController } from './windows/trayAreaController';
 import { MissionControlController } from './windows/missionControlController';
 import { ToolsController, type ToolsSection } from './windows/toolsController';
 import { StorageService } from './services/storageService';
@@ -270,6 +271,7 @@ async function main() {
     toggleLauncher: () => launcher.toggle(),
     toggleMission: () => mission.toggle(),
   });
+  const trayArea = new TrayAreaController(ctx, taskbar);
   const automations = new AutomationService(ctx, hotkeys, notifications, profiles, windowsSvc);
   // Optional: a lone press of the Windows key opens Orelle's menu or launcher instead of Start.
   const winKey = new WinKeyHook(() => {
@@ -330,7 +332,8 @@ async function main() {
   stack.registerIpc();
   notificationCenter.registerIpc();
   topbar.registerIpc();
-  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools, welcome, capture, stack });
+  trayArea.registerIpc();
+  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, trayArea, menu, notificationCenter, mission, tools, welcome, capture, stack });
   registerExtrasIpc(ctx, () => settingsUi.window, { extensions, ai, windows: windowsSvc, profiles, automations, updates, elevation });
 
   // ---------- First run: build a Dock from installed apps ----------
@@ -351,9 +354,11 @@ async function main() {
   taskbar.apply(SAFE || onboarding ? 'normal' : settings.get().general.taskbarMode);
   profiles.start();
   topbar.host = () => dock.window;
+  trayArea.host = () => dock.window;
   widgets.host = () => dock.window;
   dock.start();
   topbar.start();
+  trayArea.start();
   widgets.start();
   if (PERF !== 'light' || SMOKE) launcher.create();
   panelTiming.releaseAfter = SMOKE ? 60_000 : TUNE.releasePanelsAfter;
@@ -446,6 +451,7 @@ async function main() {
   tracker.on('fullscreen', (fs: boolean) => {
     dock.onFullscreenChanged(fs);
     topbar.onFullscreenChanged(fs);
+    trayArea.onFullscreenChanged(fs);
   });
   notifications.on('change', () => topbar.pushState());
   apps.on('change', () => dock.pushState());
@@ -465,6 +471,8 @@ async function main() {
     dock.onSettingsChanged(next, prev);
     widgets.onSettingsChanged(next, prev);
     topbar.onSettingsChanged(next, prev);
+    if (next.general.taskbarMode !== prev.general.taskbarMode && !SAFE && !onboarding) taskbar.apply(next.general.taskbarMode);
+    trayArea.onSettingsChanged(next);
     profiles.onSettingsChanged(next);
     automations.onSettingsChanged(next, prev);
     themeSvc.onSettingsChanged(next, prev);
@@ -472,7 +480,6 @@ async function main() {
     if (next.general.desktopMenu !== prev.general.desktopMenu && !SAFE) desktopMenu.sync();
     tray.sync();
     if (next.general.launchAtLogin !== prev.general.launchAtLogin) syncLoginItem(next);
-    if (next.general.taskbarMode !== prev.general.taskbarMode && !SAFE && !onboarding) taskbar.apply(next.general.taskbarMode);
     alerts.sync();
     if (next.launcher.enabled !== prev.launcher.enabled || next.launcher.hotkey !== prev.launcher.hotkey || next.controlCenter.hotkey !== prev.controlCenter.hotkey || next.windows.snapping !== prev.windows.snapping || next.windows.overviewHotkey !== prev.windows.overviewHotkey || next.clipboard.hotkey !== prev.clipboard.hotkey || next.capture.hotkey !== prev.capture.hotkey || next.privacy.clipboardHistory !== prev.privacy.clipboardHistory) syncHotkeys(next);
     if (next.appearance.effects !== prev.appearance.effects) {
@@ -506,6 +513,7 @@ async function main() {
       topbar.onDisplaysChanged();
       automations.onDisplaysChanged();
       dock.onDisplaysChanged();
+      trayArea.onDisplaysChanged();
       widgets.layout();
     }, 300);
   };
@@ -563,6 +571,7 @@ async function main() {
     files.dispose();
     clip.disable();
     taskbar.restore();
+    trayArea.destroy();
     topbar.destroy();
     dock.destroy();
     widgets.destroy();
@@ -593,7 +602,7 @@ async function main() {
     launcher.hide();
     return ms;
   });
-  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage, welcome, updates, capture, stack }, shutdown);
+  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, trayArea, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage, welcome, updates, capture, stack }, shutdown);
 }
 
 function showSplash(firstRun: boolean, lang: 'fr' | 'en'): BrowserWindow {
@@ -649,7 +658,7 @@ function broadcastSettings(ctx: OrelleContext) {
 
 function registerSharedIpc(
   ctx: OrelleContext,
-  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; mission: MissionControlController; tools: ToolsController; welcome: WelcomeController; capture: CaptureController; stack: StackController },
+  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; trayArea: TrayAreaController; menu: MenuController; notificationCenter: NotificationCenterController; mission: MissionControlController; tools: ToolsController; welcome: WelcomeController; capture: CaptureController; stack: StackController },
 ) {
   const surfaceOf = (wc: WebContents): SurfaceKind | null => {
     if (c.dock.window?.webContents === wc) return 'dock';
@@ -660,6 +669,7 @@ function registerSharedIpc(
     if (c.apps.isFiles(wc)) return 'files';
     if (c.apps.isMonitor(wc)) return 'monitor';
     if (c.topbar.window?.webContents === wc) return 'topbar';
+    if (c.trayArea.window?.webContents === wc) return 'trayarea';
     if (c.menu.panel.window?.webContents === wc) return 'menu';
     if (c.notificationCenter.panel.window?.webContents === wc) return 'notifications';
     if (c.mission.window?.webContents === wc) return 'mission';
@@ -729,7 +739,7 @@ async function runSmoke(
   ctx: OrelleContext,
   c: {
     dock: DockController; launcher: LauncherController; search: SearchService; files: FileIndex; widgets: WidgetsController; control: ControlCenterController; system: SystemService; apps: AppsController;
-    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService; welcome: WelcomeController; updates: UpdateService; capture: CaptureController; stack: StackController;
+    topbar: TopBarController; trayArea: TrayAreaController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService; welcome: WelcomeController; updates: UpdateService; capture: CaptureController; stack: StackController;
   },
   shutdown: () => void,
 ) {
@@ -779,6 +789,7 @@ async function runSmoke(
     const primary = screen.getPrimaryDisplay();
     check('top bar visible', c.topbar.isVisible(), c.topbar.window?.getBounds());
     check('top bar reserves space', primary.workArea.y >= primary.bounds.y + 20, { workArea: primary.workArea });
+    check('notification area affordance visible', ctx.settings.get().general.taskbarMode !== 'hidden' || c.trayArea.isVisible(), c.trayArea.window?.getBounds());
     c.control.hide();
     c.menu.toggle();
     await wait(1500);

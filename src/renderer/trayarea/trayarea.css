@@ -1,0 +1,25 @@
+@import '../common/tokens.css';
+
+html,
+body { width: 100%; height: 100%; overflow: hidden; background: transparent; user-select: none; }
+
+#root { width: 100%; height: 100%; display: grid; place-items: center; }
+
+button {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(var(--glass-rgb), var(--glass-opacity));
+  color: var(--text-2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background var(--dur-fast) linear, color var(--dur-fast) linear;
+}
+button:hover { background: var(--hover); color: var(--text); }
+button:active { background: var(--pressed); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button .glyph { width: 16px; height: 16px; transform: rotate(180deg); stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+[data-effects='off'] button { background: var(--surface-solid); }

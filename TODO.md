@@ -24,4 +24,4 @@
 ## Idées pour la suite
 - [ ] Marketplace d’extensions en ligne (le format de catalogue est prêt, voir [docs/EXTENSIONS.md](docs/EXTENSIONS.md)).
 - [ ] Synchroniser les étiquettes de fichiers avec les renommages externes (surveillance du dossier).
-- [ ] Indicateur « mode administrateur » dans la barre du haut.
+- [x] Indicateur « mode administrateur » dans la barre du haut.

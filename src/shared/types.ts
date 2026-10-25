@@ -480,7 +480,7 @@ export interface AppInfo {
   icon: string | null;
 }
 
-export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications' | 'mission' | 'tools' | 'welcome' | 'capture' | 'stack';
+export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'trayarea' | 'menu' | 'notifications' | 'mission' | 'tools' | 'welcome' | 'capture' | 'stack';
 
 export interface Bootstrap {
   surface: SurfaceKind;

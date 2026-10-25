@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const dist = path.join(root, 'dist');
 const watch = process.argv.includes('--watch');
-const surfaces = ['dock', 'launcher', 'settings', 'widgets', 'control', 'splash', 'files', 'monitor', 'topbar', 'menu', 'notifications', 'mission', 'tools', 'welcome', 'capture', 'stack'];
+const surfaces = ['dock', 'launcher', 'settings', 'widgets', 'control', 'splash', 'files', 'monitor', 'topbar', 'trayarea', 'menu', 'notifications', 'mission', 'tools', 'welcome', 'capture', 'stack'];
 
 await rm(dist, { recursive: true, force: true });
 await mkdir(path.join(dist, 'renderer'), { recursive: true });

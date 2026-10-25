@@ -10,6 +10,7 @@ import type { FileEntry, FileOperation, FileProperties, FsError, MonitorSampleDt
 export interface TopBarStateDto {
   app: { name: string; title: string; icon: string | null } | null;
   profile: { name: string; glyph: string } | null;
+  elevated: boolean;
   unread: number;
   focus: boolean;
   volume: { level: number; muted: boolean } | null;
@@ -131,6 +132,10 @@ const api = {
     volume: (delta: number) => ipcRenderer.send('topbar:volume', delta),
     contextMenu: () => ipcRenderer.send('topbar:context'),
     setInteractive: (v: boolean) => ipcRenderer.send('topbar:interactive', v),
+  },
+
+  trayArea: {
+    peek: () => ipcRenderer.send('trayarea:peek'),
   },
 
   tools: {
