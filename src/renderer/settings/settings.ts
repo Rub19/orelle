@@ -356,6 +356,7 @@ function pageDock(): HTMLElement[] {
       row('settings.dock.magnifiedSize', slider(32, 128, 1, d.magnifiedSize, (v) => `${v} px`, (v) => void update({ dock: { magnifiedSize: v } }))),
       row('settings.dock.spacing', slider(0, 20, 1, d.spacing, (v) => `${v} px`, (v) => void update({ dock: { spacing: v } }))),
       row('settings.dock.labels', toggle(d.showLabels, (v) => void update({ dock: { showLabels: v } }))),
+      row('settings.dock.folderStacks', toggle(d.folderStacks, (v) => void update({ dock: { folderStacks: v } })), 'settings.dock.folderStacks.desc'),
     ),
     ...group(
       'settings.dock.autoHide',

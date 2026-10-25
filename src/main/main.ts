@@ -54,6 +54,7 @@ import { MemoryTrimmer } from './services/memoryTrimmer';
 import { WelcomeController } from './windows/welcomeController';
 import { UpdateService } from './services/updateService';
 import { CaptureController } from './windows/captureController';
+import { StackController } from './windows/stackController';
 import { buildDiagnostics } from './services/diagnostics';
 import { diagnose } from './services/networkService';
 import { panelTiming } from './windows/panelWindow';
@@ -219,6 +220,8 @@ async function main() {
   const updates = new UpdateService(ctx, notifications);
   const capture = new CaptureController(ctx, (file) => notifications.notify({ title: ctx.t('capture.saved'), body: path.basename(file), source: 'capture', glyph: 'image', action: `reveal:${file}` }));
   ctx.actions.capture = () => void capture.start();
+  const stack = new StackController(ctx);
+  ctx.actions.openStack = (folder, anchor) => stack.open(folder, anchor);
   const tools = new ToolsController(ctx, storage, clip, () => windowsSvc.target());
   // First run: nothing that changes Windows' behaviour until the guided setup is finished.
   let onboarding = settings.firstRun && !SMOKE && !MEASURE && !settings.get().general.onboarded;
@@ -307,9 +310,10 @@ async function main() {
   tools.registerIpc();
   welcome.registerIpc();
   capture.registerIpc();
+  stack.registerIpc();
   notificationCenter.registerIpc();
   topbar.registerIpc();
-  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools, welcome, capture });
+  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools, welcome, capture, stack });
   registerExtrasIpc(ctx, () => settingsUi.window, { extensions, ai, windows: windowsSvc, profiles, automations, updates });
 
   // ---------- First run: build a Dock from installed apps ----------
@@ -568,7 +572,7 @@ async function main() {
     launcher.hide();
     return ms;
   });
-  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage, welcome, updates, capture }, shutdown);
+  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage, welcome, updates, capture, stack }, shutdown);
 }
 
 function showSplash(firstRun: boolean, lang: 'fr' | 'en'): BrowserWindow {
@@ -624,7 +628,7 @@ function broadcastSettings(ctx: OrelleContext) {
 
 function registerSharedIpc(
   ctx: OrelleContext,
-  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; mission: MissionControlController; tools: ToolsController; welcome: WelcomeController; capture: CaptureController },
+  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; mission: MissionControlController; tools: ToolsController; welcome: WelcomeController; capture: CaptureController; stack: StackController },
 ) {
   const surfaceOf = (wc: WebContents): SurfaceKind | null => {
     if (c.dock.window?.webContents === wc) return 'dock';
@@ -641,6 +645,7 @@ function registerSharedIpc(
     if (c.tools.is(wc)) return 'tools';
     if (c.welcome.is(wc)) return 'welcome';
     if (c.capture.window?.webContents === wc) return 'capture';
+    if (c.stack.panel.window?.webContents === wc) return 'stack';
     return null;
   };
 
@@ -703,7 +708,7 @@ async function runSmoke(
   ctx: OrelleContext,
   c: {
     dock: DockController; launcher: LauncherController; search: SearchService; files: FileIndex; widgets: WidgetsController; control: ControlCenterController; system: SystemService; apps: AppsController;
-    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService; welcome: WelcomeController; updates: UpdateService; capture: CaptureController;
+    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService; welcome: WelcomeController; updates: UpdateService; capture: CaptureController; stack: StackController;
   },
   shutdown: () => void,
 ) {
@@ -873,6 +878,12 @@ async function runSmoke(
       await shot('tools-network', c.tools.window);
       c.tools.window?.close();
     }
+    // Dock folder stack on the Downloads folder.
+    c.stack.open(app.getPath('downloads'), { x: 900, y: 1000, width: 48, height: 48 });
+    await wait(1500);
+    check('dock folder stack', c.stack.panel.isVisible());
+    await shot('stack', c.stack.panel.window);
+    c.stack.panel.hide();
     const diag = buildDiagnostics(ctx);
     check('diagnostics report', diag.includes('"capabilities"') && !diag.includes(os.homedir()), { chars: diag.length });
     const capDir = argValue('orelle-capture');

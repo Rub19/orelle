@@ -291,6 +291,8 @@ export interface Settings {
     recentsCount: number;
     showMinimized: boolean;
     showLabels: boolean;
+    /** Folders open as a stack above the Dock instead of a window. */
+    folderStacks: boolean;
     items: DockItem[];
   };
   launcher: {
@@ -468,7 +470,7 @@ export interface AppInfo {
   icon: string | null;
 }
 
-export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications' | 'mission' | 'tools' | 'welcome' | 'capture';
+export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications' | 'mission' | 'tools' | 'welcome' | 'capture' | 'stack';
 
 export interface Bootstrap {
   surface: SurfaceKind;

@@ -334,7 +334,10 @@ function bindTile(node: HTMLElement) {
     dragState = null;
     try { node.releasePointerCapture(e.pointerId); } catch { /* already released */ }
     if (!d.active) {
-      if (!canceled) orelle.dock.activate(d.key, { newInstance: e.shiftKey });
+      if (!canceled) {
+        const r = node.getBoundingClientRect();
+        orelle.dock.activate(d.key, { newInstance: e.shiftKey, anchor: { x: r.left, y: r.top, width: r.width, height: r.height } });
+      }
       return;
     }
     node.classList.remove('dragging', 'removing');

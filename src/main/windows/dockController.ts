@@ -533,8 +533,17 @@ export class DockController {
     ipcMain.on('dock:interactive', (e, on: boolean) => {
       if (fromDock(e)) this.win!.setIgnoreMouseEvents(!on, { forward: true });
     });
-    ipcMain.on('dock:activate', (e, key: string, opts: { newInstance?: boolean }) => {
-      if (fromDock(e) && typeof key === 'string') void this.activate(key, { newInstance: !!opts?.newInstance });
+    ipcMain.on('dock:activate', (e, key: string, opts: { newInstance?: boolean; anchor?: { x: number; y: number; width: number; height: number } }) => {
+      if (!fromDock(e) || typeof key !== 'string') return;
+      // Folders: a stack above the icon (Shift+click opens the folder itself).
+      const item = this.ctx.settings.get().dock.items.find((i) => i.id === key);
+      const a = opts?.anchor;
+      if (item?.type === 'folder' && !item.path.startsWith('shell:') && !opts?.newInstance && this.ctx.settings.get().dock.folderStacks && a && this.win && [a.x, a.y, a.width, a.height].every(Number.isFinite)) {
+        const b = this.win.getBounds();
+        this.ctx.actions.openStack?.(item.path, { x: Math.round(b.x + a.x), y: Math.round(b.y + a.y), width: Math.round(a.width), height: Math.round(a.height) });
+        return;
+      }
+      void this.activate(key, { newInstance: !!opts?.newInstance });
     });
     ipcMain.on('dock:context', (e, key: string | null) => {
       if (fromDock(e)) this.showContextMenu(typeof key === 'string' ? key : null);

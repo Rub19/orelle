@@ -83,7 +83,7 @@ export function defaultSettings(): Settings {
       showRecents: false,
       recentsCount: 3,
       showMinimized: false,
-      showLabels: true,
+      showLabels: true, folderStacks: true,
       // Populated on first run from the installed apps (see main/services/firstRun.ts).
       items: [],
     },
@@ -350,6 +350,7 @@ export function normalizeSettings(raw: unknown): Settings {
       recentsCount: Math.round(clamp(k.recentsCount, 1, 8, d.dock.recentsCount)),
       showMinimized: bool(k.showMinimized, d.dock.showMinimized),
       showLabels: bool(k.showLabels, d.dock.showLabels),
+      folderStacks: bool(k.folderStacks, d.dock.folderStacks),
       items,
     },
     launcher: {

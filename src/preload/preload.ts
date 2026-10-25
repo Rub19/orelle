@@ -22,6 +22,7 @@ export interface AudioSessionDto { pid: number; system: boolean; active: boolean
 export interface FileItemDto { path: string; size: number; mtime: number }
 export interface ScanResultDto { ok: boolean; canceled?: boolean; root: string; total: number; files: number; skipped: number; children: { path: string; name: string; size: number; files: number; dir: boolean }[]; largest: FileItemDto[]; ms: number }
 export interface ClipItemDto { id: string; kind: 'text' | 'image'; text: string; thumb: string | null; width?: number; height?: number; at: number; pinned: boolean; source: string | null }
+export interface StackItemDto { path: string; name: string; dir: boolean; mtime: number; icon: string | null; thumb: string | null }
 export interface MenuAppDto { id: string; name: string; icon: string | null }
 export interface MenuDataDto { apps: MenuAppDto[]; pinned: MenuAppDto[]; profiles: { id: string; name: string; glyph: string; on: boolean }[]; user: string }
 export interface ExtensionInfoDto {
@@ -49,7 +50,7 @@ const api = {
     onState: (cb: (s: DockState) => void) => on('dock:state', cb),
     onLayout: (cb: (l: DockLayout) => void) => on('dock:layout', cb),
     setInteractive: (v: boolean) => ipcRenderer.send('dock:interactive', v),
-    activate: (key: string, opts: { newInstance?: boolean } = {}) => ipcRenderer.send('dock:activate', key, opts),
+    activate: (key: string, opts: { newInstance?: boolean; anchor?: { x: number; y: number; width: number; height: number } } = {}) => ipcRenderer.send('dock:activate', key, opts),
     contextMenu: (key: string | null) => ipcRenderer.send('dock:context', key),
     reorder: (ids: string[]) => ipcRenderer.send('dock:reorder', ids),
     remove: (key: string) => ipcRenderer.send('dock:remove', key),
@@ -161,6 +162,15 @@ const api = {
     onFrame: (cb: (f: { image: string; windows: { x: number; y: number; w: number; h: number; title: string }[] }) => void) => on('capture:frame', cb),
     done: (rect: { x: number; y: number; w: number; h: number } | null) => ipcRenderer.send('capture:done', rect),
     cancel: () => ipcRenderer.send('capture:cancel'),
+  },
+
+  stack: {
+    data: (): Promise<{ folder: string; name: string; items: StackItemDto[] } | null> => ipcRenderer.invoke('stack:data'),
+    onRefresh: (cb: () => void) => on('stack:refresh', cb),
+    open: (p: string) => ipcRenderer.send('stack:open', p),
+    reveal: (p: string) => ipcRenderer.send('stack:reveal', p),
+    openFolder: () => ipcRenderer.send('stack:openFolder'),
+    hide: () => ipcRenderer.send('stack:hide'),
   },
 
   welcome: {

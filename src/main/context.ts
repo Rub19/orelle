@@ -35,6 +35,8 @@ export interface OrelleContext {
     toggleMission?(): void;
     /** Screenshot tool. */
     capture?(): void;
+    /** Dock folder stack next to an icon (screen DIP). */
+    openStack?(folder: string, anchor: { x: number; y: number; width: number; height: number }): void;
     notify?(n: { title: string; body: string; source: string; glyph: string; action?: string }): void;
   };
 }

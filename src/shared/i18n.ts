@@ -1131,6 +1131,12 @@ const fr = {
   'settings.updates.restart': 'Redémarrer maintenant',
   'settings.updates.state.downloading': 'Téléchargement… {p} %',
   'settings.updates.state.ready': 'Version {v} téléchargée.',
+  'stack.openFolder': 'Ouvrir « {name} »',
+  'stack.count': '{n} élément(s), les plus récents d’abord',
+  'stack.empty': 'Ce dossier est vide.',
+  'stack.hint': 'Clic droit : afficher dans le dossier',
+  'settings.dock.folderStacks': 'Dossiers en pile',
+  'settings.dock.folderStacks.desc': 'Un clic sur un dossier du Dock affiche ses derniers éléments au-dessus de l’icône. Maj+clic ouvre le dossier.',
 };
 
 export type StringKey = keyof typeof fr;
@@ -2239,6 +2245,12 @@ const en: Record<StringKey, string> = {
   'settings.updates.restart': 'Restart now',
   'settings.updates.state.downloading': 'Downloading… {p}%',
   'settings.updates.state.ready': 'Version {v} downloaded.',
+  'stack.openFolder': 'Open “{name}”',
+  'stack.count': '{n} item(s), newest first',
+  'stack.empty': 'This folder is empty.',
+  'stack.hint': 'Right-click: show in folder',
+  'settings.dock.folderStacks': 'Folder stacks',
+  'settings.dock.folderStacks.desc': 'Clicking a Dock folder shows its latest items above the icon. Shift+click opens the folder.',
 };
 
 const DICTS = { fr: fr as Record<StringKey, string>, en };
