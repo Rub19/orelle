@@ -27,6 +27,7 @@ New-Item -ItemType Directory -Force -Path $CacheDir | Out-Null
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 
@@ -43,10 +44,23 @@ public static class OrelleIcons {
   struct BITMAP { public int bmType; public int bmWidth; public int bmHeight; public int bmWidthBytes; public ushort bmPlanes; public ushort bmBitsPixel; public IntPtr bmBits; }
 
   [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr h);
+  [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr h);
   [DllImport("gdi32.dll")] static extern int GetObject(IntPtr h, int size, out BITMAP bm);
+
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  struct SHFILEINFO {
+    public IntPtr hIcon; public int iIcon; public uint dwAttributes;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string szDisplayName;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)] public string szTypeName;
+  }
+  [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+  static extern IntPtr SHGetFileInfo(string path, uint attributes, ref SHFILEINFO info, uint cbFileInfo, uint flags);
 
   // Returns true when an icon was written to outFile.
   public static bool Save(string parsingName, string outFile, int size) {
+    // Prefer the native HICON path: unlike the shell image factory it carries
+    // the Windows icon mask correctly for legacy EXE icons.
+    if (SaveNativeIcon(parsingName, outFile, size)) return true;
     Guid iid = new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");
     IShellItemImageFactory f;
     if (SHCreateItemFromParsingName(parsingName, IntPtr.Zero, ref iid, out f) != 0 || f == null) return false;
@@ -62,6 +76,10 @@ public static class OrelleIcons {
       Marshal.Copy(bm.bmBits, px, 0, px.Length);
       bool hasAlpha = false;
       for (int i = 3; i < px.Length; i += 4) { if (px[i] != 0) { hasAlpha = true; break; } }
+      // Some Windows shell providers return a useful colour bitmap but leave
+      // every alpha byte at zero. Do not turn that transparent canvas opaque:
+      // ask the Shell for the native HICON instead, which preserves its mask.
+      if (!hasAlpha && SaveNativeIcon(parsingName, outFile, size)) return true;
       if (!hasAlpha) { for (int i = 3; i < px.Length; i += 4) px[i] = 255; }
       using (Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppPArgb)) {
         BitmapData d = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
@@ -72,18 +90,61 @@ public static class OrelleIcons {
             Marshal.Copy(px, src, IntPtr.Add(d.Scan0, y * d.Stride), Math.Min(stride, d.Stride));
           }
         } finally { bmp.UnlockBits(d); }
-        bmp.Save(outFile, ImageFormat.Png);
+        SaveFramed(bmp, outFile, size);
       }
       return true;
     } catch { return false; }
     finally { DeleteObject(hbm); Marshal.ReleaseComObject(f); }
+  }
+
+  static bool SaveNativeIcon(string parsingName, string outFile, int size) {
+    SHFILEINFO info = new SHFILEINFO();
+    if (SHGetFileInfo(parsingName, 0, ref info, (uint)Marshal.SizeOf(typeof(SHFILEINFO)), 0x100) == IntPtr.Zero || info.hIcon == IntPtr.Zero) return false;
+    try {
+      using (Icon icon = Icon.FromHandle(info.hIcon)) using (Bitmap bmp = icon.ToBitmap()) SaveFramed(bmp, outFile, size);
+      return true;
+    } catch { return false; }
+    finally { DestroyIcon(info.hIcon); }
+  }
+
+  static void SaveFramed(Bitmap bmp, string outFile, int size) {
+    int w = bmp.Width, h = bmp.Height;
+    Rectangle bounds = FindAlphaBounds(bmp);
+    if (bounds.Width <= 0 || bounds.Height <= 0) bounds = new Rectangle(0, 0, w, h);
+    int side = Math.Max(bounds.Width, bounds.Height);
+    int pad = Math.Max(2, (int)Math.Ceiling(side * 0.08));
+    int left = Math.Max(0, bounds.X - pad), top = Math.Max(0, bounds.Y - pad);
+    int right = Math.Min(w, bounds.Right + pad), bottom = Math.Min(h, bounds.Bottom + pad);
+    side = Math.Max(right - left, bottom - top);
+    left = Math.Max(0, Math.Min(left, w - side));
+    top = Math.Max(0, Math.Min(top, h - side));
+    using (var framed = new Bitmap(size, size, PixelFormat.Format32bppPArgb))
+    using (var g = Graphics.FromImage(framed)) {
+      g.Clear(Color.Transparent);
+      g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+      g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+      g.DrawImage(bmp, new Rectangle(0, 0, size, size), new Rectangle(left, top, side, side), GraphicsUnit.Pixel);
+      framed.Save(outFile, ImageFormat.Png);
+    }
+  }
+
+  static Rectangle FindAlphaBounds(Bitmap bmp) {
+    int left = bmp.Width, top = bmp.Height, right = -1, bottom = -1;
+    for (int y = 0; y < bmp.Height; y++) for (int x = 0; x < bmp.Width; x++) {
+      if (bmp.GetPixel(x, y).A < 8) continue;
+      if (x < left) left = x;
+      if (y < top) top = y;
+      if (x > right) right = x;
+      if (y > bottom) bottom = y;
+    }
+    return right < left ? Rectangle.Empty : Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
   }
 }
 '@
 
 function Get-IconFile([string]$parsingName) {
   $sha = [System.Security.Cryptography.SHA1]::Create()
-  $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($parsingName.ToLowerInvariant() + "|$Size")) | ForEach-Object { $_.ToString('x2') })
+  $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($parsingName.ToLowerInvariant() + "|$Size|2")) | ForEach-Object { $_.ToString('x2') })
   $file = Join-Path $CacheDir "$hash.png"
   if (Test-Path -LiteralPath $file) { return $file }
   if ([OrelleIcons]::Save($parsingName, $file, $Size)) { return $file }

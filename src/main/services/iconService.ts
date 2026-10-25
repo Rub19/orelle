@@ -10,6 +10,9 @@ import { runShellHelper } from './shellBridge';
 import { log } from '../logger';
 
 export const ICON_SIZE = 128;
+// Bump this when the bitmap framing changes; stale cached PNGs must not keep
+// the old transparent shell around after an update.
+export const ICON_RENDER_VERSION = 2;
 
 export function registerIconScheme() {
   protocol.registerSchemesAsPrivileged([{ scheme: 'orelle-icon', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
@@ -60,7 +63,7 @@ export class IconService extends EventEmitter {
   }
 
   fileFor(parsingName: string): string {
-    const hash = createHash('sha1').update(`${parsingName.toLowerCase()}|${ICON_SIZE}`, 'utf8').digest('hex');
+    const hash = createHash('sha1').update(`${parsingName.toLowerCase()}|${ICON_SIZE}|${ICON_RENDER_VERSION}`, 'utf8').digest('hex');
     return path.join(this.cacheDir, `${hash}.png`);
   }
 

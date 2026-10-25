@@ -64,6 +64,7 @@ import { setDeElevatedLaunch } from './services/launchService';
 import { buildDiagnostics } from './services/diagnostics';
 import { diagnose } from './services/networkService';
 import { panelTiming } from './windows/panelWindow';
+import { hasOtherOrelleSurface } from './smokeGuard';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
 const SMOKE = process.argv.includes('--orelle-smoke');
@@ -112,6 +113,11 @@ if (process.argv.includes('--orelle-restore-taskbar')) {
   });
 } else {
   const start = () => {
+    if (SMOKE && hasOtherOrelleSurface(w32.enumTopLevelWindows().map((hwnd) => ({ pid: w32.getWindowPid(hwnd), title: w32.getWindowText(hwnd) })), process.pid)) {
+      console.log('Orelle smoke skipped: another Orelle surface is already running.');
+      app.exit(0);
+      return;
+    }
     if (!SMOKE && !app.requestSingleInstanceLock()) app.quit();
     // Nothing was running: nothing to stop (the installer calls this unconditionally).
     else if (process.argv.includes('--orelle-quit')) app.quit();

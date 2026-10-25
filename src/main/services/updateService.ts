@@ -128,6 +128,9 @@ export class UpdateService {
   /** Quits Orelle (restoring the taskbar as usual) and runs the downloaded installer silently. */
   install() {
     if (this.status.state !== 'ready') return false;
+    // Settings writes are debounced; flush before electron-updater hands the
+    // process to the installer so the last user change survives the restart.
+    this.ctx.settings.flush();
     setImmediate(() => autoUpdater.quitAndInstall(true, true));
     return true;
   }

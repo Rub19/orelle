@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { SETTINGS_VERSION, applyPatch, defaultSettings, migrate, normalizeSettings } from '../src/shared/settings';
+import { SettingsService } from '../src/main/services/settingsService';
 
 describe('settings normalization', () => {
   it('fills a complete object from nothing', () => {
@@ -73,5 +77,29 @@ describe('settings normalization', () => {
     const next = applyPatch(defaultSettings(), JSON.parse('{"__proto__": {"polluted": true}, "dock": {"autoHide": true}}'));
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(next.dock.autoHide).toBe(true);
+  });
+
+  it('keeps user options after a service restart', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'orelle-settings-'));
+    try {
+      const first = new SettingsService(dir);
+      first.update({
+        general: { language: 'en', launchAtLogin: true },
+        dock: { iconSize: 76, position: 'left' },
+        appearance: { accent: '#ff8800' },
+      });
+      first.flush();
+
+      const afterUpdate = new SettingsService(dir);
+      expect(afterUpdate.firstRun).toBe(false);
+      expect(afterUpdate.get().general.language).toBe('en');
+      expect(afterUpdate.get().general.launchAtLogin).toBe(true);
+      expect(afterUpdate.get().dock.iconSize).toBe(76);
+      expect(afterUpdate.get().dock.position).toBe('left');
+      expect(afterUpdate.get().appearance.accent).toBe('#ff8800');
+      expect(fs.existsSync(path.join(dir, 'settings.json'))).toBe(true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
