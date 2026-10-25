@@ -14,6 +14,7 @@ import type { ScreenTimeService } from '../services/screenTimeService';
 import type { SystemService } from '../services/systemService';
 import type { WeatherService } from '../services/weatherService';
 import { log } from '../logger';
+import { lockNavigation, openSurfaceWindow, whenReady } from './sharedHost';
 
 const SYS32 = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32');
 
@@ -38,8 +39,12 @@ export class WidgetsController {
     const s = this.ctx.settings.get();
     if (!s.widgets.enabled) return;
     this.seed();
-    this.create();
+    void this.create();
   }
+
+  /** The Dock's window, whose renderer process the widget layer shares (set by main). */
+  host: () => BrowserWindow | null = () => null;
+  private creating = false;
 
   /** First run: a clock and a system monitor in the top-right corner. */
   private seed() {
@@ -59,8 +64,10 @@ export class WidgetsController {
     return screen.getAllDisplays().find((d) => String(d.id) === id) ?? screen.getPrimaryDisplay();
   }
 
-  private create() {
-    const win = new BrowserWindow({
+  private async create() {
+    if (this.win || this.creating) return;
+    this.creating = true;
+    const win = await openSurfaceWindow(this.ctx, 'widgets', {
       show: false,
       frame: false,
       transparent: true,
@@ -73,28 +80,21 @@ export class WidgetsController {
       skipTaskbar: true,
       hasShadow: false,
       title: 'Orelle Widgets',
-      webPreferences: {
-        preload: this.ctx.preload,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-        spellcheck: false,
-        backgroundThrottling: true,
-        additionalArguments: ['--orelle-surface=widgets'],
-      },
-    });
+      webPreferences: { backgroundThrottling: true },
+    }, this.host());
+    this.creating = false;
     this.win = win;
     this.hwnd = Number(win.getNativeWindowHandle().readBigUInt64LE());
     win.setIgnoreMouseEvents(true, { forward: true });
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-    win.webContents.on('will-navigate', (e) => e.preventDefault());
+    lockNavigation(this.ctx, win, 'widgets');
     win.webContents.on('render-process-gone', (_e, d) => {
       log.error('widgets', `Renderer gone (${d.reason}); reloading`);
       setTimeout(() => !win.isDestroyed() && win.reload(), 500);
     });
     // Widgets live on the desktop: whenever the layer loses focus it goes back under every window.
     win.on('blur', () => w32.sendToBottom(this.hwnd));
-    win.once('ready-to-show', () => {
+    whenReady(win, () => {
       this.layout();
       if (!w32.attachToDesktop(this.hwnd)) log.warn('widgets', 'Could not attach the widget layer to the desktop');
       win.showInactive();
@@ -105,7 +105,6 @@ export class WidgetsController {
       this.system.off('stats', this.statsListener);
       this.win = null;
     });
-    void win.loadFile(this.ctx.rendererFile('widgets'));
   }
 
   destroy() {

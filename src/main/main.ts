@@ -329,8 +329,10 @@ async function main() {
   // Crash recovery first (restores a taskbar left auto-hidden), then the user's choice.
   taskbar.apply(SAFE || onboarding ? 'normal' : settings.get().general.taskbarMode);
   profiles.start();
-  topbar.start();
+  topbar.host = () => dock.window;
+  widgets.host = () => dock.window;
   dock.start();
+  topbar.start();
   widgets.start();
   if (PERF !== 'light' || SMOKE) launcher.create();
   panelTiming.releaseAfter = SMOKE ? 60_000 : TUNE.releasePanelsAfter;
@@ -707,7 +709,10 @@ async function runSmoke(
 ) {
   const report: Record<string, unknown> = { ok: false };
   const checks: { name: string; ok: boolean; detail?: unknown }[] = [];
-  const check = (name: string, ok: boolean, detail?: unknown) => checks.push({ name, ok, detail });
+  const check = (name: string, ok: boolean, detail?: unknown) => {
+    checks.push({ name, ok, detail });
+    log.info('smoke', `${ok ? 'ok' : 'FAIL'} ${name}`);
+  };
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
   try {
     await wait(2500);
@@ -756,7 +761,9 @@ async function runSmoke(
       const dir = argValue('orelle-capture');
       if (dir && w) {
         fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(path.join(dir, `${name}.png`), (await w.webContents.capturePage()).toPNG());
+        // A guest window can fail to answer capturePage: never let a screenshot block the test.
+        const img = await Promise.race([w.webContents.capturePage(), wait(4000).then(() => null)]);
+        if (img) fs.writeFileSync(path.join(dir, `${name}.png`), img.toPNG());
       }
     };
     await shot('menu', c.menu.panel.window);

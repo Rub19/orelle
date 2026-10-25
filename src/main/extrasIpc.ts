@@ -110,6 +110,8 @@ export function registerExtrasIpc(
   });
   ipcMain.handle('settings:updateStatus', (e) => (from(e) ? s.updates.status : null));
   ipcMain.handle('settings:checkUpdates', (e) => (from(e) ? s.updates.check(true) : null));
+  ipcMain.handle('settings:downloadUpdate', (e) => (from(e) ? s.updates.download() : false));
+  ipcMain.handle('settings:installUpdate', (e) => (from(e) ? s.updates.install() : false));
   ipcMain.on('settings:openRelease', (e) => {
     const url = s.updates.status.url;
     if (from(e) && url && url.startsWith('https://github.com/')) void shell.openExternal(url);

@@ -17,9 +17,11 @@
     "smoke": "node scripts/build.mjs && electron . --orelle-smoke",
     "check": "npm run typecheck && npm test && npm run smoke",
     "dist": "node scripts/build.mjs && electron-builder --win nsis --x64 --publish never",
-    "measure": "node scripts/build.mjs && electron . --orelle-measure"
+    "measure": "node scripts/build.mjs && electron . --orelle-measure",
+    "release": "node scripts/build.mjs && electron-builder --win nsis --x64 --publish always"
   },
   "dependencies": {
+    "electron-updater": "6.8.10",
     "koffi": "3.3.3"
   },
   "devDependencies": {
@@ -90,6 +92,14 @@
       "fr",
       "en-US"
     ],
-    "compression": "maximum"
+    "compression": "maximum",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Rub19",
+        "repo": "orelle-releases",
+        "releaseType": "release"
+      }
+    ]
   }
 }

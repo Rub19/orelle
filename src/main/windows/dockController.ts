@@ -10,6 +10,7 @@ import type { OrelleContext } from '../context';
 import * as w32 from '../native/win32';
 import { launchApp, openPath, openUrl, revealPath, safeLaunch } from '../services/launchService';
 import { log } from '../logger';
+import { makeHost } from './sharedHost';
 
 const BAR_PAD = 8;
 const EDGE_GAP = 6;
@@ -66,7 +67,8 @@ export class DockController {
     this.hwnd = Number(win.getNativeWindowHandle().readBigUInt64LE());
     win.setAlwaysOnTop(true, 'pop-up-menu');
     win.setIgnoreMouseEvents(true, { forward: true });
-    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    // The Dock's page also hosts the top bar and widget windows (one shared renderer process).
+    makeHost(win);
     win.webContents.on('will-navigate', (e) => e.preventDefault());
     win.webContents.on('render-process-gone', (_e, details) => {
       log.error('dock', `Renderer gone (${details.reason}); reloading`);

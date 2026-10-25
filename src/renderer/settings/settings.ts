@@ -681,12 +681,24 @@ function pageAbout(): HTMLElement[] {
 
 function updateRow(): HTMLElement {
   const status = el('span', { class: 'ok-text' });
-  const show = (s: { state: string; latest?: string; at?: number } | null) => {
+  let poll: number | null = null;
+  const show = (s: { state: string; latest?: string; at?: number; percent?: number } | null) => {
     if (!s || s.state === 'idle') { status.textContent = ''; return; }
-    status.textContent = t(`settings.updates.state.${s.state}` as StringKey, { v: s.latest ?? '' });
-    if (s.state === 'available') status.append(' ', button(t('settings.updates.open'), () => orelle.settings.openRelease(), 'btn small', 'external'));
+    status.textContent = t(`settings.updates.state.${s.state}` as StringKey, { v: s.latest ?? '', p: s.percent ?? 0 });
+    if (s.state === 'available') {
+      status.append(' ', button(t('settings.updates.download'), async () => {
+        if (await orelle.settings.downloadUpdate()) watch();
+        else orelle.settings.openRelease();
+      }, 'btn small primary', 'download'));
+    }
+    if (s.state === 'ready') status.append(' ', button(t('settings.updates.restart'), () => void orelle.settings.installUpdate(), 'btn small primary', 'restart'));
+    if (s.state !== 'downloading' && poll) { clearInterval(poll); poll = null; }
   };
-  void orelle.settings.updateStatus().then(show);
+  const watch = () => {
+    if (poll) return;
+    poll = window.setInterval(() => void orelle.settings.updateStatus().then(show), 700);
+  };
+  void orelle.settings.updateStatus().then((s) => { show(s); if (s?.state === 'downloading') watch(); });
   return el('div', { class: 'slider' }, status, button(t('settings.updates.check'), async () => {
     status.textContent = '…';
     show(await orelle.settings.checkUpdates());

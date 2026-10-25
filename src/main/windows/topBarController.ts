@@ -15,6 +15,7 @@ import type { SystemService } from '../services/systemService';
 import type { TaskbarService } from '../services/taskbarService';
 import { SNAP_HOTKEYS, type SnapTarget, type WindowService } from '../services/windowService';
 import { log } from '../logger';
+import { lockNavigation, openSurfaceWindow, whenReady } from './sharedHost';
 
 export const TOP_BAR_HEIGHT = 30;
 // The window reaches a little below the reserved strip (transparent and click-through there):
@@ -75,12 +76,18 @@ export class TopBarController {
     return !!this.win?.isVisible();
   }
 
+  /** The Dock's window, whose renderer process the top bar shares (set by main). */
+  host: () => BrowserWindow | null = () => null;
+  private creating = false;
+
   start() {
-    if (this.ctx.settings.get().topBar.enabled) this.create();
+    if (this.ctx.settings.get().topBar.enabled) void this.create();
   }
 
-  private create() {
-    const win = new BrowserWindow({
+  private async create() {
+    if (this.win || this.creating) return;
+    this.creating = true;
+    const win = await openSurfaceWindow(this.ctx, 'topbar', {
       show: false,
       frame: false,
       transparent: true,
@@ -96,21 +103,14 @@ export class TopBarController {
       hasShadow: false,
       thickFrame: false,
       title: 'Orelle Top Bar',
-      webPreferences: {
-        preload: this.ctx.preload,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-        spellcheck: false,
-        additionalArguments: ['--orelle-surface=topbar'],
-      },
-    });
+    }, this.host());
+    this.creating = false;
     this.win = win;
     this.hwnd = Number(win.getNativeWindowHandle().readBigUInt64LE());
     win.setAlwaysOnTop(true, 'pop-up-menu');
     win.setIgnoreMouseEvents(true, { forward: true });
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-    win.webContents.on('will-navigate', (e) => e.preventDefault());
+    lockNavigation(this.ctx, win, 'topbar');
     win.webContents.on('render-process-gone', (_e, details) => {
       log.error('topbar', `Renderer gone (${details.reason}); reloading`);
       if (!win.isDestroyed()) setTimeout(() => !win.isDestroyed() && win.reload(), 500);
@@ -118,7 +118,7 @@ export class TopBarController {
     win.hookWindowMessage(APPBAR_MSG, (wParam) => {
       if (wParam.readUInt32LE(0) === 1) this.layout(); // ABN_POSCHANGED
     });
-    win.once('ready-to-show', () => {
+    whenReady(win, () => {
       this.layout();
       this.pushState();
       win.showInactive();
@@ -127,7 +127,6 @@ export class TopBarController {
       this.releaseAppBar();
       this.win = null;
     });
-    void win.loadFile(this.ctx.rendererFile('topbar'));
     this.syncPolling();
   }
 
@@ -186,7 +185,7 @@ export class TopBarController {
       if (this.win) this.destroy();
       return;
     }
-    if (!this.win) return this.create();
+    if (!this.win) return void this.create();
     if (next.topBar.display !== prev.topBar.display) this.layout();
     this.syncPolling();
     this.pushState();

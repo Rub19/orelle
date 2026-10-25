@@ -1125,6 +1125,12 @@ const fr = {
   'tools.net.fail.latency': 'Internet répond mais le ping est bloqué ou très lent.',
   'settings.capture': 'Capture d’écran',
   'settings.capture.desc': 'Ctrl+Alt+S : glissez une zone, cliquez une fenêtre ou Entrée pour tout l’écran. Enregistré dans Images\\Captures d’écran et copié.',
+  'updates.ready': 'Orelle {v} est prêt à être installé',
+  'updates.readyBody': 'Redémarrez Orelle pour terminer (ou il s’installera à la prochaine fermeture).',
+  'settings.updates.download': 'Télécharger et installer',
+  'settings.updates.restart': 'Redémarrer maintenant',
+  'settings.updates.state.downloading': 'Téléchargement… {p} %',
+  'settings.updates.state.ready': 'Version {v} téléchargée.',
 };
 
 export type StringKey = keyof typeof fr;
@@ -2227,6 +2233,12 @@ const en: Record<StringKey, string> = {
   'tools.net.fail.latency': 'The Internet answers but ping is blocked or very slow.',
   'settings.capture': 'Screenshot',
   'settings.capture.desc': 'Ctrl+Alt+S: drag an area, click a window or press Enter for the whole screen. Saved to Pictures\\Screenshots and copied.',
+  'updates.ready': 'Orelle {v} is ready to install',
+  'updates.readyBody': 'Restart Orelle to finish (or it installs the next time Orelle quits).',
+  'settings.updates.download': 'Download and install',
+  'settings.updates.restart': 'Restart now',
+  'settings.updates.state.downloading': 'Downloading… {p}%',
+  'settings.updates.state.ready': 'Version {v} downloaded.',
 };
 
 const DICTS = { fr: fr as Record<StringKey, string>, en };
