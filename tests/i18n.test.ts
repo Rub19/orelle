@@ -22,4 +22,9 @@ describe('i18n', () => {
     expect(createTranslator('fr')('topbar.admin')).toContain('administrateur');
     expect(createTranslator('en')('topbar.admin').toLowerCase()).toContain('administrator');
   });
+
+  it('provides a dedicated updates settings category in both languages', () => {
+    expect(createTranslator('fr')('settings.section.updates')).toBe('Mises à jour');
+    expect(createTranslator('en')('settings.section.updates')).toBe('Updates');
+  });
 });

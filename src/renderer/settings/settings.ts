@@ -8,7 +8,7 @@ import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
 import { pageStudio, pageAi, pageAutomations, pageExtensions, pageNotifications, pageProfiles, pageTopBar, pageWindows, type Kit } from './shellPages';
 
-type Section = 'general' | 'appearance' | 'studio' | 'topbar' | 'dock' | 'launcher' | 'windows' | 'profiles' | 'widgets' | 'notifications' | 'apps' | 'extensions' | 'automations' | 'ai' | 'privacy' | 'backup' | 'about';
+type Section = 'general' | 'appearance' | 'studio' | 'topbar' | 'dock' | 'launcher' | 'windows' | 'profiles' | 'widgets' | 'notifications' | 'apps' | 'extensions' | 'automations' | 'ai' | 'privacy' | 'backup' | 'updates' | 'about';
 const SECTIONS: { id: Section; glyph: string; color: string }[] = [
   { id: 'general', glyph: 'sliders', color: '#8e8e93' },
   { id: 'appearance', glyph: 'palette', color: '#bf5af2' },
@@ -26,6 +26,7 @@ const SECTIONS: { id: Section; glyph: string; color: string }[] = [
   { id: 'ai', glyph: 'sparkle', color: '#bf5af2' },
   { id: 'privacy', glyph: 'shield', color: '#30d158' },
   { id: 'backup', glyph: 'archive', color: '#ff9f0a' },
+  { id: 'updates', glyph: 'download', color: '#0a84ff' },
   { id: 'about', glyph: 'info', color: '#64d2ff' },
 ];
 
@@ -677,11 +678,6 @@ function pageAbout(): HTMLElement[] {
       row('settings.about.data', button(t('settings.about.data'), () => orelle.settings.openFolder('data'), 'btn', 'folder')),
       row('settings.about.diagnostics', button(t('settings.about.diagnosticsBtn'), () => void orelle.settings.saveDiagnostics(), 'btn', 'file'), 'settings.about.diagnostics.desc'),
     ),
-    ...group(
-      'settings.updates',
-      row('settings.updates.auto', toggle(settings.general.checkUpdates, (v) => void update({ general: { checkUpdates: v } })), 'settings.updates.auto.desc'),
-      row('settings.updates.now', updateRow()),
-    ),
   ];
 }
 
@@ -728,6 +724,20 @@ function updateRow(): HTMLElement {
   }, 'btn', 'refresh'));
 }
 
+function pageUpdates(): HTMLElement[] {
+  return [
+    ...group(
+      'settings.updates',
+      row('settings.updates.auto', toggle(settings.general.checkUpdates, (v) => void update({ general: { checkUpdates: v } })), 'settings.updates.auto.desc'),
+      row('settings.updates.now', updateRow()),
+    ),
+    ...group(
+      null,
+      row('settings.updates.windows', button(t('settings.updates.windows.open'), () => orelle.settings.openWinSettings('ms-settings:windowsupdate'), 'btn', 'external'), 'settings.updates.windows.desc'),
+    ),
+  ];
+}
+
 const kit: Kit = {
   settings: () => settings,
   displays: () => displays,
@@ -760,6 +770,7 @@ const PAGES: Record<Section, () => HTMLElement[]> = {
   ai: () => pageAi(kit),
   privacy: pagePrivacy,
   backup: pageBackup,
+  updates: pageUpdates,
   about: pageAbout,
 };
 
