@@ -366,10 +366,11 @@ async function main() {
   topbar.start();
   trayArea.start();
   widgets.start();
-  if (PERF !== 'light' || SMOKE) launcher.create();
+  // The launcher is lazy: its hotkey, the Windows-key hook and the tray action all
+  // create it on demand. Keeping it out of the normal startup removes a renderer
+  // process and avoids competing with the Dock for the first paint.
+  if (SMOKE) launcher.create();
   panelTiming.releaseAfter = SMOKE ? 60_000 : TUNE.releasePanelsAfter;
-  // Light profile: the launcher is loaded once the desktop is idle, not during startup.
-  if (PERF === 'light' && !SMOKE) setTimeout(() => launcher.create(), TUNE.prewarmLauncherAfter);
   const trimmer = new MemoryTrimmer(TUNE.trimHiddenAfter, TUNE.trimAwayAfter, () => {
     const fg = w32.getForegroundWindow();
     return !!fg && w32.getWindowPid(fg) === process.pid;
@@ -434,9 +435,9 @@ async function main() {
   // Background warm-up, once the UI is up.
   setTimeout(() => {
     apps.warmIcons();
-    // Light profile: the file index is built on the first file search instead.
+    // File search builds its index on first use. Do not scan user folders during idle startup.
     if (settings.get().launcher.providers.files && TUNE.buildFileIndexAtStart) void files.build();
-  }, SMOKE ? 0 : 8000);
+  }, SMOKE ? 0 : PERF === 'light' ? 8000 : 20_000);
 
   // ---------- Reactivity ----------
   const appOf = (hwnd: number | null) => {

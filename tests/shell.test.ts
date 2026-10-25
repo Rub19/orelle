@@ -70,6 +70,7 @@ describe('shell settings (v5)', () => {
   it('provides the four default profiles and a complete top bar', () => {
     const d = defaultExtras();
     expect(d.profiles.list.map((p) => p.id)).toEqual(['gaming', 'dev', 'streaming', 'focus']);
+    expect(d.profiles.list.every((p) => p.launchOnStartup === false)).toBe(true);
     expect(d.topBar.items.length).toBe(11);
     expect(d.ai.provider).toBe('none');
     expect(d.ai.consent).toBe(false);
@@ -84,7 +85,7 @@ describe('shell settings (v5)', () => {
       ],
       windows: { layouts: [{ id: 'l', name: 'L', windows: [{ app: 'C:\\A.EXE', x: 1, y: 2, w: 3, h: 4 }, { app: '' }] }] },
       ai: { provider: 'anthropic', endpoint: 'file:///etc/passwd', consent: 'yes' },
-      profiles: { active: 'ghost', list: [{ id: 'x', name: 'X' }, { id: 'x', name: 'dup' }] },
+      profiles: { active: 'ghost', list: [{ id: 'x', name: 'X', launchOnStartup: true }, { id: 'x', name: 'dup' }] },
     });
     expect(n.automations.map((a) => a.id)).toEqual(['a']);
     expect(n.automations[0].trigger).toEqual({ kind: 'time', at: '08:30', days: [1] });
@@ -92,6 +93,7 @@ describe('shell settings (v5)', () => {
     expect(n.ai).toEqual({ provider: 'anthropic', model: '', endpoint: '', consent: false });
     expect(n.profiles.list.map((p) => p.name)).toEqual(['X']);
     expect(n.profiles.active).toBeNull();
+    expect(n.profiles.list[0].launchOnStartup).toBe(true);
   });
 
   it('keeps the user order of top bar items and appends new ones', () => {

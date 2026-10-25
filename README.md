@@ -50,7 +50,7 @@ Options de ligne de commande :
 | **Capture d’écran** | `Ctrl+Alt+S`, menu, launcher | Zone, fenêtre ou écran entier ; enregistrée et copiée |
 | **Theme Studio** | Préférences | Préréglages (Minimal, Professionnel, Gaming, Créatif, inspiration macOS) avec aperçu avant application, arrondis, clair/sombre selon l’heure, fond d’écran, import/export de thèmes |
 | **Fenêtres** | `Ctrl+Alt+flèches`, menu de l’app, launcher | Moitiés, quarts, tiers, agrandir, centrer ; dispositions enregistrées et restaurées (lance les apps manquantes) |
-| **Profils** | barre, menu, launcher, automatisations | Gaming, Développement, Streaming, Productivité (modifiables) : thème, barre des tâches, widgets, concentration, alertes, apps à lancer, disposition ; tout est rétabli à la désactivation |
+| **Profils** | barre, menu, launcher, automatisations | Gaming, Développement, Streaming, Productivité (modifiables) : thème, barre des tâches, widgets, concentration, alertes, apps à lancer, option pour les relancer au démarrage, disposition ; tout est rétabli à la désactivation |
 | **Extensions** | launcher | Manifestes JSON déclaratifs (pages web, dossiers, texte) ; aucun code tiers exécuté ; permissions affichées ; deux extensions fournies |
 | **Automatisations** | Préférences | Déclencheurs (heure, app lancée, démarrage, raccourci, batterie faible, secteur/batterie, écran branché, profil activé), conditions (plage horaire, jours, alimentation, profil), plusieurs actions, historique d’exécution, import/export |
 | **Assistant IA** | launcher : `?` + question | Facultatif, désactivé par défaut : Claude (Anthropic), OpenAI ou Ollama local ; votre clé, chiffrée ; consentement explicite |

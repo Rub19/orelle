@@ -42,7 +42,11 @@ export class ProfileService implements SearchPlugin {
 
   /** Re-applies the runtime-only parts of the active profile after a restart. */
   start() {
-    this.applyRuntime(this.active);
+    const p = this.active;
+    this.applyRuntime(p);
+    // Startup apps are opt-in and delayed until the Orelle surfaces are painted.
+    // This keeps a profile useful across restarts without blocking the Dock.
+    if (p?.launchOnStartup && p.launch.length) setTimeout(() => void this.launchApps(p), 1500);
   }
 
   private applyRuntime(p: ActivityProfile | null) {
@@ -79,12 +83,16 @@ export class ProfileService implements SearchPlugin {
     this.applyRuntime(p);
     log.info('profiles', `Profile on: ${p.name}`);
     this.notifications.notify({ title: this.ctx.t('profiles.on', { name: p.name }), body: this.describe(p), source: 'profiles', glyph: p.glyph });
-    for (const a of p.launch) {
-      try { await launchApp({ appId: a.appId, path: a.path }); } catch (err) { log.warn('profiles', `Cannot launch ${a.name}`, err); }
-    }
+    await this.launchApps(p);
     if (p.layoutId) void this.windows.restore(p.layoutId, true);
     for (const fn of this.listeners) fn(p.id);
     return true;
+  }
+
+  private async launchApps(p: ActivityProfile) {
+    for (const a of p.launch) {
+      try { await launchApp({ appId: a.appId, path: a.path }); } catch (err) { log.warn('profiles', `Cannot launch ${a.name}`, err); }
+    }
   }
 
   /** Turns the active profile off and puts back what it changed. */

@@ -18,6 +18,7 @@ describe('performance profile', () => {
   it('samples less often in light mode', () => {
     expect(tuning('light').statsInterval).toBeGreaterThan(tuning('standard').statsInterval);
     expect(tuning('light').buildFileIndexAtStart).toBe(false);
+    expect(tuning('standard').buildFileIndexAtStart).toBe(false);
     expect(tuning('light').trimHiddenAfter).toBeLessThan(tuning('standard').trimHiddenAfter);
   });
 });

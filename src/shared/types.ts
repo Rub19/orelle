@@ -79,6 +79,8 @@ export interface ActivityProfile {
   glyph: string;
   /** Apps (dock-style references) launched when the profile is activated. */
   launch: { appId?: string; path?: string; name: string }[];
+  /** Relaunch the configured apps when Orelle starts with this profile active. */
+  launchOnStartup: boolean;
   /** Optional window layout restored after launching. */
   layoutId: string | null;
   /** Desktop wallpaper while active (restored afterwards). */

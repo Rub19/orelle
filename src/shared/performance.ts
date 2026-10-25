@@ -18,6 +18,6 @@ export function resolvePerformance(pref: PerformancePref, totalMemBytes: number,
 /** Sampling intervals and lifetimes per profile (ms). */
 export function tuning(profile: 'standard' | 'light') {
   return profile === 'light'
-    ? { statsInterval: 4000, volumePoll: 15_000, appRefreshDelay: 90_000, buildFileIndexAtStart: false, trimHiddenAfter: 15_000, trimAwayAfter: 30_000, releasePanelsAfter: 10 * 60_000, prewarmLauncherAfter: 20_000 }
-    : { statsInterval: 2000, volumePoll: 5000, appRefreshDelay: 10_000, buildFileIndexAtStart: true, trimHiddenAfter: 60_000, trimAwayAfter: 120_000, releasePanelsAfter: 10 * 60_000, prewarmLauncherAfter: 0 };
+    ? { statsInterval: 4000, volumePoll: 15_000, appRefreshDelay: 90_000, buildFileIndexAtStart: false, trimHiddenAfter: 15_000, trimAwayAfter: 30_000, releasePanelsAfter: 10 * 60_000 }
+    : { statsInterval: 2000, volumePoll: 5000, appRefreshDelay: 10_000, buildFileIndexAtStart: false, trimHiddenAfter: 60_000, trimAwayAfter: 120_000, releasePanelsAfter: 10 * 60_000 };
 }

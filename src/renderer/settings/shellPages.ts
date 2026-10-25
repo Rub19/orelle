@@ -140,6 +140,7 @@ function profileCard(k: Kit, p: ActivityProfile, all: ActivityProfile[]): HTMLEl
     k.row('settings.profiles.focus', k.toggle(p.focus, (v) => set({ focus: v })), 'settings.profiles.focus.desc'),
     k.row('settings.profiles.mute', k.toggle(p.muteAlerts, (v) => set({ muteAlerts: v })), 'settings.profiles.mute.desc'),
     k.row('settings.profiles.widgets', k.toggle(p.hideWidgets, (v) => set({ hideWidgets: v }))),
+    k.row('settings.profiles.launchOnStartup', k.toggle(p.launchOnStartup, (v) => set({ launchOnStartup: v })), 'settings.profiles.launchOnStartup.desc'),
     k.row('settings.profiles.theme', theme),
     k.row('settings.general.taskbarMode', taskbar),
     k.row('settings.profiles.layout', layout),
@@ -154,7 +155,7 @@ function profileCard(k: Kit, p: ActivityProfile, all: ActivityProfile[]): HTMLEl
 export function pageProfiles(k: Kit): HTMLElement[] {
   const all = k.settings().profiles.list;
   const add = k.button(t('settings.profiles.new'), () => {
-    const p: ActivityProfile = { id: uid('profile'), name: t('settings.profiles.newName'), glyph: 'sparkle', launch: [], layoutId: null, wallpaper: null, theme: null, taskbarMode: null, hideWidgets: false, focus: false, muteAlerts: false };
+    const p: ActivityProfile = { id: uid('profile'), name: t('settings.profiles.newName'), glyph: 'sparkle', launch: [], launchOnStartup: false, layoutId: null, wallpaper: null, theme: null, taskbarMode: null, hideWidgets: false, focus: false, muteAlerts: false };
     void k.update({ profiles: { list: [...all, p] } }).then(k.rerender);
   }, 'btn', 'plus');
   return [
