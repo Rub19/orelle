@@ -66,7 +66,7 @@ export function normalizeControlModules(raw: unknown): ControlModule[] {
 export function defaultSettings(): Settings {
   return {
     version: SETTINGS_VERSION,
-    general: { language: 'auto', launchAtLogin: false, showTrayIcon: true, taskbarMode: 'hidden', winKey: 'menu', hardwareAcceleration: true, performance: 'auto' },
+    general: { language: 'auto', launchAtLogin: false, showTrayIcon: true, taskbarMode: 'hidden', winKey: 'menu', hardwareAcceleration: true, performance: 'auto', onboarded: false },
     appearance: { theme: 'dark', accent: '#f2b33d', glassOpacity: 0.72, effects: 'full', radius: 'standard', schedule: { enabled: false, lightAt: '07:30', darkAt: '19:30' }, wallpaper: '' },
     dock: {
       enabled: true,
@@ -317,6 +317,7 @@ export function normalizeSettings(raw: unknown): Settings {
       winKey: oneOf(g.winKey, ['windows', 'menu', 'launcher'] as const, d.general.winKey),
       hardwareAcceleration: bool(g.hardwareAcceleration, d.general.hardwareAcceleration),
       performance: oneOf(g.performance, ['auto', 'standard', 'light'] as const, d.general.performance),
+      onboarded: bool(g.onboarded, d.general.onboarded),
     },
     appearance: {
       theme: oneOf(a.theme, THEMES, d.appearance.theme),

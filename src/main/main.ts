@@ -51,6 +51,7 @@ import { ToolsController, type ToolsSection } from './windows/toolsController';
 import { StorageService } from './services/storageService';
 import { ThemeService } from './services/themeService';
 import { MemoryTrimmer } from './services/memoryTrimmer';
+import { WelcomeController } from './windows/welcomeController';
 import { panelTiming } from './windows/panelWindow';
 
 const argValue = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
@@ -211,6 +212,18 @@ async function main() {
   const storage = new StorageService(ctx);
   const themeSvc = new ThemeService(ctx);
   const tools = new ToolsController(ctx, storage, clip, () => windowsSvc.target());
+  // First run: nothing that changes Windows' behaviour until the guided setup is finished.
+  let onboarding = settings.firstRun && !SMOKE && !MEASURE && !settings.get().general.onboarded;
+  if (!settings.firstRun && !settings.get().general.onboarded) settings.update({ general: { onboarded: true } });
+  const welcome = new WelcomeController(ctx, () => {
+    onboarding = false;
+    if (SMOKE) return;
+    if (!SAFE) {
+      taskbar.apply(settings.get().general.taskbarMode);
+      syncWinKey(settings.get());
+    }
+    settingsUi.open('general');
+  });
   const menu = new MenuController(ctx, search, profiles);
   const notificationCenter = new NotificationCenterController(ctx, notifications);
   const topbar = new TopBarController(ctx, {
@@ -283,9 +296,10 @@ async function main() {
   menu.registerIpc();
   mission.registerIpc();
   tools.registerIpc();
+  welcome.registerIpc();
   notificationCenter.registerIpc();
   topbar.registerIpc();
-  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools });
+  registerSharedIpc(ctx, { dock, launcher, settingsUi, widgets, control, apps: orelleApps, topbar, menu, notificationCenter, mission, tools, welcome });
   registerExtrasIpc(ctx, () => settingsUi.window, { extensions, ai, windows: windowsSvc, profiles, automations });
 
   // ---------- First run: build a Dock from installed apps ----------
@@ -303,7 +317,7 @@ async function main() {
   tracker.start();
   ctx.capabilities.windowTracking = tracker.available;
   // Crash recovery first (restores a taskbar left auto-hidden), then the user's choice.
-  taskbar.apply(SAFE ? 'normal' : settings.get().general.taskbarMode);
+  taskbar.apply(SAFE || onboarding ? 'normal' : settings.get().general.taskbarMode);
   profiles.start();
   topbar.start();
   dock.start();
@@ -325,7 +339,7 @@ async function main() {
   alerts.sync();
   if (!SAFE) automations.start();
   themeSvc.start();
-  if (!SAFE && !MEASURE) syncWinKey(settings.get());
+  if (!SAFE && !MEASURE && !onboarding) syncWinKey(settings.get());
   if (SAFE) {
     notifications.notify({ title: ctx.t('safe.title'), body: ctx.t('safe.body'), source: 'orelle', glyph: 'shield', action: 'settings:general' });
     setTimeout(() => settingsUi.open('general'), 1500);
@@ -344,7 +358,7 @@ async function main() {
       setTimeout(() => !splash.isDestroyed() && splash.destroy(), 280);
     }
   }
-  if (settings.firstRun && !SMOKE) settingsUi.open('general');
+  if (onboarding) welcome.open();
 
   // Background warm-up, once the UI is up.
   setTimeout(() => {
@@ -394,10 +408,10 @@ async function main() {
     profiles.onSettingsChanged(next);
     automations.onSettingsChanged(next, prev);
     themeSvc.onSettingsChanged(next, prev);
-    if (next.general.winKey !== prev.general.winKey && !SAFE) syncWinKey(next);
+    if (next.general.winKey !== prev.general.winKey && !SAFE && !onboarding) syncWinKey(next);
     tray.sync();
     if (next.general.launchAtLogin !== prev.general.launchAtLogin) syncLoginItem(next);
-    if (next.general.taskbarMode !== prev.general.taskbarMode && !SAFE) taskbar.apply(next.general.taskbarMode);
+    if (next.general.taskbarMode !== prev.general.taskbarMode && !SAFE && !onboarding) taskbar.apply(next.general.taskbarMode);
     alerts.sync();
     if (next.launcher.enabled !== prev.launcher.enabled || next.launcher.hotkey !== prev.launcher.hotkey || next.controlCenter.hotkey !== prev.controlCenter.hotkey || next.windows.snapping !== prev.windows.snapping || next.windows.overviewHotkey !== prev.windows.overviewHotkey || next.clipboard.hotkey !== prev.clipboard.hotkey || next.privacy.clipboardHistory !== prev.privacy.clipboardHistory) syncHotkeys(next);
     if (next.appearance.effects !== prev.appearance.effects) {
@@ -516,7 +530,7 @@ async function main() {
     launcher.hide();
     return ms;
   });
-  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage }, shutdown);
+  if (SMOKE) void runSmoke(ctx, { dock, launcher, search, files, widgets, control, system, apps: orelleApps, topbar, menu, notificationCenter, notifications, windows: windowsSvc, profiles, extensions, settingsUi, ai, mission, tools, storage, welcome }, shutdown);
 }
 
 function showSplash(firstRun: boolean, lang: 'fr' | 'en'): BrowserWindow {
@@ -572,7 +586,7 @@ function broadcastSettings(ctx: OrelleContext) {
 
 function registerSharedIpc(
   ctx: OrelleContext,
-  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; mission: MissionControlController; tools: ToolsController },
+  c: { dock: DockController; launcher: LauncherController; settingsUi: SettingsController; widgets: WidgetsController; control: ControlCenterController; apps: AppsController; topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; mission: MissionControlController; tools: ToolsController; welcome: WelcomeController },
 ) {
   const surfaceOf = (wc: WebContents): SurfaceKind | null => {
     if (c.dock.window?.webContents === wc) return 'dock';
@@ -587,6 +601,7 @@ function registerSharedIpc(
     if (c.notificationCenter.panel.window?.webContents === wc) return 'notifications';
     if (c.mission.window?.webContents === wc) return 'mission';
     if (c.tools.is(wc)) return 'tools';
+    if (c.welcome.is(wc)) return 'welcome';
     return null;
   };
 
@@ -604,7 +619,7 @@ function registerSharedIpc(
   });
 
   // Which surface may change which top-level settings group.
-  const writable: Partial<Record<SurfaceKind, string[] | 'all'>> = { settings: 'all', dock: ['dock'], widgets: ['widgets'], control: ['controlCenter'], files: ['files'], monitor: ['monitor'], notifications: ['notifications'], tools: ['privacy', 'clipboard', 'storage'] };
+  const writable: Partial<Record<SurfaceKind, string[] | 'all'>> = { settings: 'all', dock: ['dock'], widgets: ['widgets'], control: ['controlCenter'], files: ['files'], monitor: ['monitor'], notifications: ['notifications'], tools: ['privacy', 'clipboard', 'storage'], welcome: ['general', 'appearance', 'dock'] };
   ipcMain.handle('orelle:updateSettings', (e, patch: unknown) => {
     const surface = surfaceOf(e.sender);
     const allowed = surface ? writable[surface] : undefined;
@@ -649,7 +664,7 @@ async function runSmoke(
   ctx: OrelleContext,
   c: {
     dock: DockController; launcher: LauncherController; search: SearchService; files: FileIndex; widgets: WidgetsController; control: ControlCenterController; system: SystemService; apps: AppsController;
-    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService;
+    topbar: TopBarController; menu: MenuController; notificationCenter: NotificationCenterController; notifications: NotificationService; windows: WindowService; profiles: ProfileService; extensions: ExtensionService; settingsUi: SettingsController; ai: AiService; mission: MissionControlController; tools: ToolsController; storage: StorageService; welcome: WelcomeController;
   },
   shutdown: () => void,
 ) {
@@ -774,6 +789,17 @@ async function runSmoke(
     await wait(1500);
     await shot('tools-storage', c.tools.window);
     c.tools.window?.close();
+    if (argValue('orelle-capture')) {
+      c.welcome.open();
+      await wait(2000);
+      await shot('welcome-1', c.welcome.window);
+      for (let i = 2; i <= 5; i++) {
+        await c.welcome.window?.webContents.executeJavaScript("document.querySelector('.btn.primary').click()");
+        await wait(500);
+        await shot(`welcome-${i}`, c.welcome.window);
+      }
+      c.welcome.window?.close();
+    }
     // AI: off by default; with consent but an unreachable local server, a clean error (no crash, nothing sent elsewhere).
     check('ai off by default', c.search.search('? bonjour').results.every((r) => r.kind !== 'ai'));
     ctx.settings.update({ ai: { provider: 'ollama', consent: true, model: 'smoke', endpoint: 'http://127.0.0.1:9' } });
@@ -823,7 +849,7 @@ async function runSmoke(
     };
     report.ok = checks.every((x) => x.ok);
   } catch (err) {
-    report.error = String(err);
+    report.error = err instanceof Error ? `${err.message} @ ${(err.stack ?? '').split('\n').slice(1, 4).join(' | ')}` : String(err);
   }
   report.checks = checks;
   const out = argValue('orelle-smoke-report') ?? path.join(ctx.dataDir, 'smoke-report.json');

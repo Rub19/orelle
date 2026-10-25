@@ -191,6 +191,8 @@ export interface Settings {
     winKey: 'windows' | 'menu' | 'launcher';
     /** auto = light on modest PCs (≤ 8 GB RAM or ≤ 4 threads). */
     performance: 'auto' | 'standard' | 'light';
+    /** The first-run guided setup was completed (or skipped). */
+    onboarded: boolean;
     /** GPU compositing; off saves ~100 MB of memory at the cost of smoother animations (applies after restart). */
     hardwareAcceleration: boolean;
   };
@@ -456,7 +458,7 @@ export interface AppInfo {
   icon: string | null;
 }
 
-export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications' | 'mission' | 'tools';
+export type SurfaceKind = 'dock' | 'launcher' | 'settings' | 'widgets' | 'control' | 'splash' | 'files' | 'monitor' | 'topbar' | 'menu' | 'notifications' | 'mission' | 'tools' | 'welcome';
 
 export interface Bootstrap {
   surface: SurfaceKind;

@@ -85,6 +85,11 @@
       "uninstallerIcon": "resources/icons/orelle.ico",
       "deleteAppDataOnUninstall": false,
       "include": "resources/installer/installer.nsh"
-    }
+    },
+    "electronLanguages": [
+      "fr",
+      "en-US"
+    ],
+    "compression": "maximum"
   }
 }

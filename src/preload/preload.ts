@@ -149,6 +149,11 @@ const api = {
     clipClear: (all: boolean) => ipcRenderer.send('tools:clipClear', all),
   },
 
+  welcome: {
+    dock: (): Promise<{ name: string; icon: string | null }[]> => ipcRenderer.invoke('welcome:dock'),
+    finish: () => ipcRenderer.send('welcome:finish'),
+  },
+
   mission: {
     onData: (cb: (list: MissionWindowDto[]) => void) => on('mission:data', cb),
     layout: (rects: { hwnd: number; x: number; y: number; w: number; h: number; visible: boolean }[]) => ipcRenderer.send('mission:layout', rects),
