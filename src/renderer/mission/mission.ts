@@ -18,6 +18,19 @@ const input = el('input', { class: 'search', type: 'search', spellcheck: 'false'
 const stage = el('div', { class: 'stage' });
 const groupBtn = el('button', { class: 'chip' });
 const count = el('span', { class: 'count' });
+const desks = el('div', { class: 'desks' });
+
+function renderDesktops(list: { index: number; name: string; current: boolean }[]) {
+  const add = el('button', { class: 'desk add', html: glyph('plus'), title: t('desktops.new'), 'aria-label': t('desktops.new') });
+  add.addEventListener('click', () => orelle.mission.desktop('new'));
+  desks.replaceChildren(...list.map((d) => {
+    const b = el('button', { class: `desk${d.current ? ' on' : ''}`, 'aria-current': d.current ? 'true' : 'false' }, el('span', { class: 'mini' }), el('span', { text: d.name }));
+    if (!d.current) b.addEventListener('click', () => orelle.mission.desktop(d.index));
+    return b;
+  }), add);
+  // The strip changes the stage's position: thumbnails must follow.
+  requestAnimationFrame(() => render());
+}
 
 function order(list: MissionWindowDto[]) {
   if (!groupByApp) return list;
@@ -109,7 +122,9 @@ async function init() {
       el('div', { class: 'title' }, el('span', { html: glyph('grid') }), el('strong', { text: t('mission.title') }), count),
       el('div', { class: 'searchbox' }, el('span', { class: 'lens', html: glyph('search') }), input),
       el('div', { class: 'tools' }, groupBtn, el('span', { class: 'hint', text: t('mission.hint') }))),
+    desks,
     stage));
+  orelle.mission.onDesktops(renderDesktops);
   orelle.onSettings((p) => { setLanguage(p.language); applyTheme(p.settings, p.darkSystem); });
   orelle.mission.onData((list) => {
     all = list;

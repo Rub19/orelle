@@ -184,6 +184,8 @@ const api = {
     activate: (hwnd: number) => ipcRenderer.send('mission:activate', hwnd),
     close: (hwnd: number) => ipcRenderer.send('mission:close', hwnd),
     hide: () => ipcRenderer.send('mission:hide'),
+    onDesktops: (cb: (d: { id: string; index: number; name: string; current: boolean }[]) => void) => on('mission:desktops', cb),
+    desktop: (index: number | 'new') => ipcRenderer.send('mission:desktop', index),
   },
 
   menu: {

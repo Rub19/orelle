@@ -61,3 +61,13 @@ body { width: 100%; height: 100%; overflow: hidden; background: transparent; use
 @media (prefers-reduced-motion: reduce) {
   .card, .shell { animation: none; }
 }
+
+/* ---------- Virtual desktops ---------- */
+.desks { display: flex; justify-content: center; gap: 10px; padding: 4px 40px 0; }
+.desk { display: flex; flex-direction: column; align-items: center; gap: 5px; border: 0; background: transparent; color: rgba(235, 235, 245, 0.7); font: inherit; font-size: 12px; padding: 4px; border-radius: 10px; }
+.desk .mini { width: 96px; height: 54px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); }
+.desk:hover .mini { background: rgba(255, 255, 255, 0.14); }
+.desk.on { color: #fff; font-weight: 600; }
+.desk.on .mini { border: 2px solid var(--accent); }
+.desk.add { justify-content: center; width: 60px; }
+.desk.add .glyph { width: 20px; height: 20px; }

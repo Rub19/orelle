@@ -7,6 +7,7 @@ import type { OrelleContext } from '../context';
 import * as dwm from '../native/dwm';
 import * as w32 from '../native/win32';
 import { log } from '../logger';
+import type { DesktopService } from '../services/desktopService';
 import { panelTiming } from './panelWindow';
 
 export interface MissionWindow {
@@ -27,7 +28,7 @@ export class MissionControlController {
   private shownAt = 0;
   private releaseTimer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly ctx: OrelleContext, private readonly nameFor: (hwnd: number) => string) {}
+  constructor(private readonly ctx: OrelleContext, private readonly nameFor: (hwnd: number) => string, private readonly desktops: DesktopService) {}
 
   get window() {
     return this.win;
@@ -118,6 +119,7 @@ export class MissionControlController {
     this.win.setBounds(display.bounds);
     this.shownAt = Date.now();
     this.win.webContents.send('mission:data', list);
+    void this.desktops.list().then((d) => this.win?.webContents.send('mission:desktops', d));
     this.win.show();
     this.win.focus();
     w32.focusWindow(this.hwnd);
@@ -194,5 +196,11 @@ export class MissionControlController {
       }, 500);
     });
     ipcMain.on('mission:hide', (e) => from(e) && this.hide());
+    ipcMain.on('mission:desktop', (e, index: unknown) => {
+      if (!from(e)) return;
+      this.hide();
+      if (index === 'new') setTimeout(() => this.desktops.create(), 150);
+      else if (typeof index === 'number') setTimeout(() => void this.desktops.switchTo(index), 150);
+    });
   }
 }

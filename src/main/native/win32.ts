@@ -305,6 +305,19 @@ export function sendPaste() {
   api.keybd_event(0x11, 0, KEYEVENTF_KEYUP, 0);
 }
 
+/** Windows' own virtual-desktop shortcuts: Ctrl+Win+Left / Right, Ctrl+Win+D (new desktop). */
+export function sendDesktopKey(key: 'left' | 'right' | 'new') {
+  if (!api) return;
+  const vk = key === 'left' ? 0x25 : key === 'right' ? 0x27 : 0x44;
+  const ext = key === 'new' ? 0 : 0x1; // KEYEVENTF_EXTENDEDKEY for arrows
+  api.keybd_event(0x11, 0, 0, 0);
+  api.keybd_event(0x5b, 0, 0x1, 0);
+  api.keybd_event(vk, 0, ext, 0);
+  api.keybd_event(vk, 0, ext | KEYEVENTF_KEYUP, 0);
+  api.keybd_event(0x5b, 0, 0x1 | KEYEVENTF_KEYUP, 0);
+  api.keybd_event(0x11, 0, KEYEVENTF_KEYUP, 0);
+}
+
 /** Opens the Windows Start menu (Ctrl+Esc, the shortcut Windows reserves for it). */
 export function openStartMenu() {
   if (!api) return;

@@ -1137,6 +1137,8 @@ const fr = {
   'stack.hint': 'Clic droit : afficher dans le dossier',
   'settings.dock.folderStacks': 'Dossiers en pile',
   'settings.dock.folderStacks.desc': 'Un clic sur un dossier du Dock affiche ses derniers éléments au-dessus de l’icône. Maj+clic ouvre le dossier.',
+  'desktops.default': 'Bureau {n}',
+  'desktops.new': 'Nouveau bureau (Ctrl+Win+D)',
 };
 
 export type StringKey = keyof typeof fr;
@@ -2251,6 +2253,8 @@ const en: Record<StringKey, string> = {
   'stack.hint': 'Right-click: show in folder',
   'settings.dock.folderStacks': 'Folder stacks',
   'settings.dock.folderStacks.desc': 'Clicking a Dock folder shows its latest items above the icon. Shift+click opens the folder.',
+  'desktops.default': 'Desktop {n}',
+  'desktops.new': 'New desktop (Ctrl+Win+D)',
 };
 
 const DICTS = { fr: fr as Record<StringKey, string>, en };

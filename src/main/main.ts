@@ -55,6 +55,7 @@ import { WelcomeController } from './windows/welcomeController';
 import { UpdateService } from './services/updateService';
 import { CaptureController } from './windows/captureController';
 import { StackController } from './windows/stackController';
+import { DesktopService } from './services/desktopService';
 import { buildDiagnostics } from './services/diagnostics';
 import { diagnose } from './services/networkService';
 import { panelTiming } from './windows/panelWindow';
@@ -210,10 +211,11 @@ async function main() {
   const widgets = new WidgetsController(ctx, system, weather, screenTime);
   const control = new ControlCenterController(ctx, system, () => widgets.toggleEditing());
   const hotkeys = new Hotkeys();
+  const desktops = new DesktopService(ctx);
   const mission = new MissionControlController(ctx, (hwnd) => {
     const w = tracker.list().find((x) => x.hwnd === hwnd);
     return w ? dock.nameForWindow(w) : '';
-  });
+  }, desktops);
   ctx.actions.toggleMission = () => mission.toggle();
   const storage = new StorageService(ctx);
   const themeSvc = new ThemeService(ctx);
@@ -805,6 +807,8 @@ async function runSmoke(
     await wait(2000);
     const live = ctx.tracker.list().filter((w) => !w.minimized).length;
     check('mission control shows', c.mission.isVisible(), { windows: ctx.tracker.list().length });
+    const vds = await new DesktopService(ctx).list();
+    check('virtual desktops readable', vds.length >= 1 && vds.filter((d) => d.current).length === 1, vds.map((d) => d.name));
     check('mission control live thumbnails', c.mission.thumbnailCount === live, { thumbnails: c.mission.thumbnailCount, live });
     await shot('mission', c.mission.window);
     if (argValue('orelle-capture')) {
