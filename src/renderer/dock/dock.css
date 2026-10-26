@@ -85,6 +85,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  border-radius: 20%;
   -webkit-user-drag: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.28));
 }
@@ -127,9 +128,9 @@ body {
 .pos-left .tile .dot { top: 50%; left: calc(var(--pad) * -1 + 1px); transform: translateY(-50%); }
 .pos-right .tile .dot { top: 50%; right: calc(var(--pad) * -1 + 1px); transform: translateY(-50%); }
 .tile.running .dot { opacity: 1; }
-.pos-bottom .tile.active .dot { width: 14px; background: var(--accent); }
+.pos-bottom .tile.active .dot { width: 10px; background: var(--accent); }
 .pos-left .tile.active .dot,
-.pos-right .tile.active .dot { height: 14px; background: var(--accent); }
+.pos-right .tile.active .dot { height: 10px; background: var(--accent); }
 
 /* Launch: bounce until the first window appears */
 .tile.launching .icon { animation: bounce 0.75s var(--ease-in-out) infinite; }

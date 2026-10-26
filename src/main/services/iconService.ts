@@ -12,7 +12,7 @@ import { log } from '../logger';
 export const ICON_SIZE = 128;
 // Bump this when the bitmap framing changes; stale cached PNGs must not keep
 // the old transparent shell around after an update.
-export const ICON_RENDER_VERSION = 2;
+export const ICON_RENDER_VERSION = 3;
 
 export function registerIconScheme() {
   protocol.registerSchemesAsPrivileged([{ scheme: 'orelle-icon', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);

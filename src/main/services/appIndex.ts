@@ -15,6 +15,13 @@ type Entry = Omit<AppInfo, 'icon'>;
 const NOISE = /(uninstall|d[ée]sinstall|readme|lisez-moi|license|licence|release notes|documentation|manuals?\b|help\b|aide\b|website|site web)/i;
 const DOC_EXT = /\.(url|html?|pdf|chm|txt|rtf|md|ini|log|xml)$/i;
 
+/** Prefer the real executable when the shell index gives us one. */
+export function iconParsingName(app: Pick<RawApp, 'appId' | 'target'>): string {
+  const target = app.target?.trim();
+  if (target && !/^[a-z][a-z0-9+.-]*:\/\//i.test(target)) return target;
+  return `shell:AppsFolder\\${app.appId}`;
+}
+
 export class AppIndex extends EventEmitter {
   private apps: Entry[] = [];
   private byTarget = new Map<string, Entry>();
@@ -33,7 +40,7 @@ export class AppIndex extends EventEmitter {
   }
 
   private withIcon(e: Entry | undefined): AppInfo | undefined {
-    return e ? { ...e, icon: this.icons.get(`shell:AppsFolder\\${e.appId}`) } : undefined;
+    return e ? { ...e, icon: this.icons.get(iconParsingName(e)) } : undefined;
   }
 
   /** Raw entries without touching icons (cheap; used for searching). */
@@ -47,7 +54,8 @@ export class AppIndex extends EventEmitter {
   }
 
   iconFor(appId: string, urgent = false): string | null {
-    return this.icons.get(`shell:AppsFolder\\${appId}`, urgent);
+    const entry = this.byAppId.get(appId.toLowerCase());
+    return this.icons.get(entry ? iconParsingName(entry) : `shell:AppsFolder\\${appId}`, urgent);
   }
 
   /** Lookup without resolving icons. */

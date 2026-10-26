@@ -110,6 +110,13 @@ public static class OrelleIcons {
   static void SaveFramed(Bitmap bmp, string outFile, int size) {
     int w = bmp.Width, h = bmp.Height;
     Rectangle bounds = FindAlphaBounds(bmp);
+    // Some legacy EXE icons are returned as fully opaque bitmaps with a
+    // solid square matte around the actual artwork. Alpha-only trimming sees
+    // the whole square in that case, so remove a uniform opaque edge first.
+    if (bounds.Width >= w - 1 && bounds.Height >= h - 1) {
+      Rectangle matte = FindOpaqueMatteBounds(bmp);
+      if (matte.Width > 0 && matte.Height > 0) bounds = matte;
+    }
     if (bounds.Width <= 0 || bounds.Height <= 0) bounds = new Rectangle(0, 0, w, h);
     int side = Math.Max(bounds.Width, bounds.Height);
     int pad = Math.Max(2, (int)Math.Ceiling(side * 0.08));
@@ -139,12 +146,39 @@ public static class OrelleIcons {
     }
     return right < left ? Rectangle.Empty : Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
   }
+
+  static Rectangle FindOpaqueMatteBounds(Bitmap bmp) {
+    Color a = bmp.GetPixel(0, 0);
+    Color b = bmp.GetPixel(bmp.Width - 1, 0);
+    Color c = bmp.GetPixel(0, bmp.Height - 1);
+    Color d = bmp.GetPixel(bmp.Width - 1, bmp.Height - 1);
+    if (!Near(a, b, 18) || !Near(a, c, 18) || !Near(a, d, 18) || a.A < 240) return Rectangle.Empty;
+
+    int left = bmp.Width, top = bmp.Height, right = -1, bottom = -1;
+    for (int y = 0; y < bmp.Height; y++) for (int x = 0; x < bmp.Width; x++) {
+      Color p = bmp.GetPixel(x, y);
+      if (p.A < 240 || !Near(p, a, 28)) {
+        if (x < left) left = x;
+        if (y < top) top = y;
+        if (x > right) right = x;
+        if (y > bottom) bottom = y;
+      }
+    }
+    Rectangle result = right < left ? Rectangle.Empty : Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
+    // Only treat it as a matte when it removes a meaningful border. This
+    // avoids changing ordinary full-bleed square artwork.
+    return result.Width <= bmp.Width - 4 && result.Height <= bmp.Height - 4 ? result : Rectangle.Empty;
+  }
+
+  static bool Near(Color x, Color y, int tolerance) {
+    return Math.Abs(x.R - y.R) <= tolerance && Math.Abs(x.G - y.G) <= tolerance && Math.Abs(x.B - y.B) <= tolerance;
+  }
 }
 '@
 
 function Get-IconFile([string]$parsingName) {
   $sha = [System.Security.Cryptography.SHA1]::Create()
-  $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($parsingName.ToLowerInvariant() + "|$Size|2")) | ForEach-Object { $_.ToString('x2') })
+  $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($parsingName.ToLowerInvariant() + "|$Size|3")) | ForEach-Object { $_.ToString('x2') })
   $file = Join-Path $CacheDir "$hash.png"
   if (Test-Path -LiteralPath $file) { return $file }
   if ([OrelleIcons]::Save($parsingName, $file, $Size)) { return $file }
