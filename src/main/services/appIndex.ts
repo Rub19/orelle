@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AppInfo } from '../../shared/types';
+import { iconParsingName } from '../../shared/appIcon';
 import { runShellHelper } from './shellBridge';
 import { IconService } from './iconService';
 import { log } from '../logger';
@@ -14,13 +15,6 @@ type Entry = Omit<AppInfo, 'icon'>;
 
 const NOISE = /(uninstall|d[ée]sinstall|readme|lisez-moi|license|licence|release notes|documentation|manuals?\b|help\b|aide\b|website|site web)/i;
 const DOC_EXT = /\.(url|html?|pdf|chm|txt|rtf|md|ini|log|xml)$/i;
-
-/** Prefer the real executable when the shell index gives us one. */
-export function iconParsingName(app: Pick<RawApp, 'appId' | 'target'>): string {
-  const target = app.target?.trim();
-  if (target && !/^[a-z][a-z0-9+.-]*:\/\//i.test(target)) return target;
-  return `shell:AppsFolder\\${app.appId}`;
-}
 
 export class AppIndex extends EventEmitter {
   private apps: Entry[] = [];
