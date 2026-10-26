@@ -28,6 +28,19 @@ describe('settings normalization', () => {
     expect(s.launcher.webSearchUrl).toContain('{query}');
   });
 
+  it('keeps shell surfaces independently optional', () => {
+    const s = normalizeSettings({
+      topBar: { enabled: false },
+      dock: { enabled: false },
+      launcher: { enabled: false },
+      widgets: { enabled: false },
+    });
+    expect(s.topBar.enabled).toBe(false);
+    expect(s.dock.enabled).toBe(false);
+    expect(s.launcher.enabled).toBe(false);
+    expect(s.widgets.enabled).toBe(false);
+  });
+
   it('drops malformed dock items and duplicate ids, keeps valid ones', () => {
     const s = normalizeSettings({
       dock: {

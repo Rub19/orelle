@@ -650,3 +650,4 @@ select, .input { min-width: 210px; padding: 0 12px; }
 .row:hover { background: rgba(var(--accent-rgb), 0.035); }
 .row > .label + * { flex-shrink: 0; }
 .btn.primary { box-shadow: 0 5px 14px rgba(var(--accent-rgb), 0.16); }
+.surface-note { margin-top: 12px; }

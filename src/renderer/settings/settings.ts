@@ -156,6 +156,14 @@ function pageGeneral(): HTMLElement[] {
       row('settings.general.gpu', toggle(g.hardwareAcceleration, (v) => void update({ general: { hardwareAcceleration: v } })), 'settings.general.gpu.desc'),
       row('settings.perf.restart', button(t('settings.perf.restartBtn'), () => orelle.settings.restartNormal(), 'btn', 'restart'), 'settings.perf.restart.desc'),
     ),
+    ...group(
+      'settings.general.surfaces',
+      row('settings.topbar.enabled', toggle(settings.topBar.enabled, (v) => void update({ topBar: { enabled: v } })), 'settings.topbar.enabled.desc'),
+      row('settings.dock.enabled', toggle(settings.dock.enabled, (v) => void update({ dock: { enabled: v } })), 'settings.dock.enabled.desc'),
+      row('settings.widgets.enabled', toggle(settings.widgets.enabled, (v) => void update({ widgets: { enabled: v } })), 'settings.widgets.enabled.desc'),
+      row('settings.launcher.enabled', toggle(settings.launcher.enabled, (v) => void update({ launcher: { enabled: v } })), 'settings.launcher.enabled.desc'),
+    ),
+    el('p', { class: 'note surface-note', text: t('settings.general.surfaces.desc') }),
   ];
 }
 
