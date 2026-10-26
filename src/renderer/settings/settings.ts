@@ -7,28 +7,7 @@ import { el, orelle, setLanguage, t } from '../common/env';
 import { glyph } from '../common/glyphs';
 import { applyTheme } from '../common/theme';
 import { pageStudio, pageAi, pageAutomations, pageExtensions, pageNotifications, pageProfiles, pageTopBar, pageWindows, type Kit } from './shellPages';
-
-type Section = 'general' | 'appearance' | 'studio' | 'topbar' | 'dock' | 'launcher' | 'windows' | 'profiles' | 'widgets' | 'notifications' | 'apps' | 'extensions' | 'automations' | 'ai' | 'privacy' | 'backup' | 'updates' | 'about';
-const SECTIONS: { id: Section; glyph: string; color: string }[] = [
-  { id: 'general', glyph: 'sliders', color: '#8e8e93' },
-  { id: 'appearance', glyph: 'palette', color: '#bf5af2' },
-  { id: 'studio', glyph: 'sparkle', color: '#ff375f' },
-  { id: 'topbar', glyph: 'window', color: '#0a84ff' },
-  { id: 'dock', glyph: 'dock', color: '#0a84ff' },
-  { id: 'launcher', glyph: 'search', color: '#5e5ce6' },
-  { id: 'windows', glyph: 'columns', color: '#5e5ce6' },
-  { id: 'profiles', glyph: 'gamepad', color: '#ff9f0a' },
-  { id: 'widgets', glyph: 'grid', color: '#ff375f' },
-  { id: 'notifications', glyph: 'bellOn', color: '#ff453a' },
-  { id: 'apps', glyph: 'folder', color: '#f2b33d' },
-  { id: 'extensions', glyph: 'sparkle', color: '#30d158' },
-  { id: 'automations', glyph: 'bolt', color: '#ffd60a' },
-  { id: 'ai', glyph: 'sparkle', color: '#bf5af2' },
-  { id: 'privacy', glyph: 'shield', color: '#30d158' },
-  { id: 'backup', glyph: 'archive', color: '#ff9f0a' },
-  { id: 'updates', glyph: 'download', color: '#0a84ff' },
-  { id: 'about', glyph: 'info', color: '#64d2ff' },
-];
+import { NAV_GROUPS, SECTIONS, type Section } from './navigation';
 
 let boot: Bootstrap;
 let settings: Settings;
@@ -777,19 +756,24 @@ const PAGES: Record<Section, () => HTMLElement[]> = {
 // ---------- Navigation & search ----------
 
 function renderNav() {
-  nav.replaceChildren(...SECTIONS.map((s) => {
-    const ico = el('span', { class: 'nav-ico', html: glyph(s.glyph) });
-    ico.style.background = s.color;
-    const b = el('button', { class: s.id === current && !query ? 'active' : '' }, ico, t(`settings.section.${s.id}` as StringKey));
-    b.addEventListener('click', () => {
-      query = '';
-      search.value = '';
-      current = s.id;
-      renderNav();
-      rerender();
-      content.scrollTop = 0;
-    });
-    return el('li', {}, b);
+  const byId = new Map(SECTIONS.map((section) => [section.id, section]));
+  nav.replaceChildren(...NAV_GROUPS.map((group) => {
+    const list = el('ul', { class: 'nav-group-list' }, ...group.sections.map((id) => {
+      const s = byId.get(id)!;
+      const ico = el('span', { class: 'nav-ico', html: glyph(s.glyph) });
+      ico.style.background = s.color;
+      const b = el('button', { class: s.id === current && !query ? 'active' : '', 'aria-current': s.id === current && !query ? 'page' : 'false' }, ico, t(`settings.section.${s.id}` as StringKey));
+      b.addEventListener('click', () => {
+        query = '';
+        search.value = '';
+        current = s.id;
+        renderNav();
+        rerender();
+        content.scrollTop = 0;
+      });
+      return el('li', {}, b);
+    }));
+    return el('li', { class: 'nav-group' }, el('div', { class: 'nav-group-label', text: t(group.labelKey) }), list);
   }));
 }
 
@@ -829,6 +813,19 @@ search.addEventListener('input', () => {
   query = search.value.trim().toLowerCase();
   renderNav();
   rerender();
+});
+
+document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    search.focus();
+    search.select();
+  } else if (event.key === 'Escape' && document.activeElement === search && search.value) {
+    search.value = '';
+    query = '';
+    renderNav();
+    rerender();
+  }
 });
 
 function applyStrings() {
