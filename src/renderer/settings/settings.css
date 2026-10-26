@@ -532,6 +532,15 @@ body {
   font-weight: 680;
   letter-spacing: -0.028em;
 }
+.search-summary { display: flex; align-items: baseline; gap: 10px; margin: 0 0 24px; padding-bottom: 16px; border-bottom: 1px solid var(--separator); }
+.search-summary-label { color: var(--text-3); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.search-summary strong { font-family: var(--font-display); font-size: 26px; font-weight: 680; letter-spacing: -0.02em; }
+.search-empty { display: grid; justify-items: center; gap: 8px; padding: 72px 24px; text-align: center; border: 1px dashed var(--separator); border-radius: 14px; background: rgba(var(--glass-rgb), 0.12); }
+.search-empty-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: rgba(var(--accent-rgb), 0.14); color: var(--accent); }
+.search-empty-icon .glyph { width: 20px; height: 20px; }
+.search-empty strong { font-size: 15px; }
+.search-empty p { max-width: 300px; margin: 0 0 8px; color: var(--text-2); font-size: 12.5px; }
+.nav-empty { list-style: none; padding: 18px 12px; color: var(--text-3); font-size: 12px; text-align: center; }
 .group-title {
   margin: 30px 4px 10px;
   color: var(--text-3);

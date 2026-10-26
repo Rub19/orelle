@@ -14,6 +14,7 @@ let settings: Settings;
 let darkSystem = true;
 let current: Section = 'general';
 let query = '';
+let matchedSections = new Set<Section>();
 let suppressRerender = 0;
 let apps: AppInfo[] | null = null;
 let displays: DisplayInfo[] = [];
@@ -757,8 +758,14 @@ const PAGES: Record<Section, () => HTMLElement[]> = {
 
 function renderNav() {
   const byId = new Map(SECTIONS.map((section) => [section.id, section]));
-  nav.replaceChildren(...NAV_GROUPS.map((group) => {
-    const list = el('ul', { class: 'nav-group-list' }, ...group.sections.map((id) => {
+  const groups = NAV_GROUPS.map((group) => {
+    const ids = group.sections.filter((id) => {
+      if (!query) return true;
+      const label = t(`settings.section.${id}` as StringKey).toLowerCase();
+      return matchedSections.has(id) || label.includes(query);
+    });
+    if (!ids.length) return null;
+    const list = el('ul', { class: 'nav-group-list' }, ...ids.map((id) => {
       const s = byId.get(id)!;
       const ico = el('span', { class: 'nav-ico', html: glyph(s.glyph) });
       ico.style.background = s.color;
@@ -774,13 +781,15 @@ function renderNav() {
       return el('li', {}, b);
     }));
     return el('li', { class: 'nav-group' }, el('div', { class: 'nav-group-label', text: t(group.labelKey) }), list);
-  }));
+  }).filter((group): group is HTMLLIElement => !!group);
+  nav.replaceChildren(...(groups.length ? groups : [el('li', { class: 'nav-empty', text: t('settings.search.none') })]));
 }
 
 function rerender() {
   const scroll = content.scrollTop;
   const page = el('div', { class: 'page' });
   if (query) {
+    matchedSections = new Set<Section>();
     // Search mode: every section, only matching rows.
     for (const s of SECTIONS) {
       const parts = PAGES[s.id]();
@@ -791,9 +800,11 @@ function rerender() {
         if (match) hits++;
         else r.classList.add('hidden-by-search');
       });
-      if (!hits) continue;
+      const sectionMatch = t(`settings.section.${s.id}` as StringKey).toLowerCase().includes(query);
+      if (hits || sectionMatch) matchedSections.add(s.id);
+      if (!hits && !sectionMatch) continue;
       holder.querySelectorAll<HTMLElement>('.group').forEach((g) => {
-        if (!g.querySelector('[data-search]:not(.hidden-by-search)')) {
+        if (!sectionMatch && !g.querySelector('[data-search]:not(.hidden-by-search)')) {
           g.style.display = 'none';
           const title = g.previousElementSibling as HTMLElement | null;
           if (title?.classList.contains('group-title')) title.style.display = 'none';
@@ -802,7 +813,29 @@ function rerender() {
       holder.querySelectorAll<HTMLElement>('.note').forEach((n) => (n.style.display = 'none'));
       page.append(el('h1', { text: t(`settings.section.${s.id}` as StringKey) }), holder);
     }
+    const summary = el('div', { class: 'search-summary' },
+      el('span', { class: 'search-summary-label', text: t('settings.search') }),
+      el('strong', { text: t(matchedSections.size ? 'settings.search.results' : 'settings.search.none') }),
+    );
+    page.prepend(summary);
+    if (!matchedSections.size) {
+      const clear = button(t('settings.search.clear'), () => {
+        search.value = '';
+        query = '';
+        matchedSections.clear();
+        renderNav();
+        rerender();
+        search.focus();
+      }, 'btn primary', 'close');
+      page.append(el('div', { class: 'search-empty' },
+        el('div', { class: 'search-empty-icon', html: glyph('search') }),
+        el('strong', { text: t('settings.search.none') }),
+        el('p', { text: t('settings.search.none.desc') }),
+        clear,
+      ));
+    }
   } else {
+    matchedSections.clear();
     page.append(el('h1', { text: t(`settings.section.${current}` as StringKey) }), ...PAGES[current]());
   }
   content.replaceChildren(page);
@@ -811,8 +844,8 @@ function rerender() {
 
 search.addEventListener('input', () => {
   query = search.value.trim().toLowerCase();
-  renderNav();
   rerender();
+  renderNav();
 });
 
 document.addEventListener('keydown', (event) => {
