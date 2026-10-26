@@ -14,6 +14,8 @@ body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
   border: 1px solid var(--glass-border);
   border-radius: 12px;
   overflow-y: auto;
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(1.12);
   animation: rise var(--dur-slow) var(--ease-out);
 }
 .panel::-webkit-scrollbar { width: 0; }
@@ -42,8 +44,9 @@ body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
 /* Toggle tiles */
 .tile {
   border: 0;
-  border-radius: 16px;
-  background: var(--control);
+  border-radius: 13px;
+  background: linear-gradient(145deg, rgba(var(--glass-rgb), 0.18), var(--control));
+  border: 1px solid var(--separator);
   min-height: 78px;
   padding: 10px 10px 9px;
   display: flex;
@@ -55,7 +58,7 @@ body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
   color: var(--text);
   transition: background var(--dur-fast) linear, transform var(--dur-fast) var(--ease-out);
 }
-.tile:hover { background: var(--pressed); }
+.tile:hover { background: var(--pressed); border-color: var(--glass-border); }
 .tile:active { transform: scale(0.97); }
 .tile .ico { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-raised); transition: background var(--dur) var(--ease-out), color var(--dur) linear; }
 .tile .ico .glyph { width: 16px; height: 16px; }
@@ -66,7 +69,7 @@ body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
 .size-m .tile, .size-l .tile { flex-direction: row; align-items: center; justify-content: flex-start; min-height: 56px; gap: 10px; }
 
 /* Cards */
-.card { border: 0; border-radius: 16px; background: var(--control); padding: 12px 14px; color: var(--text); text-align: left; }
+.card { border: 1px solid var(--separator); border-radius: 13px; background: linear-gradient(145deg, rgba(var(--glass-rgb), 0.16), var(--control)); padding: 12px 14px; color: var(--text); text-align: left; }
 .card .label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
 .card .label span { color: var(--text-2); font-weight: 500; font-variant-numeric: tabular-nums; }
 .slider-row { display: flex; align-items: center; gap: 10px; }
