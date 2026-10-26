@@ -36,7 +36,12 @@ async function update(patch: DeepPartial<Settings>) {
 // ---------- Building blocks ----------
 
 function row(labelKey: StringKey, control: HTMLElement | null, descKey?: StringKey, extra?: HTMLElement): HTMLElement {
-  const label = el('div', { class: 'label' }, el('strong', { text: t(labelKey) }), descKey ? el('small', { text: t(descKey) }) : null, extra ?? null);
+  const controlId = `setting-${labelKey.replace(/[^a-z0-9]+/gi, '-')}`;
+  const label = el('div', { class: 'label', id: `${controlId}-label` }, el('strong', { text: t(labelKey) }), descKey ? el('small', { text: t(descKey) }) : null, extra ?? null);
+  if (control) {
+    control.id = controlId;
+    control.setAttribute('aria-labelledby', `${controlId}-label`);
+  }
   const r = el('div', { class: 'row', 'data-search': `${t(labelKey)} ${descKey ? t(descKey) : ''}`.toLowerCase() }, label, control);
   return r;
 }
@@ -49,7 +54,7 @@ function group(titleKey: StringKey | null, ...rows: (HTMLElement | null)[]): HTM
 }
 
 function toggle(value: boolean, onChange: (v: boolean) => void): HTMLElement {
-  const b = el('button', { class: 'switch', role: 'switch', 'aria-checked': String(value) });
+  const b = el('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': String(value) });
   b.addEventListener('click', () => {
     const v = b.getAttribute('aria-checked') !== 'true';
     b.setAttribute('aria-checked', String(v));
@@ -61,7 +66,7 @@ function toggle(value: boolean, onChange: (v: boolean) => void): HTMLElement {
 function segmented<T extends string>(options: { value: T; label: string }[], value: T, onChange: (v: T) => void): HTMLElement {
   const wrap = el('div', { class: 'seg', role: 'radiogroup' });
   for (const o of options) {
-    const b = el('button', { class: o.value === value ? 'on' : '', role: 'radio', 'aria-checked': String(o.value === value), text: o.label });
+    const b = el('button', { type: 'button', class: o.value === value ? 'on' : '', role: 'radio', 'aria-checked': String(o.value === value), text: o.label });
     b.addEventListener('click', () => {
       wrap.querySelectorAll('button').forEach((x) => { x.classList.remove('on'); x.setAttribute('aria-checked', 'false'); });
       b.classList.add('on');
@@ -103,7 +108,7 @@ function slider(min: number, max: number, step: number, value: number, format: (
 const ICON_LABELS: Record<string, StringKey> = { close: 'a11y.remove', chevronDown: 'a11y.move', check: 'a11y.confirm', plus: 'a11y.add' };
 
 function button(label: string, onClick: () => void, cls = 'btn', glyphName?: string): HTMLButtonElement {
-  const b = el('button', { class: cls });
+  const b = el('button', { type: 'button', class: cls });
   if (!label && glyphName && ICON_LABELS[glyphName]) {
     b.setAttribute('aria-label', t(ICON_LABELS[glyphName]));
     b.title = t(ICON_LABELS[glyphName]);
