@@ -780,7 +780,8 @@ function renderNav() {
       });
       return el('li', {}, b);
     }));
-    return el('li', { class: 'nav-group' }, el('div', { class: 'nav-group-label', text: t(group.labelKey) }), list);
+    const isActiveGroup = !query && group.sections.includes(current);
+    return el('li', { class: `nav-group${isActiveGroup ? ' active' : ''}` }, el('div', { class: 'nav-group-label', text: t(group.labelKey) }), list);
   }).filter((group): group is HTMLLIElement => !!group);
   nav.replaceChildren(...(groups.length ? groups : [el('li', { class: 'nav-empty', text: t('settings.search.none') })]));
 }
