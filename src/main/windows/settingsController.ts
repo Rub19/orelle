@@ -38,6 +38,7 @@ export class SettingsController {
       minWidth: 780,
       minHeight: 520,
       show: false,
+      skipTaskbar: true,
       title: `Orelle — ${this.ctx.t('settings.title')}`,
       titleBarStyle: 'hidden',
       titleBarOverlay: { color: '#00000000', symbolColor: dark ? '#f5f5f7' : '#1d1d1f', height: 44 },
@@ -75,6 +76,10 @@ export class SettingsController {
     const fromSettings = (e: IpcMainInvokeEvent) => !!this.win && e.sender === this.win.webContents;
 
     ipcMain.handle('settings:apps', (e) => (fromSettings(e) ? this.ctx.apps.all() : []));
+
+    ipcMain.on('settings:quit', (e) => {
+      if (fromSettings(e)) app.quit();
+    });
 
     ipcMain.handle('settings:displays', (e): DisplayInfo[] => {
       if (!fromSettings(e)) return [];

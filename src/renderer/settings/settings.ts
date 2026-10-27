@@ -671,6 +671,12 @@ function pageAbout(): HTMLElement[] {
       row('settings.about.data', button(t('settings.about.data'), () => orelle.settings.openFolder('data'), 'btn', 'folder')),
       row('settings.about.diagnostics', button(t('settings.about.diagnosticsBtn'), () => void orelle.settings.saveDiagnostics(), 'btn', 'file'), 'settings.about.diagnostics.desc'),
     ),
+    ...group(
+      'settings.about.exit',
+      row('settings.about.quit', button(t('settings.about.quit'), () => {
+        if (confirm(t('settings.about.quit.confirm'))) orelle.settings.quit();
+      }, 'btn danger', 'close'), 'settings.about.quit.desc'),
+    ),
   ];
 }
 

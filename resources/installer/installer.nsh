@@ -1,6 +1,14 @@
-; Orelle per-user installer hooks (electron-builder NSIS, no administrator rights).
+; Orelle branded assisted installer (electron-builder NSIS, no administrator rights).
 ; Orelle changes nothing system-wide; the only things to undo on uninstall are what it may have
 ; changed for the current user while running: the hidden / auto-hidden taskbar and its sign-in entry.
+
+!ifndef ORELLE_BRAND_PAGES
+  !define ORELLE_BRAND_PAGES
+  !define MUI_WELCOMEPAGE_TITLE "Orelle"
+  !define MUI_WELCOMEPAGE_TEXT "A calmer, configurable Windows desktop.$\r$\n$\r$\nOrelle keeps your preferences between updates."
+  !define MUI_FINISHPAGE_TITLE "Orelle is ready"
+  !define MUI_FINISHPAGE_TEXT "Installation complete. Start Orelle from the Start menu or notification area."
+!endif
 
 !macro customInit
   ; Close a running Orelle cleanly (it restores the taskbar and releases its reserved screen space).

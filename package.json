@@ -1,7 +1,7 @@
 {
   "name": "orelle",
   "productName": "Orelle",
-  "version": "0.7.10",
+  "version": "0.7.11",
   "description": "Orelle — premium desktop experience layer for Windows 11 (Dock, top bar, launcher, widgets, control center, files, activity monitor, profiles).",
   "main": "dist/main.js",
   "private": true,
@@ -87,6 +87,8 @@
       "uninstallDisplayName": "Orelle",
       "installerIcon": "resources/icons/orelle.ico",
       "uninstallerIcon": "resources/icons/orelle.ico",
+      "installerHeader": "installerHeader.bmp",
+      "installerSidebar": "installerSidebar.bmp",
       "deleteAppDataOnUninstall": false,
       "include": "resources/installer/installer.nsh"
     },

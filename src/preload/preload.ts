@@ -84,6 +84,7 @@ const api = {
     pickPath: (kind: 'file' | 'folder'): Promise<string | null> => ipcRenderer.invoke('settings:pickPath', kind),
     editWidgets: () => ipcRenderer.send('settings:editWidgets'),
     openApp: (which: 'files' | 'monitor') => ipcRenderer.send('settings:openApp', which),
+    quit: () => ipcRenderer.send('settings:quit'),
     recordingHotkey: (on: boolean) => ipcRenderer.send('settings:recordingHotkey', on),
     exportProfile: (): Promise<{ ok: boolean; canceled?: boolean; error?: string }> => ipcRenderer.invoke('settings:export'),
     importProfile: (): Promise<{ ok: boolean; canceled?: boolean; error?: string }> => ipcRenderer.invoke('settings:import'),
